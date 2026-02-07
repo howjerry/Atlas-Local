@@ -1,0 +1,20 @@
+[package]
+name = "atlas-lang"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Language adapters and tree-sitter integration for Atlas Local SAST"
+
+[dependencies]
+tree-sitter = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Tree-sitter grammar crates (crate-specific, not workspace-level).
+# These use tree-sitter-language 0.1 internally and are compatible with
+# tree-sitter 0.24+ via the LanguageFn -> Language conversion.
+tree-sitter-typescript = "0.23"
+tree-sitter-javascript = "0.25"

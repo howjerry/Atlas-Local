@@ -1,0 +1,29 @@
+[package]
+name = "atlas-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Engine orchestration for Atlas Local SAST"
+
+[dependencies]
+walkdir = { workspace = true }
+ignore = { workspace = true }
+globset = { workspace = true }
+rayon = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+sha2 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yml = { workspace = true }
+thiserror = { workspace = true }
+
+tree-sitter = { workspace = true }
+
+atlas-lang = { path = "../atlas-lang" }
+atlas-rules = { path = "../atlas-rules" }
+atlas-analysis = { path = "../atlas-analysis" }
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atlas-local.dev/schemas/baseline-v1.0.0.json",
+  "title": "Atlas Baseline v1.0.0",
+  "description": "Snapshot of finding fingerprints for incremental adoption. Findings matching baseline fingerprints are excluded from policy gate evaluation.",
+  "type": "object",
+  "required": ["schema_version", "scan_id", "created_at", "engine_version", "fingerprints", "findings_count"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "scan_id": {
+      "type": "string",
+      "description": "ID of the scan that produced this baseline."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 baseline creation timestamp."
+    },
+    "engine_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+",
+      "description": "Engine version at baseline creation."
+    },
+    "fingerprints": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      },
+      "description": "Sorted array of SHA-256 finding fingerprints.",
+      "uniqueItems": true
+    },
+    "findings_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total baselined findings. Must equal fingerprints array length."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional context.",
+      "properties": {
+        "target_path": { "type": "string" },
+        "rules_version": { "type": "string" },
+        "languages": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+id: atlas/security/typescript/path-traversal
+name: Path Traversal via File System Access
+description: >
+  Detects calls to Node.js file system functions (readFile, readFileSync,
+  writeFile, writeFileSync, etc.) where the file path argument is a
+  template literal or string concatenation rather than a static string.
+  If user-controlled input is included in the file path without proper
+  validation, an attacker can use path traversal sequences (../) to
+  access files outside the intended directory, leading to unauthorized
+  file reads or writes.
+severity: high
+category: security
+language: TypeScript
+cwe_id: CWE-22
+pattern: |
+  (call_expression
+    function: (member_expression
+      object: (_)
+      property: (property_identifier) @method
+      (#match? @method "^(readFile|readFileSync|writeFile|writeFileSync|readdir|readdirSync|unlink|unlinkSync|access|accessSync|stat|statSync|createReadStream|createWriteStream)$"))
+    arguments: (arguments
+      (template_string) @path_arg))
+  @match
+remediation: >
+  Validate and sanitize all file paths before passing them to file system
+  functions. Use path.resolve() to normalize paths and verify the resolved
+  path starts with the expected base directory using path.startsWith().
+  Reject paths containing '..' sequences. Consider using a whitelist of
+  allowed directories and file names. For example:
+  `const safePath = path.resolve(baseDir, userInput);
+  if (!safePath.startsWith(baseDir)) throw new Error('Path traversal detected');`
+references:
+  - https://cwe.mitre.org/data/definitions/22.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Path_Traversal
+tags:
+  - path-traversal
+  - file-access
+  - owasp-top-10
+  - a01-broken-access-control
+version: 1.0.0

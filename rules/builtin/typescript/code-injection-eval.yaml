@@ -1,0 +1,34 @@
+id: atlas/security/typescript/code-injection-eval
+name: Code Injection via eval()
+description: >
+  Detects usage of the eval() function which executes arbitrary JavaScript
+  code at runtime. If user-controlled data reaches eval(), an attacker can
+  execute arbitrary code in the application context, leading to complete
+  system compromise including data theft, remote code execution, and
+  privilege escalation.
+severity: critical
+category: security
+language: TypeScript
+cwe_id: CWE-94
+pattern: |
+  (call_expression
+    function: (identifier) @fn
+    (#eq? @fn "eval"))
+  @match
+remediation: >
+  Remove all uses of eval(). Use JSON.parse() for parsing JSON data,
+  structured configuration objects instead of dynamic code evaluation,
+  or a sandboxed interpreter if dynamic evaluation is absolutely required.
+  For mathematical expressions, use a safe expression parser library.
+  For dynamic property access, use bracket notation (obj[key]) instead.
+references:
+  - https://cwe.mitre.org/data/definitions/94.html
+  - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#never_use_eval!
+  - https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html
+tags:
+  - code-injection
+  - eval
+  - injection
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0

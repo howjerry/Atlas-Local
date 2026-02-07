@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atlas-local.dev/schemas/policy-v1.0.0.json",
+  "title": "Atlas Policy Configuration v1.0.0",
+  "description": "YAML-based policy definition for CI/CD gating thresholds.",
+  "type": "object",
+  "required": ["schema_version", "name", "fail_on"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "name": {
+      "type": "string",
+      "description": "Policy name."
+    },
+    "level": {
+      "type": "string",
+      "enum": ["organization", "team", "project", "local"],
+      "default": "local",
+      "description": "Merge precedence level. Local overrides project, project overrides team, team overrides organization."
+    },
+    "fail_on": {
+      "$ref": "#/$defs/Thresholds",
+      "description": "Severity thresholds that trigger gate FAIL (exit code 1)."
+    },
+    "warn_on": {
+      "$ref": "#/$defs/Thresholds",
+      "description": "Severity thresholds that trigger gate WARN."
+    },
+    "category_overrides": {
+      "type": "object",
+      "description": "Per-category threshold overrides.",
+      "properties": {
+        "security": { "$ref": "#/$defs/Thresholds" },
+        "quality": { "$ref": "#/$defs/Thresholds" },
+        "secrets": { "$ref": "#/$defs/Thresholds" }
+      },
+      "additionalProperties": false
+    },
+    "baseline": {
+      "type": "string",
+      "description": "Path to baseline file. Only new findings count against thresholds."
+    },
+    "exclude_rules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Rule IDs to exclude from policy evaluation."
+    },
+    "include_rules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "If set, only these rule IDs are evaluated."
+    }
+  },
+  "$defs": {
+    "Thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "critical": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum allowed critical findings. 0 = fail on any."
+        },
+        "high": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum allowed high findings."
+        },
+        "medium": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "low": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "info": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum allowed total findings across all severities."
+        }
+      }
+    }
+  }
+}

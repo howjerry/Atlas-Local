@@ -1,0 +1,37 @@
+id: atlas/security/typescript/xss-innerhtml
+name: XSS via innerHTML Assignment
+description: >
+  Detects assignment to the innerHTML property of DOM elements. Setting
+  innerHTML with untrusted data allows an attacker to inject arbitrary
+  HTML and JavaScript, leading to cross-site scripting (XSS) attacks
+  that can steal cookies, session tokens, or perform actions on behalf
+  of the victim.
+severity: high
+category: security
+language: TypeScript
+cwe_id: CWE-79
+pattern: |
+  (assignment_expression
+    left: (member_expression
+      object: (_)
+      property: (property_identifier) @prop
+      (#eq? @prop "innerHTML"))
+    right: (_) @value)
+  @match
+remediation: >
+  Use textContent or innerText for plain text content. For HTML content,
+  use a sanitization library such as DOMPurify before assigning to
+  innerHTML. Alternatively, use safe DOM APIs like createElement and
+  appendChild to build DOM structures programmatically.
+  For example, replace `el.innerHTML = userInput` with
+  `el.textContent = userInput` or `el.innerHTML = DOMPurify.sanitize(userInput)`.
+references:
+  - https://cwe.mitre.org/data/definitions/79.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/xss/
+tags:
+  - xss
+  - dom-manipulation
+  - owasp-top-10
+  - a07-xss
+version: 1.0.0
