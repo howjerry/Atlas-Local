@@ -1,0 +1,36 @@
+id: atlas/security/python/eval-usage
+name: Use of eval or exec Built-in Functions
+description: >
+  Detects use of Python's eval and exec built-in functions. These
+  functions execute arbitrary Python code from a string, and if the input
+  is derived from user-controllable data, an attacker can execute arbitrary
+  code on the server, leading to full system compromise.
+severity: critical
+category: security
+language: Python
+cwe_id: CWE-94
+pattern: |
+  (call
+    function: (identifier) @func_name
+    (#match? @func_name "^(eval|exec)$")
+    arguments: (argument_list
+      (_) @code_arg))
+  @match
+remediation: >
+  Avoid using eval and exec entirely. For evaluating mathematical
+  expressions, use ast.literal_eval which only evaluates literal structures.
+  For configuration or data parsing, use structured formats like JSON or YAML
+  with safe loaders. For dynamic dispatch, use dictionaries mapping strings to
+  functions. If eval/exec is absolutely unavoidable, restrict the available
+  namespace and builtins.
+references:
+  - https://cwe.mitre.org/data/definitions/94.html
+  - https://owasp.org/www-community/attacks/Code_Injection
+  - https://docs.python.org/3/library/ast.html#ast.literal_eval
+tags:
+  - code-injection
+  - injection
+  - eval
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0

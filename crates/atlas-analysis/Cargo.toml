@@ -1,0 +1,21 @@
+[package]
+name = "atlas-analysis"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Analysis levels and finding model for Atlas Local SAST"
+
+[dependencies]
+tree-sitter = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tracing = { workspace = true }
+hex = { workspace = true }
+thiserror = { workspace = true }
+
+atlas-rules = { path = "../atlas-rules" }
+
+[dev-dependencies]
+tree-sitter-typescript = "0.23"

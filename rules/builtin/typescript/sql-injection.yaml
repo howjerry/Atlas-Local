@@ -1,0 +1,36 @@
+id: atlas/security/typescript/sql-injection
+name: SQL Injection via String Concatenation
+description: >
+  Detects potential SQL injection vulnerabilities where SQL queries are
+  constructed using template literals or string concatenation. An attacker
+  can manipulate the concatenated input to alter the SQL query logic,
+  leading to unauthorized data access, modification, or deletion.
+severity: critical
+category: security
+language: TypeScript
+cwe_id: CWE-89
+pattern: |
+  (call_expression
+    function: (member_expression
+      object: (_)
+      property: (property_identifier) @method
+      (#match? @method "^(query|execute|exec|raw|prepare|run)$"))
+    arguments: (arguments
+      (template_string) @sql_template))
+  @match
+remediation: >
+  Use parameterized queries or prepared statements instead of string
+  concatenation to build SQL queries. Most database libraries support
+  placeholders (e.g., $1, ?, :name) that safely escape user input.
+  For example, replace `db.query(\`SELECT * FROM users WHERE id = ${id}\`)`
+  with `db.query('SELECT * FROM users WHERE id = $1', [id])`.
+references:
+  - https://cwe.mitre.org/data/definitions/89.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/SQL_Injection
+tags:
+  - sql-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0

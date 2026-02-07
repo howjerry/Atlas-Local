@@ -1,0 +1,35 @@
+id: atlas/security/typescript/code-injection-function-constructor
+name: Code Injection via Function Constructor
+description: >
+  Detects usage of the Function constructor (new Function()) which
+  dynamically creates and executes JavaScript code from strings at
+  runtime. Like eval(), if user-controlled data is passed to the
+  Function constructor, an attacker can execute arbitrary code in the
+  application context, leading to remote code execution and complete
+  system compromise.
+severity: critical
+category: security
+language: TypeScript
+cwe_id: CWE-94
+pattern: |
+  (new_expression
+    constructor: (identifier) @ctor
+    (#eq? @ctor "Function"))
+  @match
+remediation: >
+  Avoid using the Function constructor to create functions from strings.
+  Define functions statically in your source code. If dynamic behavior
+  is needed, use a configuration-driven approach with predefined functions
+  selected at runtime, or use a safe sandboxed interpreter. For dynamic
+  property access, use bracket notation (obj[key]) or Map/Object lookups.
+references:
+  - https://cwe.mitre.org/data/definitions/94.html
+  - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/Function
+  - https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html
+tags:
+  - code-injection
+  - function-constructor
+  - injection
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0

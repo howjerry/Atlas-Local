@@ -1,0 +1,50 @@
+id: atlas/security/java/path-traversal
+name: Path Traversal via File System Access
+description: >
+  Detects creation of File, FileInputStream, FileOutputStream,
+  FileReader, or FileWriter objects and calls to Paths.get(), Path.of(),
+  or Path.resolve() where the path argument may come from user input.
+  If user-controlled input is included in the file path without proper
+  validation, an attacker can use path traversal sequences (../) to
+  access files outside the intended directory, leading to unauthorized
+  file reads, writes, or deletion.
+severity: high
+category: security
+language: Java
+cwe_id: CWE-22
+pattern: |
+  [
+    (object_creation_expression
+      type: (type_identifier) @type
+      arguments: (argument_list
+        (_) @path_arg)
+      (#match? @type "^(File|FileInputStream|FileOutputStream|FileReader|FileWriter)$"))
+    @match
+
+    (method_invocation
+      object: (identifier) @obj
+      name: (identifier) @method
+      arguments: (argument_list
+        (_) @path_arg)
+      (#match? @obj "^(Paths|Path)$")
+      (#match? @method "^(get|of|resolve)$"))
+    @match
+  ]
+remediation: >
+  Validate and sanitize all file paths before passing them to file system
+  constructors or methods. Use Path.normalize() to resolve path traversal
+  sequences, then verify the resolved path starts with the expected base
+  directory. Reject paths containing '..' sequences. For example:
+  `Path resolved = baseDir.resolve(userInput).normalize();
+  if (!resolved.startsWith(baseDir)) throw new SecurityException("Path traversal detected");`.
+  Consider using a whitelist of allowed directories and file names.
+references:
+  - https://cwe.mitre.org/data/definitions/22.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Path_Traversal
+tags:
+  - path-traversal
+  - file-access
+  - owasp-top-10
+  - a01-broken-access-control
+version: 1.0.0

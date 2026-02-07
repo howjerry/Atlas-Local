@@ -1,0 +1,20 @@
+[package]
+name = "atlas-policy"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Policy engine and gating logic for Atlas Local SAST"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yml = { workspace = true }
+tracing = { workspace = true }
+sha2 = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+atlas-core = { path = "../atlas-core" }
+
+[dev-dependencies]
+tempfile = { workspace = true }

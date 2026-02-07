@@ -1,0 +1,40 @@
+id: atlas/security/java/xss-servlet
+name: XSS via Servlet Response Writer
+description: >
+  Detects potential cross-site scripting (XSS) vulnerabilities in Java
+  Servlets where data is written directly to the HTTP response via
+  PrintWriter methods such as print, println, write, format, or append.
+  If the data written to the response includes unsanitized user input,
+  an attacker can inject malicious scripts that execute in the victim's
+  browser, potentially stealing session cookies, credentials, or
+  performing actions on behalf of the user.
+severity: high
+category: security
+language: Java
+cwe_id: CWE-79
+pattern: |
+  (method_invocation
+    object: (_) @writer
+    name: (identifier) @method
+    arguments: (argument_list
+      (method_invocation) @inner_call)
+    (#match? @method "^(print|println|write|format|append)$"))
+  @match
+remediation: >
+  Encode all user-controlled data before writing it to the HTTP response.
+  Use OWASP Java Encoder or similar libraries to HTML-encode output. For
+  example, replace `out.println(request.getParameter("name"))` with
+  `out.println(Encode.forHtml(request.getParameter("name")))`. Consider
+  using templating engines with automatic output encoding, such as
+  Thymeleaf or JSP with JSTL's c:out tag. Set the Content-Type header
+  appropriately and use Content-Security-Policy headers as defense in depth.
+references:
+  - https://cwe.mitre.org/data/definitions/79.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/xss/
+tags:
+  - xss
+  - servlet
+  - owasp-top-10
+  - a07-xss
+version: 1.0.0

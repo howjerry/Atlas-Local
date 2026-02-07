@@ -1,0 +1,66 @@
+# =========================
+# Rust / Cargo
+# =========================
+target/
+debug/
+release/
+*.rs.bk
+*.rlib
+*.prof*
+*.profraw
+*.profdata
+# NOTE: Cargo.lock is tracked for binary projects (reproducible builds)
+
+# =========================
+# Build artifacts
+# =========================
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# =========================
+# IDE / Editor
+# =========================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.#*
+\#*#
+
+# =========================
+# OS generated files
+# =========================
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================
+# Environment
+# =========================
+.env*
+!.env.example
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Atlas-Local cache
+# =========================
+.atlas-cache/
+
+# =========================
+# Miscellaneous
+# =========================
+*.bak
+*.tmp
+*.orig

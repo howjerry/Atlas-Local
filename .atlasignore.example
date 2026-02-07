@@ -1,0 +1,18 @@
+# Example .atlasignore file
+# Patterns follow .gitignore syntax
+
+# Test fixtures (avoid scanning test data)
+tests/fixtures/
+
+# Build output
+target/
+dist/
+build/
+
+# Generated files
+*.generated.ts
+*.min.js
+
+# Vendor/third-party code
+vendor/
+node_modules/

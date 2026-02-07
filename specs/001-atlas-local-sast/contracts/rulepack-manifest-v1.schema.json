@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atlas-local.dev/schemas/rulepack-manifest-v1.0.0.json",
+  "title": "Atlas Rulepack Manifest v1.0.0",
+  "description": "Manifest file contained within a signed rulepack (.pack) archive.",
+  "type": "object",
+  "required": ["schema_version", "id", "version", "author", "created_at", "rules", "rule_count", "checksum"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "id": {
+      "type": "string",
+      "description": "Rulepack identifier, e.g. atlas-security-rules."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+",
+      "description": "SemVer version."
+    },
+    "description": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author or organization."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "min_engine_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+",
+      "description": "Minimum Atlas engine version required to use this rulepack."
+    },
+    "rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/RuleEntry" },
+      "description": "List of rules in this pack."
+    },
+    "rule_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of rules. Must equal rules array length."
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 of the pack archive contents (excluding signature)."
+    }
+  },
+  "$defs": {
+    "RuleEntry": {
+      "type": "object",
+      "required": ["id", "name", "severity", "category", "language", "analysis_level", "rule_type", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^atlas/",
+          "description": "Rule identifier, e.g. atlas/security/typescript/sql-injection."
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low", "info"]
+        },
+        "category": {
+          "type": "string",
+          "enum": ["security", "quality", "secrets"]
+        },
+        "language": {
+          "type": "string",
+          "enum": ["typescript", "javascript", "java", "python", "go", "csharp"]
+        },
+        "analysis_level": {
+          "type": "string",
+          "enum": ["L1", "L2", "L3"]
+        },
+        "rule_type": {
+          "type": "string",
+          "enum": ["declarative", "scripted", "compiled"]
+        },
+        "cwe_id": {
+          "type": "string",
+          "pattern": "^CWE-\\d+$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "file": {
+          "type": "string",
+          "description": "Relative path to rule file within the pack (YAML, .rhai, or .so/.dylib/.dll)."
+        }
+      }
+    }
+  }
+}
