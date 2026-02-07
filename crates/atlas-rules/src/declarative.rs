@@ -527,4 +527,132 @@ version: 0.1.0
         assert!(rule.references.is_empty());
         assert!(rule.tags.is_empty());
     }
+
+    // -------------------------------------------------------------------
+    // Load built-in Python rules from disk
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn load_builtin_python_rules_from_disk() {
+        let rules_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("rules/builtin/python");
+
+        if !rules_dir.exists() {
+            panic!("Python rules directory not found: {}", rules_dir.display());
+        }
+
+        let loader = DeclarativeRuleLoader;
+        let rules = loader
+            .load_from_dir(&rules_dir)
+            .expect("all Python rules should load successfully");
+
+        assert_eq!(rules.len(), 4, "expected exactly 4 Python rules");
+
+        // Verify all rules are sorted by ID.
+        let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "atlas/security/python/command-injection",
+                "atlas/security/python/eval-usage",
+                "atlas/security/python/sql-injection",
+                "atlas/security/python/unsafe-deserialization",
+            ]
+        );
+
+        // Verify common properties across all rules.
+        for rule in &rules {
+            assert_eq!(rule.language, Language::Python);
+            assert_eq!(rule.analysis_level, AnalysisLevel::L1);
+            assert_eq!(rule.rule_type, RuleType::Declarative);
+            assert!(rule.pattern.is_some());
+            assert_eq!(rule.category, Category::Security);
+            assert!(rule.cwe_id.is_some());
+            assert!(!rule.tags.is_empty());
+            assert_eq!(rule.version, "1.0.0");
+        }
+
+        // Verify specific severities.
+        let sql = rules.iter().find(|r| r.id.contains("sql-injection")).unwrap();
+        assert_eq!(sql.severity, Severity::Critical);
+
+        let cmd = rules.iter().find(|r| r.id.contains("command-injection")).unwrap();
+        assert_eq!(cmd.severity, Severity::Critical);
+
+        let eval = rules.iter().find(|r| r.id.contains("eval-usage")).unwrap();
+        assert_eq!(eval.severity, Severity::Critical);
+
+        let deser = rules.iter().find(|r| r.id.contains("unsafe-deserialization")).unwrap();
+        assert_eq!(deser.severity, Severity::High);
+    }
+
+    // -------------------------------------------------------------------
+    // Load built-in Java rules from disk
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn load_builtin_java_rules_from_disk() {
+        let rules_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("rules/builtin/java");
+
+        if !rules_dir.exists() {
+            panic!("Java rules directory not found: {}", rules_dir.display());
+        }
+
+        let loader = DeclarativeRuleLoader;
+        let rules = loader
+            .load_from_dir(&rules_dir)
+            .expect("all Java rules should load successfully");
+
+        assert_eq!(rules.len(), 4, "expected exactly 4 Java rules");
+
+        // Verify all rules are sorted by ID.
+        let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "atlas/security/java/insecure-deserialization",
+                "atlas/security/java/path-traversal",
+                "atlas/security/java/sql-injection",
+                "atlas/security/java/xss-servlet",
+            ]
+        );
+
+        // Verify common properties across all rules.
+        for rule in &rules {
+            assert_eq!(rule.language, Language::Java);
+            assert_eq!(rule.analysis_level, AnalysisLevel::L1);
+            assert_eq!(rule.rule_type, RuleType::Declarative);
+            assert!(rule.pattern.is_some());
+            assert_eq!(rule.category, Category::Security);
+            assert!(rule.cwe_id.is_some());
+            assert!(!rule.tags.is_empty());
+            assert_eq!(rule.version, "1.0.0");
+        }
+
+        // Verify specific severities.
+        let sql = rules.iter().find(|r| r.id.contains("sql-injection")).unwrap();
+        assert_eq!(sql.severity, Severity::Critical);
+        assert_eq!(sql.cwe_id.as_deref(), Some("CWE-89"));
+
+        let xss = rules.iter().find(|r| r.id.contains("xss-servlet")).unwrap();
+        assert_eq!(xss.severity, Severity::High);
+        assert_eq!(xss.cwe_id.as_deref(), Some("CWE-79"));
+
+        let deser = rules.iter().find(|r| r.id.contains("insecure-deserialization")).unwrap();
+        assert_eq!(deser.severity, Severity::Critical);
+        assert_eq!(deser.cwe_id.as_deref(), Some("CWE-502"));
+
+        let path = rules.iter().find(|r| r.id.contains("path-traversal")).unwrap();
+        assert_eq!(path.severity, Severity::High);
+        assert_eq!(path.cwe_id.as_deref(), Some("CWE-22"));
+    }
 }

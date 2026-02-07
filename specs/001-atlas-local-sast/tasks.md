@@ -161,15 +161,15 @@
 
 ### Implementation for User Story 6
 
-- [ ] T058 [P] [US6] Implement Java language adapter in `crates/atlas-lang/src/java.rs` using tree-sitter-java grammar (Tier 1: L1-L3)
-- [ ] T059 [P] [US6] Implement Python language adapter in `crates/atlas-lang/src/python.rs` using tree-sitter-python grammar (Tier 2: L1-L2)
-- [ ] T060 [P] [US6] Implement Go language adapter in `crates/atlas-lang/src/go.rs` using tree-sitter-go grammar (Tier 2: L1-L2)
-- [ ] T061 [P] [US6] Implement C# language adapter in `crates/atlas-lang/src/csharp.rs` using tree-sitter-c-sharp grammar (Tier 3: L1)
-- [ ] T062 [US6] Implement language auto-detection by file extension in `crates/atlas-lang/src/adapter.rs` with registry of all adapters, skipping unsupported files with INFO log
-- [ ] T063 [US6] Wire --lang flag for language filtering in `crates/atlas-cli/src/commands/scan.rs` (only analyze specified languages)
-- [ ] T064 [P] [US6] Create initial L1 declarative rules for Java: sql-injection, xss-jsp, insecure-deserialization, path-traversal as YAML in `rules/builtin/java/`
-- [ ] T065 [P] [US6] Create initial L1 declarative rules for Python: sql-injection, command-injection, eval-usage, unsafe-deserialization as YAML in `rules/builtin/python/`
-- [ ] T066 [US6] Create `tests/fixtures/polyglot/` with TypeScript, Java, and Python files containing known vulnerabilities for multi-language acceptance testing
+- [x] T058 [P] [US6] Implement Java language adapter in `crates/atlas-lang/src/java.rs` using tree-sitter-java grammar (Tier 1: L1-L3)
+- [x] T059 [P] [US6] Implement Python language adapter in `crates/atlas-lang/src/python.rs` using tree-sitter-python grammar (Tier 2: L1-L2)
+- [x] T060 [P] [US6] Implement Go language adapter in `crates/atlas-lang/src/go.rs` using tree-sitter-go grammar (Tier 2: L1-L2)
+- [x] T061 [P] [US6] Implement C# language adapter in `crates/atlas-lang/src/csharp.rs` using tree-sitter-c-sharp grammar (Tier 3: L1)
+- [x] T062 [US6] Implement language auto-detection by file extension in `crates/atlas-lang/src/adapter.rs` with registry of all adapters, skipping unsupported files with INFO log
+- [x] T063 [US6] Wire --lang flag for language filtering in `crates/atlas-cli/src/commands/scan.rs` (only analyze specified languages)
+- [x] T064 [P] [US6] Create initial L1 declarative rules for Java: sql-injection, xss-jsp, insecure-deserialization, path-traversal as YAML in `rules/builtin/java/`
+- [x] T065 [P] [US6] Create initial L1 declarative rules for Python: sql-injection, command-injection, eval-usage, unsafe-deserialization as YAML in `rules/builtin/python/`
+- [x] T066 [US6] Create `tests/fixtures/polyglot/` with TypeScript, Java, and Python files containing known vulnerabilities for multi-language acceptance testing
 
 **Checkpoint**: User Story 6 complete — multi-language scanning works for all 6 languages, auto-detection and --lang filtering functional
 

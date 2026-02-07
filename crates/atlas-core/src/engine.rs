@@ -32,7 +32,7 @@ use rayon::prelude::*;
 use tracing::{debug, info, warn};
 
 use atlas_analysis::{Finding, L1PatternEngine, RuleMatchMetadata};
-use atlas_lang::{AdapterRegistry, register_js_ts_adapters};
+use atlas_lang::{AdapterRegistry, register_csharp_adapter, register_go_adapter, register_java_adapter, register_js_ts_adapters, register_python_adapter};
 use atlas_rules::{AnalysisLevel, Confidence, Rule};
 use atlas_rules::declarative::DeclarativeRuleLoader;
 
@@ -100,12 +100,16 @@ pub struct ScanEngine {
 }
 
 impl ScanEngine {
-    /// Creates a new `ScanEngine` with TypeScript and JavaScript adapters
-    /// pre-registered.
+    /// Creates a new `ScanEngine` with TypeScript, JavaScript, Java,
+    /// Python, C#, and Go adapters pre-registered.
     #[must_use]
     pub fn new() -> Self {
         let mut registry = AdapterRegistry::new();
         register_js_ts_adapters(&mut registry);
+        register_java_adapter(&mut registry);
+        register_python_adapter(&mut registry);
+        register_csharp_adapter(&mut registry);
+        register_go_adapter(&mut registry);
         Self {
             adapter_registry: registry,
             rules: Vec::new(),

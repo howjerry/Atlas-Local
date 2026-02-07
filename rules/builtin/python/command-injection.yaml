@@ -1,0 +1,38 @@
+id: atlas/security/python/command-injection
+name: OS Command Injection via Shell Execution
+description: >
+  Detects potential command injection vulnerabilities where user-controllable
+  data may be passed to OS command execution functions such as os.system,
+  os.popen, or subprocess functions invoked with shell=True. An attacker
+  can inject arbitrary shell commands, leading to full system compromise.
+severity: critical
+category: security
+language: Python
+cwe_id: CWE-78
+pattern: |
+  (call
+    function: (attribute
+      object: (identifier) @module
+      attribute: (identifier) @method
+      (#match? @module "^(os|subprocess)$")
+      (#match? @method "^(system|popen|call|run|Popen|check_call|check_output)$"))
+    arguments: (argument_list
+      (_) @first_arg))
+  @match
+remediation: >
+  Avoid using os.system and os.popen entirely. For subprocess functions,
+  never use shell=True with untrusted input. Instead, pass commands as a list
+  of arguments without shell=True. For example, replace
+  subprocess.run(f"ls {user_input}", shell=True) with
+  subprocess.run(["ls", user_input]). If shell features are genuinely needed,
+  use shlex.quote to sanitize all user-provided arguments.
+references:
+  - https://cwe.mitre.org/data/definitions/78.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Command_Injection
+tags:
+  - command-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0

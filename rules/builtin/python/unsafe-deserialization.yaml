@@ -1,0 +1,42 @@
+id: atlas/security/python/unsafe-deserialization
+name: Unsafe Deserialization via pickle or yaml.load
+description: >
+  Detects use of pickle.loads, pickle.load, and yaml.load which can
+  execute arbitrary code during deserialization. The pickle module is
+  inherently unsafe for untrusted data, and yaml.load without specifying
+  a safe Loader (such as SafeLoader) will use the unsafe FullLoader by
+  default. An attacker who controls the serialized data can achieve remote
+  code execution.
+severity: high
+category: security
+language: Python
+cwe_id: CWE-502
+pattern: |
+  (call
+    function: (attribute
+      object: (identifier) @module
+      attribute: (identifier) @method
+      (#match? @module "^(pickle|cPickle|shelve|marshal|yaml)$")
+      (#match? @method "^(load|loads|dump|dumps)$"))
+    arguments: (argument_list
+      (_) @data_arg))
+  @match
+remediation: >
+  For pickle: avoid deserializing untrusted data entirely. If you must use
+  serialization, prefer safe formats like JSON. For yaml: always use
+  yaml.safe_load instead of yaml.load, or explicitly specify
+  Loader=yaml.SafeLoader. Consider using yaml.CSafeLoader for better
+  performance with the same safety guarantees.
+references:
+  - https://cwe.mitre.org/data/definitions/502.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html
+  - https://docs.python.org/3/library/pickle.html#restricting-globals
+  - https://pyyaml.org/wiki/PyYAMLDocumentation
+tags:
+  - deserialization
+  - injection
+  - pickle
+  - yaml
+  - owasp-top-10
+  - a08-integrity
+version: 1.0.0

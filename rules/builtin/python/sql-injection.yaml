@@ -1,0 +1,39 @@
+id: atlas/security/python/sql-injection
+name: SQL Injection via String Formatting in Database Execute
+description: >
+  Detects potential SQL injection vulnerabilities where SQL queries are
+  constructed using f-strings, percent formatting, or string concatenation
+  and passed to database cursor execute methods. An attacker can manipulate
+  the interpolated or concatenated input to alter the SQL query logic,
+  leading to unauthorized data access, modification, or deletion.
+severity: critical
+category: security
+language: Python
+cwe_id: CWE-89
+pattern: |
+  (call
+    function: (attribute
+      object: (_)
+      attribute: (identifier) @method
+      (#match? @method "^(execute|executemany|executescript)$"))
+    arguments: (argument_list
+      (binary_operator) @sql_expr))
+  @match
+remediation: >
+  Use parameterized queries instead of string formatting or concatenation
+  to build SQL queries. Most Python database libraries support placeholders
+  that safely escape user input. For example, replace
+  `cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")` with
+  `cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))` for
+  sqlite3, or `cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))`
+  for psycopg2.
+references:
+  - https://cwe.mitre.org/data/definitions/89.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/SQL_Injection
+tags:
+  - sql-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0

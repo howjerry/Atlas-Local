@@ -18,14 +18,20 @@ pub mod error;
 pub mod language;
 pub mod typescript;
 
-// Future language adapters -- uncomment as they are implemented.
-// pub mod java;
-// pub mod python;
-// pub mod go;
-// pub mod csharp;
+pub mod java;
+
+pub mod python;
+
+pub mod csharp;
+
+pub mod go;
 
 // Re-exports for convenience.
 pub use adapter::{AdapterRegistry, LanguageAdapter};
 pub use error::{LangError, LangResult};
 pub use language::Language;
+pub use java::{JavaAdapter, register_java_adapter};
+pub use python::{PythonAdapter, register_python_adapter};
+pub use csharp::{CSharpAdapter, register_csharp_adapter};
+pub use go::{GoAdapter, register_go_adapter};
 pub use typescript::{JavaScriptAdapter, TypeScriptAdapter, register_js_ts_adapters};

@@ -1,0 +1,41 @@
+id: atlas/security/java/sql-injection
+name: SQL Injection via String Concatenation in JDBC
+description: >
+  Detects potential SQL injection vulnerabilities where SQL queries are
+  constructed using string concatenation and passed to JDBC Statement
+  methods such as execute, executeQuery, executeUpdate, or addBatch.
+  An attacker can manipulate the concatenated input to alter the SQL
+  query logic, leading to unauthorized data access, modification, or
+  deletion.
+severity: critical
+category: security
+language: Java
+cwe_id: CWE-89
+pattern: |
+  (method_invocation
+    object: (_) @obj
+    name: (identifier) @method
+    arguments: (argument_list
+      (binary_expression
+        left: (string_literal) @sql_string
+        right: (_) @concat_arg))
+    (#match? @method "^(execute|executeQuery|executeUpdate|addBatch)$"))
+  @match
+remediation: >
+  Use PreparedStatement with parameterized queries instead of Statement
+  with string concatenation to build SQL queries. Replace concatenation
+  with bind parameters (?) that safely escape user input. For example,
+  replace `stmt.executeQuery("SELECT * FROM users WHERE id=" + id)` with
+  `PreparedStatement ps = conn.prepareStatement("SELECT * FROM users WHERE id=?");
+  ps.setString(1, id); ps.executeQuery();`.
+references:
+  - https://cwe.mitre.org/data/definitions/89.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/SQL_Injection
+tags:
+  - sql-injection
+  - injection
+  - jdbc
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0

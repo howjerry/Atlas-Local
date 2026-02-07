@@ -1,0 +1,40 @@
+id: atlas/security/java/insecure-deserialization
+name: Insecure Deserialization via ObjectInputStream
+description: >
+  Detects use of ObjectInputStream.readObject() or readUnshared() which
+  deserializes arbitrary Java objects from untrusted input. An attacker
+  can craft malicious serialized objects that exploit gadget chains
+  present in the application's classpath, leading to remote code
+  execution, denial of service, or other attacks. This is a critical
+  vulnerability commonly found in Java applications that accept
+  serialized data from network sockets, files, or HTTP requests.
+severity: critical
+category: security
+language: Java
+cwe_id: CWE-502
+pattern: |
+  (method_invocation
+    object: (_) @obj
+    name: (identifier) @method
+    arguments: (argument_list)
+    (#match? @method "^(readObject|readUnshared)$"))
+  @match
+remediation: >
+  Avoid using Java native serialization (ObjectInputStream) for untrusted
+  data. Use safer serialization formats such as JSON (Jackson, Gson) or
+  Protocol Buffers instead. If ObjectInputStream must be used, implement
+  an ObjectInputFilter (Java 9+) to whitelist allowed classes, or use
+  Apache Commons IO's ValidatingObjectInputStream. For example:
+  `ObjectInputFilter filter = ObjectInputFilter.Config.createFilter("com.myapp.**;!*");
+  ois.setObjectInputFilter(filter);`. Consider using the
+  serialization-filtering JEP 290 mechanism for defense in depth.
+references:
+  - https://cwe.mitre.org/data/definitions/502.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html
+  - https://owasp.org/www-project-top-ten/2017/A8_2017-Insecure_Deserialization
+tags:
+  - deserialization
+  - rce
+  - owasp-top-10
+  - a08-insecure-deserialization
+version: 1.0.0
