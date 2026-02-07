@@ -119,10 +119,13 @@ dependencies = [
  "chrono",
  "ed25519-dalek",
  "flate2",
+ "hex",
  "serde",
  "serde_json",
  "sha2",
  "tar",
+ "tempfile",
+ "thiserror 2.0.18",
  "tracing",
 ]
 
@@ -151,11 +154,15 @@ dependencies = [
  "atlas-policy",
  "atlas-report",
  "atlas-rules",
+ "chrono",
  "clap",
  "dirs-next",
+ "hex",
  "indicatif",
+ "serde",
  "serde_json",
  "serde_yml",
+ "sha2",
  "tempfile",
  "tracing",
  "tracing-subscriber",
@@ -204,12 +211,15 @@ dependencies = [
 name = "atlas-license"
 version = "0.1.0"
 dependencies = [
+ "atlas-core",
  "base64",
+ "chrono",
  "ed25519-dalek",
  "hex",
  "serde",
  "serde_json",
  "sha2",
+ "thiserror 2.0.18",
  "tracing",
 ]
 

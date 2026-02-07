@@ -202,16 +202,16 @@
 
 ### Implementation for User Story 8
 
-- [ ] T073 [US8] Implement License struct with all fields from data-model.md in `crates/atlas-license/src/validator.rs`, including deserialization and signature verification
-- [ ] T074 [US8] Implement hardware fingerprint generation in `crates/atlas-license/src/node_locked.rs`: SHA-256 of sorted MAC addresses + hostname + OS identifier, deterministic across reboots
-- [ ] T075 [US8] Implement node-locked license validation pipeline in `crates/atlas-license/src/node_locked.rs`: load license file -> verify ed25519 signature -> check expiry -> match hardware fingerprint -> check entitled features
-- [ ] T076 [US8] Implement floating license client stub in `crates/atlas-license/src/floating.rs`: mTLS + JSON-RPC protocol for checkout/checkin/heartbeat, fail with exit code 3 if server unreachable
-- [ ] T077 [US8] Integrate license validation before scan execution in `crates/atlas-core/src/engine.rs`: validate license -> proceed or exit code 3
-- [ ] T078 [US8] Implement AuditBundle struct with all fields from data-model.md in `crates/atlas-audit/src/bundle.rs`, including AuditManifest with file checksums
-- [ ] T079 [US8] Implement audit bundle generation in `crates/atlas-audit/src/bundle.rs`: collect scan report + rules applied + policy config + engine version -> compute manifest checksums -> sign manifest with ed25519 -> write signed archive
-- [ ] T080 [US8] Implement `license` CLI subcommand (activate/status/deactivate) in `crates/atlas-cli/src/commands/license.rs`
-- [ ] T081 [US8] Implement `audit` CLI subcommand (bundle) in `crates/atlas-cli/src/commands/audit.rs` with --scan-id and --output flags
-- [ ] T082 [US8] Implement `diag` CLI subcommand in `crates/atlas-cli/src/commands/diag.rs` outputting engine version, rulepack version, license status, environment info, cache statistics
+- [x] T073 [US8] Implement License struct with all fields from data-model.md in `crates/atlas-license/src/validator.rs`, including deserialization and signature verification
+- [x] T074 [US8] Implement hardware fingerprint generation in `crates/atlas-license/src/node_locked.rs`: SHA-256 of sorted MAC addresses + hostname + OS identifier, deterministic across reboots
+- [x] T075 [US8] Implement node-locked license validation pipeline in `crates/atlas-license/src/node_locked.rs`: load license file -> verify ed25519 signature -> check expiry -> match hardware fingerprint -> check entitled features
+- [x] T076 [US8] Implement floating license client stub in `crates/atlas-license/src/floating.rs`: mTLS + JSON-RPC protocol for checkout/checkin/heartbeat, fail with exit code 3 if server unreachable
+- [x] T077 [US8] Integrate license validation before scan execution in `crates/atlas-core/src/engine.rs`: validate license -> proceed or exit code 3
+- [x] T078 [US8] Implement AuditBundle struct with all fields from data-model.md in `crates/atlas-audit/src/bundle.rs`, including AuditManifest with file checksums
+- [x] T079 [US8] Implement audit bundle generation in `crates/atlas-audit/src/bundle.rs`: collect scan report + rules applied + policy config + engine version -> compute manifest checksums -> sign manifest with ed25519 -> write signed archive
+- [x] T080 [US8] Implement `license` CLI subcommand (activate/status/deactivate) in `crates/atlas-cli/src/commands/license.rs`
+- [x] T081 [US8] Implement `audit` CLI subcommand (bundle) in `crates/atlas-cli/src/commands/audit.rs` with --scan-id and --output flags
+- [x] T082 [US8] Implement `diag` CLI subcommand in `crates/atlas-cli/src/commands/diag.rs` outputting engine version, rulepack version, license status, environment info, cache statistics
 
 **Checkpoint**: User Story 8 complete — licensing enforcement works (node-locked and floating stub), audit bundles are generated with signatures
 

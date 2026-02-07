@@ -153,6 +153,36 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
     //    Ignore the error if the subscriber is already set (e.g. in tests).
     let _ = atlas_core::init_tracing(args.verbose, args.quiet, false);
 
+    // 1b. License validation (T077): if a licence file exists, validate it.
+    //     Exit code 3 on invalid/expired licence; skip silently if no licence.
+    if let Some(home) = dirs_next::home_dir() {
+        let license_path = home.join(".atlas").join("license.json");
+        if license_path.exists() {
+            match atlas_license::validator::load_license(&license_path) {
+                Ok(license) => {
+                    let fp = atlas_license::node_locked::hardware_fingerprint();
+                    let status =
+                        atlas_license::validator::license_status(&license, Some(&fp));
+                    if !status.valid {
+                        eprintln!(
+                            "atlas: license validation failed: {}",
+                            status.reason.unwrap_or_default()
+                        );
+                        return Ok(ExitCode::LicenseError);
+                    }
+                    info!(
+                        license_id = %status.license_id,
+                        "license validated"
+                    );
+                }
+                Err(e) => {
+                    eprintln!("atlas: failed to load license: {e}");
+                    return Ok(ExitCode::LicenseError);
+                }
+            }
+        }
+    }
+
     // 2. Load configuration.
     let config = atlas_core::config::load_config(Some(&args.target))
         .context("failed to load configuration")?;
