@@ -8,7 +8,12 @@ use std::path::PathBuf;
 
 use atlas_core::config::AtlasConfig;
 use atlas_core::engine::{ScanEngine, ScanOptions};
-use atlas_report::{format_report, AtlasReport, SCHEMA_VERSION};
+use atlas_core::{Category, GateResult, Severity};
+use atlas_policy::gate::{self, GateFinding};
+use atlas_report::{
+    format_report, format_report_with_options, AtlasReport, GateBreachedThreshold, GateDetails,
+    ReportOptions, SCHEMA_VERSION,
+};
 
 /// Returns the workspace root directory.
 fn workspace_root() -> PathBuf {
@@ -252,6 +257,117 @@ fn e2e_parallel_scan_matches_serial() {
         assert_eq!(s.rule_id, p.rule_id);
         assert_eq!(s.file_path, p.file_path);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Gate evaluation with default policy
+// ---------------------------------------------------------------------------
+
+/// Adapter to bridge atlas_rules types to atlas_core types for gate evaluation.
+struct FindingAdapter<'a>(&'a atlas_analysis::Finding);
+
+impl GateFinding for FindingAdapter<'_> {
+    fn severity(&self) -> Severity {
+        match self.0.severity {
+            atlas_rules::Severity::Critical => Severity::Critical,
+            atlas_rules::Severity::High => Severity::High,
+            atlas_rules::Severity::Medium => Severity::Medium,
+            atlas_rules::Severity::Low => Severity::Low,
+            atlas_rules::Severity::Info => Severity::Info,
+        }
+    }
+
+    fn category(&self) -> Category {
+        match self.0.category {
+            atlas_rules::Category::Security => Category::Security,
+            atlas_rules::Category::Quality => Category::Quality,
+            atlas_rules::Category::Secrets => Category::Secrets,
+        }
+    }
+}
+
+#[test]
+fn e2e_default_policy_fails_on_critical_findings() {
+    let engine = create_engine();
+    let result = engine.scan(&fixtures_dir(), None).unwrap();
+
+    let policy = atlas_policy::default_policy();
+    let adapted: Vec<FindingAdapter<'_>> = result.findings.iter().map(FindingAdapter).collect();
+    let gate_eval = gate::evaluate_gate(
+        &adapted,
+        &policy.fail_on,
+        policy.warn_on.as_ref(),
+        policy.category_overrides.as_ref(),
+    );
+
+    // The fixtures contain critical findings (eval, Function constructor, SQL injection),
+    // so the default policy (fail on critical > 0) should produce FAIL.
+    assert_eq!(
+        gate_eval.result,
+        GateResult::Fail,
+        "default policy must FAIL when critical findings are present"
+    );
+    assert!(
+        !gate_eval.breached_thresholds.is_empty(),
+        "must have breached thresholds"
+    );
+}
+
+#[test]
+fn e2e_report_with_gate_result() {
+    let engine = create_engine();
+    let result = engine.scan(&fixtures_dir(), None).unwrap();
+    let config = AtlasConfig::default();
+
+    let policy = atlas_policy::default_policy();
+    let adapted: Vec<FindingAdapter<'_>> = result.findings.iter().map(FindingAdapter).collect();
+    let gate_eval = gate::evaluate_gate(
+        &adapted,
+        &policy.fail_on,
+        policy.warn_on.as_ref(),
+        policy.category_overrides.as_ref(),
+    );
+
+    let gate_status = gate_eval.result.to_string();
+    let report_gate_details = if gate_eval.breached_thresholds.is_empty() {
+        None
+    } else {
+        Some(GateDetails {
+            breached_thresholds: gate_eval
+                .breached_thresholds
+                .iter()
+                .map(|b| GateBreachedThreshold {
+                    severity: b.severity.clone(),
+                    category: b.category.clone(),
+                    threshold: b.threshold,
+                    actual: b.actual,
+                    level: b.level.clone(),
+                })
+                .collect(),
+        })
+    };
+
+    let options = ReportOptions {
+        include_timestamp: false,
+        gate_status: Some(&gate_status),
+        gate_details: report_gate_details,
+        policy_name: Some(&policy.name),
+    };
+
+    let json = format_report_with_options(
+        &result,
+        &fixtures_dir().display().to_string(),
+        engine.rules(),
+        &config,
+        &options,
+    );
+
+    let report: AtlasReport =
+        serde_json::from_str(&json).expect("report must deserialize to AtlasReport");
+
+    assert_eq!(report.gate_result.status, "FAIL");
+    assert_eq!(report.scan.policy_applied.as_deref(), Some("atlas-default"));
+    assert!(report.gate_details.is_some());
 }
 
 // ---------------------------------------------------------------------------

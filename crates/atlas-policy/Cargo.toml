@@ -13,3 +13,8 @@ serde_yml = { workspace = true }
 tracing = { workspace = true }
 sha2 = { workspace = true }
 chrono = { workspace = true }
+thiserror = { workspace = true }
+atlas-core = { path = "../atlas-core" }
+
+[dev-dependencies]
+tempfile = { workspace = true }

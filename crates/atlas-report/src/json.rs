@@ -134,9 +134,29 @@ pub struct GateResultReport {
     pub status: String,
 }
 
-/// Placeholder for future gate evaluation details.
+/// Gate evaluation details showing which thresholds were breached.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GateDetails {}
+pub struct GateDetails {
+    /// All thresholds that were breached during evaluation.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub breached_thresholds: Vec<GateBreachedThreshold>,
+}
+
+/// A single threshold breach in the gate evaluation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GateBreachedThreshold {
+    /// The severity level or `"total"`.
+    pub severity: String,
+    /// Optional category for category-specific overrides.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category: Option<String>,
+    /// The configured maximum-allowed count.
+    pub threshold: u32,
+    /// The actual count of findings.
+    pub actual: u32,
+    /// `"fail"` or `"warn"`.
+    pub level: String,
+}
 
 /// Placeholder for future baseline diff results.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -248,6 +268,19 @@ pub fn compute_findings_summary(findings: &[Finding]) -> FindingsSummary {
     }
 }
 
+/// Options for report generation that extend beyond the core scan result.
+#[derive(Debug, Default)]
+pub struct ReportOptions<'a> {
+    /// Include an ISO 8601 timestamp in the report.
+    pub include_timestamp: bool,
+    /// Gate result status (defaults to "PASS" if not provided).
+    pub gate_status: Option<&'a str>,
+    /// Gate evaluation details (breached thresholds).
+    pub gate_details: Option<GateDetails>,
+    /// Name of the policy applied during this scan.
+    pub policy_name: Option<&'a str>,
+}
+
 /// Formats a complete Atlas Findings JSON v1.0.0 report.
 ///
 /// # Arguments
@@ -274,12 +307,36 @@ pub fn format_report(
     config: &AtlasConfig,
     include_timestamp: bool,
 ) -> String {
+    format_report_with_options(
+        scan_result,
+        target_path,
+        rules,
+        config,
+        &ReportOptions {
+            include_timestamp,
+            ..Default::default()
+        },
+    )
+}
+
+/// Formats a complete Atlas Findings JSON v1.0.0 report with extended options.
+///
+/// This is the full version of [`format_report`] that accepts gate evaluation
+/// results and policy metadata.
+#[must_use]
+pub fn format_report_with_options(
+    scan_result: &ScanResult,
+    target_path: &str,
+    rules: &[Rule],
+    config: &AtlasConfig,
+    options: &ReportOptions<'_>,
+) -> String {
     let rules_version = compute_rules_version(rules);
     let config_hash = compute_config_hash(config);
     let engine_version = ENGINE_VERSION.to_string();
     let scan_id = compute_scan_id(target_path, &engine_version, &config_hash, &rules_version);
 
-    let timestamp = if include_timestamp {
+    let timestamp = if options.include_timestamp {
         Some(chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
     } else {
         None
@@ -309,12 +366,12 @@ pub fn format_report(
         languages_detected,
         rules_version,
         config_hash,
-        policy_applied: None,
+        policy_applied: options.policy_name.map(String::from),
         baseline_applied: None,
     };
 
     let gate_result = GateResultReport {
-        status: "PASS".to_string(),
+        status: options.gate_status.unwrap_or("PASS").to_string(),
     };
 
     let report = AtlasReport {
@@ -323,7 +380,7 @@ pub fn format_report(
         findings: scan_result.findings.clone(),
         findings_count,
         gate_result,
-        gate_details: None,
+        gate_details: options.gate_details.clone(),
         baseline_diff: None,
         stats: None,
     };

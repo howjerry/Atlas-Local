@@ -7,8 +7,11 @@ use indicatif::{ProgressBar, ProgressStyle};
 use tracing::info;
 
 use atlas_core::engine::{ScanEngine, ScanOptions};
-use atlas_core::Language;
-use atlas_report::format_report;
+use atlas_core::{Category, GateResult, Language, Severity};
+use atlas_policy::gate::{self, GateFinding};
+use atlas_report::{
+    format_report_with_options, GateBreachedThreshold, GateDetails, ReportOptions,
+};
 
 use crate::ExitCode;
 
@@ -61,6 +64,37 @@ pub struct ScanArgs {
     /// Include timestamps in output.
     #[arg(long)]
     pub timestamp: bool,
+}
+
+// ---------------------------------------------------------------------------
+// GateFinding bridge
+// ---------------------------------------------------------------------------
+
+/// Wrapper that implements [`GateFinding`] for [`atlas_analysis::Finding`].
+///
+/// The gate engine uses `atlas_core::{Severity, Category}` while findings use
+/// `atlas_rules::{Severity, Category}`. These enums have identical variants,
+/// so we map between them here.
+struct FindingAdapter<'a>(&'a atlas_analysis::Finding);
+
+impl GateFinding for FindingAdapter<'_> {
+    fn severity(&self) -> Severity {
+        match self.0.severity {
+            atlas_rules::Severity::Critical => Severity::Critical,
+            atlas_rules::Severity::High => Severity::High,
+            atlas_rules::Severity::Medium => Severity::Medium,
+            atlas_rules::Severity::Low => Severity::Low,
+            atlas_rules::Severity::Info => Severity::Info,
+        }
+    }
+
+    fn category(&self) -> Category {
+        match self.0.category {
+            atlas_rules::Category::Security => Category::Security,
+            atlas_rules::Category::Quality => Category::Quality,
+            atlas_rules::Category::Secrets => Category::Secrets,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -183,20 +217,67 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         "scan completed"
     );
 
-    // 9. Format output using the Atlas Findings JSON v1.0.0 formatter.
+    // 9. Load policy and evaluate gate.
+    let policy = if let Some(policy_path) = &args.policy {
+        atlas_policy::load_policy(policy_path)
+            .with_context(|| format!("failed to load policy from '{}'", policy_path.display()))?
+    } else {
+        atlas_policy::default_policy()
+    };
+
+    let adapted: Vec<FindingAdapter<'_>> = result.findings.iter().map(FindingAdapter).collect();
+    let gate_eval = gate::evaluate_gate(
+        &adapted,
+        &policy.fail_on,
+        policy.warn_on.as_ref(),
+        policy.category_overrides.as_ref(),
+    );
+
+    let gate_status = gate_eval.result.to_string();
+    let report_gate_details = if gate_eval.breached_thresholds.is_empty() {
+        None
+    } else {
+        Some(GateDetails {
+            breached_thresholds: gate_eval
+                .breached_thresholds
+                .iter()
+                .map(|b| GateBreachedThreshold {
+                    severity: b.severity.clone(),
+                    category: b.category.clone(),
+                    threshold: b.threshold,
+                    actual: b.actual,
+                    level: b.level.clone(),
+                })
+                .collect(),
+        })
+    };
+
+    info!(
+        gate_result = %gate_status,
+        policy = %policy.name,
+        "gate evaluation completed"
+    );
+
+    // 10. Format output using the Atlas Findings JSON v1.0.0 formatter.
     let target_path = std::fs::canonicalize(&args.target)
         .unwrap_or_else(|_| args.target.clone())
         .display()
         .to_string();
-    let json_output = format_report(
+    let report_options = ReportOptions {
+        include_timestamp: args.timestamp,
+        gate_status: Some(&gate_status),
+        gate_details: report_gate_details,
+        policy_name: Some(&policy.name),
+    };
+    let json_output = format_report_with_options(
         &result,
         &target_path,
         engine.rules(),
         &config,
-        args.timestamp,
+        &report_options,
     );
 
-    // 10. Write output.
+    // 11. Write output.
     if let Some(output_path) = &args.output {
         // Ensure the parent directory exists.
         if let Some(parent) = output_path.parent() {
@@ -213,10 +294,11 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         println!("{json_output}");
     }
 
-    // 11. Determine exit code.
-    //    For now, without policy gate evaluation, we always return Pass
-    //    if the scan completed successfully.
-    Ok(ExitCode::Pass)
+    // 12. Determine exit code from gate result.
+    match gate_eval.result {
+        GateResult::Fail => Ok(ExitCode::GateFail),
+        GateResult::Pass | GateResult::Warn => Ok(ExitCode::Pass),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -334,5 +416,51 @@ mod tests {
         assert_eq!(parsed["schema_version"], "1.0.0");
         assert_eq!(parsed["findings_count"]["total"], 0);
         assert_eq!(parsed["scan"]["files_scanned"], 0);
+        // Default policy should be applied and gate should PASS with no findings.
+        assert_eq!(parsed["gate_result"]["status"], "PASS");
+        assert_eq!(parsed["scan"]["policy_applied"], "atlas-default");
+    }
+
+    #[test]
+    fn execute_with_policy_file() {
+        use std::io::Write;
+
+        let tmp = tempfile::tempdir().unwrap();
+        let output_file = tmp.path().join("output.json");
+
+        // Create a policy file.
+        let policy_file = tmp.path().join("policy.yaml");
+        let mut f = std::fs::File::create(&policy_file).unwrap();
+        writeln!(
+            f,
+            r#"schema_version: "1.0.0"
+name: test-custom-policy
+fail_on:
+  critical: 0
+  high: 0"#
+        )
+        .unwrap();
+
+        let args = ScanArgs {
+            target: tmp.path().to_path_buf(),
+            format: "json".to_string(),
+            output: Some(output_file.clone()),
+            policy: Some(policy_file),
+            baseline: None,
+            lang: None,
+            jobs: None,
+            no_cache: false,
+            verbose: false,
+            quiet: true,
+            timestamp: false,
+        };
+        let result = execute(args);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ExitCode::Pass);
+
+        let content = std::fs::read_to_string(&output_file).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
+        assert_eq!(parsed["scan"]["policy_applied"], "test-custom-policy");
+        assert_eq!(parsed["gate_result"]["status"], "PASS");
     }
 }

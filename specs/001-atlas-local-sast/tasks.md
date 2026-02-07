@@ -81,13 +81,13 @@
 
 ### Implementation for User Story 2
 
-- [ ] T030 [US2] Implement Policy struct with all fields from data-model.md in `crates/atlas-policy/src/policy.rs`, including FailOnThresholds, WarnOnThresholds, deserialization from YAML
-- [ ] T031 [US2] Implement policy YAML loading and validation against `contracts/policy-v1.schema.json` in `crates/atlas-policy/src/policy.rs`
-- [ ] T032 [US2] Implement multi-policy merge with specificity precedence (local > project > team > org) in `crates/atlas-policy/src/policy.rs`: most specific non-null threshold wins, exclude/include rules unioned
-- [ ] T033 [US2] Implement gate evaluation engine in `crates/atlas-policy/src/gate.rs`: compare findings counts against thresholds, produce GateResult (PASS/FAIL/WARN) with GateDetails showing which thresholds were breached
-- [ ] T034 [US2] Implement category-specific threshold overrides in `crates/atlas-policy/src/gate.rs` (security/quality/secrets can have different fail_on limits)
-- [ ] T035 [US2] Wire --policy flag in scan command to policy loading and gate evaluation in `crates/atlas-cli/src/commands/scan.rs`, include gate_result in report output
-- [ ] T036 [US2] Add default policy (fail on any Critical) applied when no --policy flag is provided, in `crates/atlas-policy/src/policy.rs`
+- [x] T030 [US2] Implement Policy struct with all fields from data-model.md in `crates/atlas-policy/src/policy.rs`, including FailOnThresholds, WarnOnThresholds, deserialization from YAML
+- [x] T031 [US2] Implement policy YAML loading and validation against `contracts/policy-v1.schema.json` in `crates/atlas-policy/src/policy.rs`
+- [x] T032 [US2] Implement multi-policy merge with specificity precedence (local > project > team > org) in `crates/atlas-policy/src/policy.rs`: most specific non-null threshold wins, exclude/include rules unioned
+- [x] T033 [US2] Implement gate evaluation engine in `crates/atlas-policy/src/gate.rs`: compare findings counts against thresholds, produce GateResult (PASS/FAIL/WARN) with GateDetails showing which thresholds were breached
+- [x] T034 [US2] Implement category-specific threshold overrides in `crates/atlas-policy/src/gate.rs` (security/quality/secrets can have different fail_on limits)
+- [x] T035 [US2] Wire --policy flag in scan command to policy loading and gate evaluation in `crates/atlas-cli/src/commands/scan.rs`, include gate_result in report output
+- [x] T036 [US2] Add default policy (fail on any Critical) applied when no --policy flag is provided, in `crates/atlas-policy/src/policy.rs`
 
 **Checkpoint**: User Story 2 complete — policy-based gating with YAML config, merge precedence, and correct exit codes
 
