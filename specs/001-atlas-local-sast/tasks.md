@@ -183,12 +183,12 @@
 
 ### Implementation for User Story 7
 
-- [ ] T067 [US7] Implement regex-based secret detection patterns in `crates/atlas-rules/src/declarative.rs`: AWS access keys (AKIA...), GitHub tokens (ghp_/gho_/ghs_), GCP keys, generic API key patterns, JWT tokens, connection strings with passwords
-- [ ] T068 [US7] Implement Shannon entropy calculator in `crates/atlas-analysis/src/finding.rs`: compute bits-per-char entropy on candidate strings, flag strings >20 chars with entropy >4.5 bits/char
-- [ ] T069 [US7] Implement contextual variable-name heuristics in `crates/atlas-analysis/src/finding.rs`: check if high-entropy string is assigned to variable matching suspicious names (api_key, secret, token, password, credential, auth)
-- [ ] T070 [US7] Create secrets detection rules as L1 declarative rules in `rules/builtin/secrets/` for all supported languages
-- [ ] T071 [US7] Implement .env.example and exclusion pattern skipping for secrets scanning in `crates/atlas-core/src/scanner.rs`
-- [ ] T072 [US7] Create test fixture files with planted secrets in `tests/fixtures/secrets/` (AWS key, GitHub token, high-entropy api_key variable, .env.example)
+- [x] T067 [US7] Implement regex-based secret detection patterns in `crates/atlas-rules/src/declarative.rs`: AWS access keys (AKIA...), GitHub tokens (ghp_/gho_/ghs_), GCP keys, generic API key patterns, JWT tokens, connection strings with passwords
+- [x] T068 [US7] Implement Shannon entropy calculator in `crates/atlas-analysis/src/finding.rs`: compute bits-per-char entropy on candidate strings, flag strings >20 chars with entropy >4.5 bits/char
+- [x] T069 [US7] Implement contextual variable-name heuristics in `crates/atlas-analysis/src/finding.rs`: check if high-entropy string is assigned to variable matching suspicious names (api_key, secret, token, password, credential, auth)
+- [x] T070 [US7] Create secrets detection rules as L1 declarative rules in `rules/builtin/secrets/` for all supported languages
+- [x] T071 [US7] Implement .env.example and exclusion pattern skipping for secrets scanning in `crates/atlas-core/src/scanner.rs`
+- [x] T072 [US7] Create test fixture files with planted secrets in `tests/fixtures/secrets/` (AWS key, GitHub token, high-entropy api_key variable, .env.example)
 
 **Checkpoint**: User Story 7 complete — secrets detected via regex + entropy + context, masked in all output formats
 

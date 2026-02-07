@@ -354,6 +354,17 @@ impl ScanEngine {
                 continue;
             }
 
+            // Skip secrets-category rules for files marked as secrets-excluded
+            // (e.g. .env.example, .env.sample, .env.template).
+            if rule.category == atlas_rules::Category::Secrets && discovered.secrets_excluded {
+                debug!(
+                    rule_id = %rule.id,
+                    file = %discovered.relative_path,
+                    "skipping secrets rule for excluded file"
+                );
+                continue;
+            }
+
             // Get the pattern string.
             let pattern = match &rule.pattern {
                 Some(p) => p,

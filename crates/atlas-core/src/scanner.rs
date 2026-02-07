@@ -30,6 +30,12 @@ pub struct DiscoveredFile {
     pub relative_path: String,
     /// Detected programming language based on file extension.
     pub language: Language,
+    /// Whether this file should be excluded from secrets scanning.
+    ///
+    /// Files matching `.env.example`, `.env.sample`, `.env.template`, or
+    /// similar patterns are marked as secrets-excluded so the scan engine
+    /// can skip secrets-category rules for these files.
+    pub secrets_excluded: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -180,11 +186,15 @@ pub fn discover_files(
             .to_string_lossy()
             .replace('\\', "/");
 
+        // Check if file should be excluded from secrets scanning.
+        let secrets_excluded = is_secrets_excluded(path);
+
         languages_detected.insert(language);
         files.push(DiscoveredFile {
             path: path.to_path_buf(),
             relative_path,
             language,
+            secrets_excluded,
         });
     }
 
@@ -232,6 +242,59 @@ fn is_binary(path: &Path) -> bool {
     };
 
     buffer[..bytes_read].contains(&0)
+}
+
+// ---------------------------------------------------------------------------
+// Secrets exclusion
+// ---------------------------------------------------------------------------
+
+/// File-name patterns that indicate example/template files which should
+/// be excluded from secrets scanning to avoid false positives.
+///
+/// Files matching these patterns typically contain placeholder secrets
+/// (e.g. `YOUR_API_KEY_HERE`) that are intentionally committed as
+/// documentation or templates.
+const SECRETS_EXCLUSION_PATTERNS: &[&str] = &[
+    ".env.example",
+    ".env.sample",
+    ".env.template",
+    ".env.defaults",
+    ".env.test",
+    ".env.development",
+    ".env.local.example",
+    "example.env",
+    "sample.env",
+];
+
+/// Checks if a file should be excluded from secrets scanning based on
+/// its file name.
+///
+/// Returns `true` for files matching patterns like `.env.example`,
+/// `.env.sample`, `.env.template`, and similar template/example files
+/// that commonly contain placeholder secrets.
+fn is_secrets_excluded(path: &Path) -> bool {
+    let file_name = match path.file_name().and_then(|n| n.to_str()) {
+        Some(name) => name.to_lowercase(),
+        None => return false,
+    };
+
+    // Check against known exclusion patterns.
+    if SECRETS_EXCLUSION_PATTERNS
+        .iter()
+        .any(|p| file_name == *p)
+    {
+        return true;
+    }
+
+    // Also exclude files with ".example.", ".sample.", ".template." in name.
+    if file_name.contains(".example.")
+        || file_name.contains(".sample.")
+        || file_name.contains(".template.")
+    {
+        return true;
+    }
+
+    false
 }
 
 // ---------------------------------------------------------------------------
@@ -436,5 +499,57 @@ mod tests {
         assert_eq!(result.stats.accepted, 1);
         assert_eq!(result.stats.skipped_unsupported, 1); // .md
         assert_eq!(result.stats.skipped_binary, 1);
+    }
+
+    // -----------------------------------------------------------------------
+    // Secrets exclusion tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn secrets_excluded_example_file() {
+        assert!(is_secrets_excluded(Path::new("/tmp/config.example.ts")));
+        assert!(is_secrets_excluded(Path::new("/tmp/config.sample.ts")));
+        assert!(is_secrets_excluded(Path::new("/tmp/config.template.ts")));
+    }
+
+    #[test]
+    fn secrets_excluded_env_files() {
+        assert!(is_secrets_excluded(Path::new("/tmp/.env.example")));
+        assert!(is_secrets_excluded(Path::new("/tmp/.env.sample")));
+        assert!(is_secrets_excluded(Path::new("/tmp/.env.template")));
+        assert!(is_secrets_excluded(Path::new("/tmp/.env.defaults")));
+        assert!(is_secrets_excluded(Path::new("/tmp/.env.test")));
+    }
+
+    #[test]
+    fn secrets_not_excluded_normal_files() {
+        assert!(!is_secrets_excluded(Path::new("/tmp/app.ts")));
+        assert!(!is_secrets_excluded(Path::new("/tmp/config.ts")));
+        assert!(!is_secrets_excluded(Path::new("/tmp/main.py")));
+    }
+
+    #[test]
+    fn discover_marks_example_files_as_secrets_excluded() {
+        let tmp = tempfile::tempdir().unwrap();
+        fs::write(tmp.path().join("app.ts"), "const a = 1;").unwrap();
+        fs::write(
+            tmp.path().join("config.example.ts"),
+            "const key = 'test';",
+        )
+        .unwrap();
+
+        let result = discover_files(tmp.path(), None).unwrap();
+
+        assert_eq!(result.files.len(), 2);
+
+        let normal = result.files.iter().find(|f| f.relative_path == "app.ts").unwrap();
+        assert!(!normal.secrets_excluded);
+
+        let example = result
+            .files
+            .iter()
+            .find(|f| f.relative_path == "config.example.ts")
+            .unwrap();
+        assert!(example.secrets_excluded);
     }
 }
