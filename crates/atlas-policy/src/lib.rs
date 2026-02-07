@@ -1,5 +1,6 @@
 //! Atlas Policy — policy engine and quality gating logic.
 
+pub mod baseline;
 pub mod gate;
 pub mod policy;
 

@@ -142,12 +142,12 @@
 
 ### Implementation for User Story 5
 
-- [ ] T052 [US5] Implement Baseline struct with all fields from data-model.md in `crates/atlas-policy/src/baseline.rs` per `contracts/baseline-v1.schema.json`
-- [ ] T053 [US5] Implement baseline creation in `crates/atlas-policy/src/baseline.rs`: collect all finding fingerprints from a scan, sort for determinism, write baseline JSON file
-- [ ] T054 [US5] Implement baseline diffing in `crates/atlas-policy/src/baseline.rs`: compare current findings against baseline fingerprints, classify each finding as New/Baselined/Resolved
-- [ ] T055 [US5] Integrate baseline with gate evaluation in `crates/atlas-policy/src/gate.rs`: when baseline provided, only count New findings against policy thresholds, include baseline_diff in report
-- [ ] T056 [US5] Implement `baseline` CLI subcommand (create/diff) in `crates/atlas-cli/src/commands/baseline.rs` using clap v4
-- [ ] T057 [US5] Wire --baseline flag in scan command to baseline loading and diff computation in `crates/atlas-cli/src/commands/scan.rs`
+- [x] T052 [US5] Implement Baseline struct with all fields from data-model.md in `crates/atlas-policy/src/baseline.rs` per `contracts/baseline-v1.schema.json`
+- [x] T053 [US5] Implement baseline creation in `crates/atlas-policy/src/baseline.rs`: collect all finding fingerprints from a scan, sort for determinism, write baseline JSON file
+- [x] T054 [US5] Implement baseline diffing in `crates/atlas-policy/src/baseline.rs`: compare current findings against baseline fingerprints, classify each finding as New/Baselined/Resolved
+- [x] T055 [US5] Integrate baseline with gate evaluation in `crates/atlas-policy/src/gate.rs`: when baseline provided, only count New findings against policy thresholds, include baseline_diff in report
+- [x] T056 [US5] Implement `baseline` CLI subcommand (create/diff) in `crates/atlas-cli/src/commands/baseline.rs` using clap v4
+- [x] T057 [US5] Wire --baseline flag in scan command to baseline loading and diff computation in `crates/atlas-cli/src/commands/scan.rs`
 
 **Checkpoint**: User Story 5 complete — baseline create/diff works, gate evaluation respects baseline, resolved findings tracked
 

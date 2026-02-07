@@ -19,6 +19,8 @@ enum Commands {
     Config(commands::config::ConfigArgs),
     /// Manage signed rulepacks (install, list, rollback).
     Rulepack(commands::rulepack::RulepackArgs),
+    /// Manage baselines for incremental adoption (create, diff).
+    Baseline(commands::baseline::BaselineArgs),
 }
 
 fn main() -> std::process::ExitCode {
@@ -28,6 +30,7 @@ fn main() -> std::process::ExitCode {
         Commands::Scan(args) => commands::scan::execute(args),
         Commands::Config(args) => commands::config::execute(args),
         Commands::Rulepack(args) => commands::rulepack::execute(args),
+        Commands::Baseline(args) => commands::baseline::execute(args),
     };
 
     match result {

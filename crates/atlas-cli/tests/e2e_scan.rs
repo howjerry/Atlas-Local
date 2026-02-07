@@ -352,6 +352,8 @@ fn e2e_report_with_gate_result() {
         gate_status: Some(&gate_status),
         gate_details: report_gate_details,
         policy_name: Some(&policy.name),
+        baseline_applied: None,
+        baseline_diff: None,
     };
 
     let json = format_report_with_options(

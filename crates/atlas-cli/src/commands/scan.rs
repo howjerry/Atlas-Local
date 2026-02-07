@@ -9,8 +9,10 @@ use tracing::info;
 use atlas_core::engine::{ScanEngine, ScanOptions};
 use atlas_core::{Category, GateResult, Language, Severity};
 use atlas_policy::gate::{self, GateFinding};
+use atlas_policy::baseline;
 use atlas_report::{
-    generate_reports, parse_formats, GateBreachedThreshold, GateDetails, ReportOptions,
+    generate_reports, parse_formats, BaselineDiff, GateBreachedThreshold, GateDetails,
+    ReportOptions,
 };
 
 use crate::ExitCode;
@@ -225,7 +227,61 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         atlas_policy::default_policy()
     };
 
-    let adapted: Vec<FindingAdapter<'_>> = result.findings.iter().map(FindingAdapter).collect();
+    // 9.5. Load and apply baseline (if provided via CLI or policy).
+    let baseline_path_str = args
+        .baseline
+        .as_ref()
+        .map(|p| p.display().to_string())
+        .or_else(|| policy.baseline.clone());
+
+    let baseline_diff_result = if let Some(ref bl_path) = baseline_path_str {
+        let bl = baseline::load_baseline(std::path::Path::new(bl_path))
+            .with_context(|| format!("failed to load baseline from '{bl_path}'"))?;
+
+        let current_fps: Vec<String> = result
+            .findings
+            .iter()
+            .map(|f| f.fingerprint.clone())
+            .collect();
+
+        let diff = baseline::diff_findings(&current_fps, &bl);
+        info!(
+            new = diff.new_count,
+            baselined = diff.baselined_count,
+            resolved = diff.resolved_count,
+            "baseline diff computed"
+        );
+        Some(diff)
+    } else {
+        None
+    };
+
+    // Build report baseline_diff from the diff result.
+    let report_baseline_diff = baseline_diff_result.as_ref().map(|d| BaselineDiff {
+        new_count: d.new_count,
+        baselined_count: d.baselined_count,
+        resolved_count: d.resolved_count,
+    });
+
+    // Filter findings for gate evaluation: only new findings count against thresholds.
+    let findings_for_gate: Vec<&atlas_analysis::Finding> =
+        if let Some(ref diff) = baseline_diff_result {
+            let new_set: std::collections::HashSet<&str> = diff
+                .new_fingerprints
+                .iter()
+                .map(String::as_str)
+                .collect();
+            result
+                .findings
+                .iter()
+                .filter(|f| new_set.contains(f.fingerprint.as_str()))
+                .collect()
+        } else {
+            result.findings.iter().collect()
+        };
+
+    let adapted: Vec<FindingAdapter<'_>> =
+        findings_for_gate.iter().map(|f| FindingAdapter(f)).collect();
     let gate_eval = gate::evaluate_gate(
         &adapted,
         &policy.fail_on,
@@ -271,6 +327,8 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         gate_status: Some(&gate_status),
         gate_details: report_gate_details,
         policy_name: Some(&policy.name),
+        baseline_applied: baseline_path_str.as_deref(),
+        baseline_diff: report_baseline_diff,
     };
 
     let reports = generate_reports(

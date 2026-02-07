@@ -158,9 +158,16 @@ pub struct GateBreachedThreshold {
     pub level: String,
 }
 
-/// Placeholder for future baseline diff results.
+/// Baseline diff results showing new, baselined, and resolved findings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BaselineDiff {}
+pub struct BaselineDiff {
+    /// Number of new findings (not in baseline).
+    pub new_count: u32,
+    /// Number of baselined findings (already in baseline, excluded from gate).
+    pub baselined_count: u32,
+    /// Number of resolved findings (in baseline but no longer detected).
+    pub resolved_count: u32,
+}
 
 /// Placeholder for future scan performance statistics.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -279,6 +286,10 @@ pub struct ReportOptions<'a> {
     pub gate_details: Option<GateDetails>,
     /// Name of the policy applied during this scan.
     pub policy_name: Option<&'a str>,
+    /// Path to the baseline file applied, if any.
+    pub baseline_applied: Option<&'a str>,
+    /// Baseline diff results, if a baseline was used.
+    pub baseline_diff: Option<BaselineDiff>,
 }
 
 /// Formats a complete Atlas Findings JSON v1.0.0 report.
@@ -367,7 +378,7 @@ pub fn format_report_with_options(
         rules_version,
         config_hash,
         policy_applied: options.policy_name.map(String::from),
-        baseline_applied: None,
+        baseline_applied: options.baseline_applied.map(String::from),
     };
 
     let gate_result = GateResultReport {
@@ -381,7 +392,7 @@ pub fn format_report_with_options(
         findings_count,
         gate_result,
         gate_details: options.gate_details.clone(),
-        baseline_diff: None,
+        baseline_diff: options.baseline_diff.clone(),
         stats: None,
     };
 
