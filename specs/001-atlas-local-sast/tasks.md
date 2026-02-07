@@ -101,11 +101,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T037 [P] [US3] Implement SARIF v2.1.0 formatter in `crates/atlas-report/src/sarif.rs` with Rust structs mirroring OASIS schema: SarifReport, Run, Result, ReportingDescriptor, PhysicalLocation, mapping Atlas Finding to SARIF result, Rule to reportingDescriptor, Severity to level, CWE to relationships
-- [ ] T038 [P] [US3] Implement Atlas Events JSONL formatter in `crates/atlas-report/src/jsonl.rs` per `contracts/atlas-events-jsonl-v1.schema.json` with event types: scan_started, file_analyzed, finding_detected, gate_evaluated, scan_completed
-- [ ] T039 [US3] Implement report dispatcher in `crates/atlas-report/src/lib.rs` supporting multiple simultaneous formats (--format json,sarif,jsonl), output to files (--output dir) or stdout, with format auto-detection from extension
-- [ ] T040 [US3] Implement secret value masking in `crates/atlas-report/src/masking.rs`: mask function (first 4 + last 4 chars, `****` between), apply at serialization boundary to all output formats for findings with category=secrets
-- [ ] T041 [US3] Wire --format and --output flags in scan command to report dispatcher in `crates/atlas-cli/src/commands/scan.rs`
+- [x] T037 [P] [US3] Implement SARIF v2.1.0 formatter in `crates/atlas-report/src/sarif.rs` with Rust structs mirroring OASIS schema: SarifReport, Run, Result, ReportingDescriptor, PhysicalLocation, mapping Atlas Finding to SARIF result, Rule to reportingDescriptor, Severity to level, CWE to relationships
+- [x] T038 [P] [US3] Implement Atlas Events JSONL formatter in `crates/atlas-report/src/jsonl.rs` per `contracts/atlas-events-jsonl-v1.schema.json` with event types: scan_started, file_analyzed, finding_detected, gate_evaluated, scan_completed
+- [x] T039 [US3] Implement report dispatcher in `crates/atlas-report/src/lib.rs` supporting multiple simultaneous formats (--format json,sarif,jsonl), output to files (--output dir) or stdout, with format auto-detection from extension
+- [x] T040 [US3] Implement secret value masking in `crates/atlas-report/src/masking.rs`: mask function (first 4 + last 4 chars, `****` between), apply at serialization boundary to all output formats for findings with category=secrets
+- [x] T041 [US3] Wire --format and --output flags in scan command to report dispatcher in `crates/atlas-cli/src/commands/scan.rs`
 
 **Checkpoint**: User Story 3 complete — all three output formats work, secrets are masked, multi-format simultaneous output works
 

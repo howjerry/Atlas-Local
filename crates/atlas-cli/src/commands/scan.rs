@@ -10,7 +10,7 @@ use atlas_core::engine::{ScanEngine, ScanOptions};
 use atlas_core::{Category, GateResult, Language, Severity};
 use atlas_policy::gate::{self, GateFinding};
 use atlas_report::{
-    format_report_with_options, GateBreachedThreshold, GateDetails, ReportOptions,
+    generate_reports, parse_formats, GateBreachedThreshold, GateDetails, ReportOptions,
 };
 
 use crate::ExitCode;
@@ -258,7 +258,10 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         "gate evaluation completed"
     );
 
-    // 10. Format output using the Atlas Findings JSON v1.0.0 formatter.
+    // 10. Parse output formats and generate reports.
+    let formats = parse_formats(&args.format)
+        .map_err(|e| anyhow::anyhow!(e))?;
+
     let target_path = std::fs::canonicalize(&args.target)
         .unwrap_or_else(|_| args.target.clone())
         .display()
@@ -269,7 +272,9 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         gate_details: report_gate_details,
         policy_name: Some(&policy.name),
     };
-    let json_output = format_report_with_options(
+
+    let reports = generate_reports(
+        &formats,
         &result,
         &target_path,
         engine.rules(),
@@ -279,19 +284,34 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
 
     // 11. Write output.
     if let Some(output_path) = &args.output {
-        // Ensure the parent directory exists.
-        if let Some(parent) = output_path.parent() {
-            if !parent.as_os_str().is_empty() {
-                std::fs::create_dir_all(parent)
-                    .with_context(|| format!("failed to create output directory '{}'", parent.display()))?;
+        let is_dir = output_path.is_dir()
+            || (formats.len() > 1 && output_path.extension().is_none());
+
+        if is_dir || formats.len() > 1 {
+            // Output to directory: one file per format.
+            std::fs::create_dir_all(output_path)
+                .with_context(|| format!("failed to create output directory '{}'", output_path.display()))?;
+            for report in &reports {
+                let file_path = output_path.join(report.format.default_filename());
+                std::fs::write(&file_path, &report.content)
+                    .with_context(|| format!("failed to write {} to '{}'", report.format.extension(), file_path.display()))?;
+                info!(path = %file_path.display(), format = report.format.extension(), "wrote scan results");
             }
+        } else {
+            // Single format to a file path.
+            if let Some(parent) = output_path.parent() {
+                if !parent.as_os_str().is_empty() {
+                    std::fs::create_dir_all(parent)
+                        .with_context(|| format!("failed to create output directory '{}'", parent.display()))?;
+                }
+            }
+            std::fs::write(output_path, &reports[0].content)
+                .with_context(|| format!("failed to write output to '{}'", output_path.display()))?;
+            info!(path = %output_path.display(), "wrote scan results");
         }
-        std::fs::write(output_path, &json_output)
-            .with_context(|| format!("failed to write output to '{}'", output_path.display()))?;
-        info!(path = %output_path.display(), "wrote scan results");
     } else {
-        // Write to stdout.
-        println!("{json_output}");
+        // Write to stdout (first format only).
+        println!("{}", reports[0].content);
     }
 
     // 12. Determine exit code from gate result.
@@ -462,5 +482,77 @@ fail_on:
         let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
         assert_eq!(parsed["scan"]["policy_applied"], "test-custom-policy");
         assert_eq!(parsed["gate_result"]["status"], "PASS");
+    }
+
+    #[test]
+    fn execute_multi_format_output() {
+        let tmp = tempfile::tempdir().unwrap();
+        let output_dir = tmp.path().join("reports");
+        let args = ScanArgs {
+            target: tmp.path().to_path_buf(),
+            format: "json,sarif,jsonl".to_string(),
+            output: Some(output_dir.clone()),
+            policy: None,
+            baseline: None,
+            lang: None,
+            jobs: None,
+            no_cache: false,
+            verbose: false,
+            quiet: true,
+            timestamp: false,
+        };
+        let result = execute(args);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ExitCode::Pass);
+
+        // Verify all three output files were created.
+        let json_file = output_dir.join("atlas-report.json");
+        let sarif_file = output_dir.join("atlas-report.sarif");
+        let jsonl_file = output_dir.join("atlas-report.jsonl");
+
+        assert!(json_file.exists(), "JSON report must exist");
+        assert!(sarif_file.exists(), "SARIF report must exist");
+        assert!(jsonl_file.exists(), "JSONL report must exist");
+
+        // Validate JSON report.
+        let json_content = std::fs::read_to_string(&json_file).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json_content).unwrap();
+        assert_eq!(parsed["schema_version"], "1.0.0");
+
+        // Validate SARIF report.
+        let sarif_content = std::fs::read_to_string(&sarif_file).unwrap();
+        let sarif_parsed: serde_json::Value = serde_json::from_str(&sarif_content).unwrap();
+        assert_eq!(sarif_parsed["version"], "2.1.0");
+
+        // Validate JSONL report (each line is valid JSON).
+        let jsonl_content = std::fs::read_to_string(&jsonl_file).unwrap();
+        for line in jsonl_content.lines() {
+            if !line.is_empty() {
+                let _: serde_json::Value = serde_json::from_str(line)
+                    .expect("each JSONL line must be valid JSON");
+            }
+        }
+    }
+
+    #[test]
+    fn execute_invalid_format() {
+        let tmp = tempfile::tempdir().unwrap();
+        let args = ScanArgs {
+            target: tmp.path().to_path_buf(),
+            format: "xml".to_string(),
+            output: None,
+            policy: None,
+            baseline: None,
+            lang: None,
+            jobs: None,
+            no_cache: false,
+            verbose: false,
+            quiet: true,
+            timestamp: false,
+        };
+        let result = execute(args);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("xml"), "error should mention unknown format");
     }
 }
