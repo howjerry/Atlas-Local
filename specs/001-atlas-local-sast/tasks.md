@@ -119,16 +119,16 @@
 
 ### Implementation for User Story 4
 
-- [ ] T042 [US4] Implement Rulepack struct with all fields from data-model.md in `crates/atlas-rules/src/rulepack.rs`, including manifest deserialization per `contracts/rulepack-manifest-v1.schema.json`
-- [ ] T043 [US4] Implement ed25519 signature verification using ed25519-dalek in `crates/atlas-rules/src/rulepack.rs`: compute SHA-256 of manifest.json, verify_strict() against public key, reject tampered packs
-- [ ] T044 [US4] Implement rulepack install pipeline in `crates/atlas-rules/src/rulepack.rs`: extract .pack archive -> verify signature -> validate manifest -> extract rule files to local store (~/.atlas/rulepacks/) -> report count of rules added/updated
-- [ ] T045 [US4] Implement rulepack rollback in `crates/atlas-rules/src/rulepack.rs`: archive current version, restore previous version from archive, log rollback event
-- [ ] T046 [US4] Implement rulepack list (show installed packs with versions) in `crates/atlas-rules/src/rulepack.rs`
-- [ ] T047 [US4] Implement rhai scripting engine integration in `crates/atlas-rules/src/scripted.rs`: create sandboxed rhai Engine, register custom API (node.type(), node.text(), node.children(), scope.variables(), finding.emit()), compile rule scripts, evaluate against AST nodes
-- [ ] T048 [US4] Implement compiled rule (cdylib) plugin loading via stable ABI in `crates/atlas-rules/src/compiled.rs`: load shared library, call rule evaluation function with defined ABI contract
-- [ ] T049 [US4] Implement rule conflict resolution (newer rule replaces older, log WARNING) in `crates/atlas-rules/src/rulepack.rs`
-- [ ] T050 [US4] Implement `rulepack` CLI subcommand (install/list/rollback) in `crates/atlas-cli/src/commands/rulepack.rs` using clap v4
-- [ ] T051 [US4] Create a test rulepack build script in `tools/build-rulepack.sh` that generates a signed .pack file from a rules directory for testing purposes
+- [x] T042 [US4] Implement Rulepack struct with all fields from data-model.md in `crates/atlas-rules/src/rulepack.rs`, including manifest deserialization per `contracts/rulepack-manifest-v1.schema.json`
+- [x] T043 [US4] Implement ed25519 signature verification using ed25519-dalek in `crates/atlas-rules/src/rulepack.rs`: compute SHA-256 of manifest.json, verify_strict() against public key, reject tampered packs
+- [x] T044 [US4] Implement rulepack install pipeline in `crates/atlas-rules/src/rulepack.rs`: extract .pack archive -> verify signature -> validate manifest -> extract rule files to local store (~/.atlas/rulepacks/) -> report count of rules added/updated
+- [x] T045 [US4] Implement rulepack rollback in `crates/atlas-rules/src/rulepack.rs`: archive current version, restore previous version from archive, log rollback event
+- [x] T046 [US4] Implement rulepack list (show installed packs with versions) in `crates/atlas-rules/src/rulepack.rs`
+- [x] T047 [US4] Implement rhai scripting engine integration in `crates/atlas-rules/src/scripted.rs`: create sandboxed rhai Engine, register custom API (node.type(), node.text(), node.children(), scope.variables(), finding.emit()), compile rule scripts, evaluate against AST nodes
+- [x] T048 [US4] Implement compiled rule (cdylib) plugin loading via stable ABI in `crates/atlas-rules/src/compiled.rs`: load shared library, call rule evaluation function with defined ABI contract
+- [x] T049 [US4] Implement rule conflict resolution (newer rule replaces older, log WARNING) in `crates/atlas-rules/src/rulepack.rs`
+- [x] T050 [US4] Implement `rulepack` CLI subcommand (install/list/rollback) in `crates/atlas-cli/src/commands/rulepack.rs` using clap v4
+- [x] T051 [US4] Create a test rulepack build script in `tools/build-rulepack.sh` that generates a signed .pack file from a rules directory for testing purposes
 
 **Checkpoint**: User Story 4 complete — signed rulepacks can be installed, verified, listed, and rolled back; rhai scripted rules are functional
 

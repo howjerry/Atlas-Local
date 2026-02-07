@@ -18,9 +18,9 @@ use std::fmt;
 
 // Future modules -- uncomment as they are implemented.
 pub mod declarative;
-// pub mod scripted;
-// pub mod compiled;
-// pub mod rulepack;
+pub mod scripted;
+pub mod compiled;
+pub mod rulepack;
 
 // ---------------------------------------------------------------------------
 // Severity

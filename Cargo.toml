@@ -81,5 +81,8 @@ hex = "0.4"
 # Benchmarking (dev only)
 criterion = "0.8"
 
+# Home directory resolution
+dirs-next = "2.0"
+
 # Testing utilities
 tempfile = "3"

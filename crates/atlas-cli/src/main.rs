@@ -17,6 +17,8 @@ enum Commands {
     Scan(commands::scan::ScanArgs),
     /// Show or validate Atlas configuration.
     Config(commands::config::ConfigArgs),
+    /// Manage signed rulepacks (install, list, rollback).
+    Rulepack(commands::rulepack::RulepackArgs),
 }
 
 fn main() -> std::process::ExitCode {
@@ -25,6 +27,7 @@ fn main() -> std::process::ExitCode {
     let result = match cli.command {
         Commands::Scan(args) => commands::scan::execute(args),
         Commands::Config(args) => commands::config::execute(args),
+        Commands::Rulepack(args) => commands::rulepack::execute(args),
     };
 
     match result {
