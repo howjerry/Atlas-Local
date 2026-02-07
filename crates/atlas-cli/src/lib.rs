@@ -4,6 +4,8 @@
 //! definitions, and orchestration logic that ties together the core engine,
 //! rule evaluation, policy gates, reporting, and caching subsystems.
 
+pub mod commands;
+
 use std::fmt;
 
 // ---------------------------------------------------------------------------

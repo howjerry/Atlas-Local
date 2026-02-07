@@ -58,16 +58,16 @@
 
 ### Implementation for User Story 1
 
-- [ ] T020 [US1] Implement Atlas Findings JSON v1.0.0 formatter in `crates/atlas-report/src/json.rs` per `contracts/atlas-findings-v1.schema.json`, including ScanMetadata, FindingsSummary, GateResult, ScanStats sections
-- [ ] T021 [US1] Implement Scan struct with deterministic ID generation (SHA-256 of target_path + engine_version + config_hash + rules_version) in `crates/atlas-core/src/engine.rs`
-- [ ] T022 [US1] Implement deterministic output guarantee: BTreeMap for all maps, sorted findings by (file_path, start_line, start_col, rule_id), optional timestamps (disabled by default), deterministic UUID seeding in `crates/atlas-report/src/json.rs`
-- [ ] T023 [US1] Implement `scan` CLI subcommand in `crates/atlas-cli/src/commands/scan.rs` using clap v4 with args: target path (positional), --format, --output, --policy, --baseline, --lang, --jobs, --no-cache, --verbose, --quiet, --timestamp
-- [ ] T024 [US1] Implement rayon-based parallel file processing in `crates/atlas-core/src/scanner.rs` with ThreadPoolBuilder for --jobs N support
-- [ ] T025 [US1] Implement main.rs entry point in `crates/atlas-cli/src/main.rs` wiring clap CLI to engine, connecting scan command to pipeline orchestrator, handling exit codes
-- [ ] T026 [US1] Implement progress indication with indicatif in `crates/atlas-cli/src/commands/scan.rs` (progress bar for file processing, respecting --quiet flag)
-- [ ] T027 [US1] Implement config subcommand (show/validate) in `crates/atlas-cli/src/commands/config.rs` for .atlas.yaml inspection
-- [ ] T028 [US1] Implement edge case handling: missing/empty target dir (exit 4), non-UTF-8 files (skip with warning), parse failures (log warning, continue), .gitignore/.atlasignore respect in `crates/atlas-core/src/scanner.rs`
-- [ ] T029 [US1] Wire end-to-end: `atlas scan ./src` -> discover files -> parse TypeScript -> run L1 rules -> produce Atlas JSON report -> stdout/file -> exit code. Validate against `tests/fixtures/typescript-vulnerable/`
+- [x] T020 [US1] Implement Atlas Findings JSON v1.0.0 formatter in `crates/atlas-report/src/json.rs` per `contracts/atlas-findings-v1.schema.json`, including ScanMetadata, FindingsSummary, GateResult, ScanStats sections
+- [x] T021 [US1] Implement Scan struct with deterministic ID generation (SHA-256 of target_path + engine_version + config_hash + rules_version) in `crates/atlas-core/src/engine.rs`
+- [x] T022 [US1] Implement deterministic output guarantee: BTreeMap for all maps, sorted findings by (file_path, start_line, start_col, rule_id), optional timestamps (disabled by default), deterministic UUID seeding in `crates/atlas-report/src/json.rs`
+- [x] T023 [US1] Implement `scan` CLI subcommand in `crates/atlas-cli/src/commands/scan.rs` using clap v4 with args: target path (positional), --format, --output, --policy, --baseline, --lang, --jobs, --no-cache, --verbose, --quiet, --timestamp
+- [x] T024 [US1] Implement rayon-based parallel file processing in `crates/atlas-core/src/scanner.rs` with ThreadPoolBuilder for --jobs N support
+- [x] T025 [US1] Implement main.rs entry point in `crates/atlas-cli/src/main.rs` wiring clap CLI to engine, connecting scan command to pipeline orchestrator, handling exit codes
+- [x] T026 [US1] Implement progress indication with indicatif in `crates/atlas-cli/src/commands/scan.rs` (progress bar for file processing, respecting --quiet flag)
+- [x] T027 [US1] Implement config subcommand (show/validate) in `crates/atlas-cli/src/commands/config.rs` for .atlas.yaml inspection
+- [x] T028 [US1] Implement edge case handling: missing/empty target dir (exit 4), non-UTF-8 files (skip with warning), parse failures (log warning, continue), .gitignore/.atlasignore respect in `crates/atlas-core/src/scanner.rs`
+- [x] T029 [US1] Wire end-to-end: `atlas scan ./src` -> discover files -> parse TypeScript -> run L1 rules -> produce Atlas JSON report -> stdout/file -> exit code. Validate against `tests/fixtures/typescript-vulnerable/`
 
 **Checkpoint**: User Story 1 complete — `atlas scan` produces deterministic Atlas JSON reports for TypeScript projects with correct exit codes
 

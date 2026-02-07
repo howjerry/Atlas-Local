@@ -12,3 +12,10 @@ serde_json = { workspace = true }
 tracing = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+thiserror = { workspace = true }
+
+atlas-core = { path = "../atlas-core" }
+atlas-analysis = { path = "../atlas-analysis" }
+atlas-rules = { path = "../atlas-rules" }

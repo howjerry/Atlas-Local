@@ -17,6 +17,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 indicatif = { workspace = true }
 serde_json = { workspace = true }
+serde_yml = { workspace = true }
 
 atlas-core = { path = "../atlas-core" }
 atlas-rules = { path = "../atlas-rules" }
@@ -27,3 +28,6 @@ atlas-license = { path = "../atlas-license" }
 atlas-audit = { path = "../atlas-audit" }
 atlas-cache = { path = "../atlas-cache" }
 atlas-lang = { path = "../atlas-lang" }
+
+[dev-dependencies]
+tempfile = { workspace = true }

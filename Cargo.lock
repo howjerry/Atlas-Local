@@ -154,6 +154,8 @@ dependencies = [
  "clap",
  "indicatif",
  "serde_json",
+ "serde_yml",
+ "tempfile",
  "tracing",
  "tracing-subscriber",
 ]
@@ -222,9 +224,15 @@ dependencies = [
 name = "atlas-report"
 version = "0.1.0"
 dependencies = [
+ "atlas-analysis",
+ "atlas-core",
+ "atlas-rules",
  "chrono",
+ "hex",
  "serde",
  "serde_json",
+ "sha2",
+ "thiserror",
  "tracing",
  "uuid",
 ]
