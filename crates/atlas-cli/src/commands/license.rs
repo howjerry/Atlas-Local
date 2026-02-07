@@ -82,8 +82,7 @@ fn execute_activate(args: ActivateArgs) -> Result<ExitCode, anyhow::Error> {
         // Copy licence to standard location.
         let dest = license_path()?;
         if let Some(parent) = dest.parent() {
-            std::fs::create_dir_all(parent)
-                .context("failed to create ~/.atlas/ directory")?;
+            std::fs::create_dir_all(parent).context("failed to create ~/.atlas/ directory")?;
         }
         std::fs::copy(&args.license_file, &dest)
             .with_context(|| format!("failed to install licence to {}", dest.display()))?;
@@ -99,7 +98,10 @@ fn execute_activate(args: ActivateArgs) -> Result<ExitCode, anyhow::Error> {
         info!(license_id = %status.license_id, "license activated");
         Ok(ExitCode::Pass)
     } else {
-        eprintln!("Licence validation failed: {}", status.reason.unwrap_or_default());
+        eprintln!(
+            "Licence validation failed: {}",
+            status.reason.unwrap_or_default()
+        );
         Ok(ExitCode::LicenseError)
     }
 }
@@ -109,30 +111,36 @@ fn execute_activate(args: ActivateArgs) -> Result<ExitCode, anyhow::Error> {
 // ---------------------------------------------------------------------------
 
 fn execute_status(args: StatusArgs) -> Result<ExitCode, anyhow::Error> {
-    let path = args.license_file.unwrap_or_else(|| {
-        license_path().unwrap_or_else(|_| PathBuf::from("license.json"))
-    });
+    let path = args
+        .license_file
+        .unwrap_or_else(|| license_path().unwrap_or_else(|_| PathBuf::from("license.json")));
 
     if !path.exists() {
         println!("No licence file found at {}", path.display());
         return Ok(ExitCode::LicenseError);
     }
 
-    let license = atlas_license::validator::load_license(&path)
-        .context("failed to load licence file")?;
+    let license =
+        atlas_license::validator::load_license(&path).context("failed to load licence file")?;
 
     let fingerprint = atlas_license::node_locked::hardware_fingerprint();
     let status = atlas_license::validator::license_status(&license, Some(&fingerprint));
 
     println!("Licence Status:");
-    println!("  Valid:        {}", if status.valid { "yes" } else { "no" });
+    println!(
+        "  Valid:        {}",
+        if status.valid { "yes" } else { "no" }
+    );
     println!("  ID:           {}", status.license_id);
     println!("  Organization: {}", status.organization);
     println!("  Type:         {}", status.license_type);
     println!("  Expiry:       {}", status.expiry);
     println!("  Features:     {}", status.entitled_features.join(", "));
     if let Some(fp_match) = status.fingerprint_match {
-        println!("  Fingerprint:  {}", if fp_match { "match" } else { "MISMATCH" });
+        println!(
+            "  Fingerprint:  {}",
+            if fp_match { "match" } else { "MISMATCH" }
+        );
     }
     if let Some(reason) = &status.reason {
         println!("  Reason:       {reason}");
@@ -167,8 +175,8 @@ fn execute_deactivate() -> Result<ExitCode, anyhow::Error> {
 
 /// Returns the default licence file path: `~/.atlas/license.json`.
 fn license_path() -> Result<PathBuf, anyhow::Error> {
-    let home = dirs_next::home_dir()
-        .ok_or_else(|| anyhow::anyhow!("cannot determine home directory"))?;
+    let home =
+        dirs_next::home_dir().ok_or_else(|| anyhow::anyhow!("cannot determine home directory"))?;
     Ok(home.join(".atlas").join("license.json"))
 }
 
@@ -190,9 +198,7 @@ mod tests {
 
     #[test]
     fn status_args_default() {
-        let args = StatusArgs {
-            license_file: None,
-        };
+        let args = StatusArgs { license_file: None };
         assert!(args.license_file.is_none());
     }
 
@@ -203,9 +209,7 @@ mod tests {
         });
         assert!(matches!(activate, LicenseAction::Activate(_)));
 
-        let status = LicenseAction::Status(StatusArgs {
-            license_file: None,
-        });
+        let status = LicenseAction::Status(StatusArgs { license_file: None });
         assert!(matches!(status, LicenseAction::Status(_)));
 
         let deactivate = LicenseAction::Deactivate;

@@ -277,7 +277,10 @@ fn validate_policy(policy: &Policy) -> Result<(), PolicyError> {
 /// Panics if `policies` is empty.
 #[must_use]
 pub fn merge_policies(policies: &[Policy]) -> Policy {
-    assert!(!policies.is_empty(), "merge_policies requires at least one policy");
+    assert!(
+        !policies.is_empty(),
+        "merge_policies requires at least one policy"
+    );
 
     // Sort by specificity (ascending: Organization=0 .. Local=3).
     let mut sorted: Vec<&Policy> = policies.iter().collect();
@@ -541,7 +544,7 @@ fail_on:
     #[test]
     fn merge_single_policy_returns_clone() {
         let policy = load_policy_from_str(minimal_yaml()).unwrap();
-        let merged = merge_policies(&[policy.clone()]);
+        let merged = merge_policies(std::slice::from_ref(&policy));
         assert_eq!(merged, policy);
     }
 
@@ -710,10 +713,7 @@ fail_on:
         let merged = merge_policies(&[org, project, local_no_baseline]);
 
         // Project has baseline, Local does not, so project's baseline survives.
-        assert_eq!(
-            merged.baseline,
-            Some("project-baseline.json".to_string())
-        );
+        assert_eq!(merged.baseline, Some("project-baseline.json".to_string()));
     }
 
     #[test]

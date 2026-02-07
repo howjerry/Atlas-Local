@@ -76,7 +76,7 @@ pub type CoreResult<T> = Result<T, CoreError>;
 /// Returns [`CoreError::TracingInit`] if the global subscriber has already been
 /// set (i.e. this function was called more than once in the same process).
 pub fn init_tracing(verbose: bool, quiet: bool, json_output: bool) -> Result<(), CoreError> {
-    use tracing_subscriber::{fmt, EnvFilter};
+    use tracing_subscriber::{EnvFilter, fmt};
 
     // Determine the base log level from CLI flags.
     let default_level = if verbose {
@@ -88,8 +88,8 @@ pub fn init_tracing(verbose: bool, quiet: bool, json_output: bool) -> Result<(),
     };
 
     // Allow RUST_LOG to override the programmatic default.
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(default_level));
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_level));
 
     if json_output {
         fmt()

@@ -89,7 +89,9 @@ pub struct Baseline {
 
 /// Returns `true` if the string is a valid 64-character lowercase hex string.
 fn is_valid_fingerprint(s: &str) -> bool {
-    s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    s.len() == 64
+        && s.chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
 }
 
 impl Baseline {
@@ -270,20 +272,10 @@ pub struct BaselineDiffResult {
 ///
 /// Uses a [`HashSet`] for O(1) lookups against the baseline.
 #[must_use]
-pub fn diff_findings(
-    current_fingerprints: &[String],
-    baseline: &Baseline,
-) -> BaselineDiffResult {
-    let baseline_set: HashSet<&str> = baseline
-        .fingerprints
-        .iter()
-        .map(String::as_str)
-        .collect();
+pub fn diff_findings(current_fingerprints: &[String], baseline: &Baseline) -> BaselineDiffResult {
+    let baseline_set: HashSet<&str> = baseline.fingerprints.iter().map(String::as_str).collect();
 
-    let current_set: HashSet<&str> = current_fingerprints
-        .iter()
-        .map(String::as_str)
-        .collect();
+    let current_set: HashSet<&str> = current_fingerprints.iter().map(String::as_str).collect();
 
     let mut new_fingerprints = Vec::new();
     let mut baselined_fingerprints = Vec::new();
@@ -339,7 +331,11 @@ mod tests {
 
     /// Builds a minimal valid baseline for testing.
     fn valid_baseline() -> Baseline {
-        let fps = vec![make_fingerprint(1), make_fingerprint(2), make_fingerprint(3)];
+        let fps = vec![
+            make_fingerprint(1),
+            make_fingerprint(2),
+            make_fingerprint(3),
+        ];
         Baseline {
             schema_version: "1.0.0".to_string(),
             scan_id: "test-scan-001".to_string(),
@@ -396,7 +392,8 @@ mod tests {
     fn validate_bad_fingerprint_non_hex() {
         let mut baseline = valid_baseline();
         // Replace first fingerprint with non-hex characters.
-        baseline.fingerprints[0] = "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz".to_string();
+        baseline.fingerprints[0] =
+            "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz".to_string();
 
         let err = baseline.validate().unwrap_err();
         match err {
@@ -424,7 +421,8 @@ mod tests {
     #[test]
     fn validate_bad_fingerprint_uppercase() {
         let mut baseline = valid_baseline();
-        baseline.fingerprints[0] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string();
+        baseline.fingerprints[0] =
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".to_string();
 
         let err = baseline.validate().unwrap_err();
         match err {
@@ -504,7 +502,10 @@ mod tests {
     #[test]
     fn json_roundtrip_with_metadata() {
         let mut metadata = BTreeMap::new();
-        metadata.insert("branch".to_string(), serde_json::Value::String("main".to_string()));
+        metadata.insert(
+            "branch".to_string(),
+            serde_json::Value::String("main".to_string()),
+        );
         metadata.insert("commit_count".to_string(), serde_json::json!(42));
 
         let baseline = Baseline {
@@ -516,7 +517,10 @@ mod tests {
         let back: Baseline = serde_json::from_str(&json).unwrap();
 
         assert_eq!(back.metadata.len(), 2);
-        assert_eq!(back.metadata["branch"], serde_json::Value::String("main".to_string()));
+        assert_eq!(
+            back.metadata["branch"],
+            serde_json::Value::String("main".to_string())
+        );
         assert_eq!(back.metadata["commit_count"], serde_json::json!(42));
     }
 
@@ -560,7 +564,11 @@ mod tests {
 
     #[test]
     fn create_baseline_sorts_fingerprints() {
-        let fps = vec![make_fingerprint(3), make_fingerprint(1), make_fingerprint(2)];
+        let fps = vec![
+            make_fingerprint(3),
+            make_fingerprint(1),
+            make_fingerprint(2),
+        ];
         let baseline = create_baseline("scan-1", "0.1.0", &fps, BTreeMap::new());
 
         assert_eq!(baseline.fingerprints[0], make_fingerprint(1));
@@ -581,11 +589,18 @@ mod tests {
 
     #[test]
     fn create_baseline_sets_count() {
-        let fps = vec![make_fingerprint(10), make_fingerprint(20), make_fingerprint(30)];
+        let fps = vec![
+            make_fingerprint(10),
+            make_fingerprint(20),
+            make_fingerprint(30),
+        ];
         let baseline = create_baseline("scan-1", "0.1.0", &fps, BTreeMap::new());
 
         assert_eq!(baseline.findings_count, 3);
-        assert_eq!(baseline.findings_count as usize, baseline.fingerprints.len());
+        assert_eq!(
+            baseline.findings_count as usize,
+            baseline.fingerprints.len()
+        );
     }
 
     #[test]
@@ -606,14 +621,20 @@ mod tests {
     #[test]
     fn create_baseline_with_metadata() {
         let mut metadata = BTreeMap::new();
-        metadata.insert("branch".to_string(), serde_json::Value::String("main".to_string()));
+        metadata.insert(
+            "branch".to_string(),
+            serde_json::Value::String("main".to_string()),
+        );
         metadata.insert("ci_run".to_string(), serde_json::json!(12345));
 
         let fps = vec![make_fingerprint(1)];
         let baseline = create_baseline("scan-1", "0.1.0", &fps, metadata);
 
         assert_eq!(baseline.metadata.len(), 2);
-        assert_eq!(baseline.metadata["branch"], serde_json::Value::String("main".to_string()));
+        assert_eq!(
+            baseline.metadata["branch"],
+            serde_json::Value::String("main".to_string())
+        );
         assert_eq!(baseline.metadata["ci_run"], serde_json::json!(12345));
     }
 
@@ -626,7 +647,11 @@ mod tests {
 
     #[test]
     fn create_baseline_validates_successfully() {
-        let fps = vec![make_fingerprint(5), make_fingerprint(3), make_fingerprint(1)];
+        let fps = vec![
+            make_fingerprint(5),
+            make_fingerprint(3),
+            make_fingerprint(1),
+        ];
         let baseline = create_baseline("scan-1", "0.1.0", &fps, BTreeMap::new());
         // A baseline created by create_baseline should always pass validation.
         assert!(baseline.validate().is_ok());
@@ -634,9 +659,16 @@ mod tests {
 
     #[test]
     fn save_and_load_roundtrip() {
-        let fps = vec![make_fingerprint(10), make_fingerprint(5), make_fingerprint(20)];
+        let fps = vec![
+            make_fingerprint(10),
+            make_fingerprint(5),
+            make_fingerprint(20),
+        ];
         let mut metadata = BTreeMap::new();
-        metadata.insert("key".to_string(), serde_json::Value::String("value".to_string()));
+        metadata.insert(
+            "key".to_string(),
+            serde_json::Value::String("value".to_string()),
+        );
 
         let baseline = create_baseline("roundtrip-scan", "0.2.0", &fps, metadata);
 
@@ -675,18 +707,32 @@ mod tests {
         assert_eq!(diff.new_count, 2);
         assert_eq!(diff.baselined_count, 0);
         assert_eq!(diff.resolved_count, 2);
-        assert_eq!(diff.new_fingerprints, vec![make_fingerprint(10), make_fingerprint(20)]);
+        assert_eq!(
+            diff.new_fingerprints,
+            vec![make_fingerprint(10), make_fingerprint(20)]
+        );
         assert!(diff.baselined_fingerprints.is_empty());
-        assert_eq!(diff.resolved_fingerprints, vec![make_fingerprint(1), make_fingerprint(2)]);
+        assert_eq!(
+            diff.resolved_fingerprints,
+            vec![make_fingerprint(1), make_fingerprint(2)]
+        );
     }
 
     #[test]
     fn diff_all_baselined() {
         // All current fingerprints match the baseline.
-        let fps = vec![make_fingerprint(1), make_fingerprint(2), make_fingerprint(3)];
+        let fps = vec![
+            make_fingerprint(1),
+            make_fingerprint(2),
+            make_fingerprint(3),
+        ];
         let baseline = create_baseline("old-scan", "0.1.0", &fps, BTreeMap::new());
 
-        let current = vec![make_fingerprint(1), make_fingerprint(2), make_fingerprint(3)];
+        let current = vec![
+            make_fingerprint(1),
+            make_fingerprint(2),
+            make_fingerprint(3),
+        ];
         let diff = diff_findings(&current, &baseline);
 
         assert_eq!(diff.new_count, 0);
@@ -702,19 +748,30 @@ mod tests {
         let baseline = create_baseline(
             "old-scan",
             "0.1.0",
-            &[make_fingerprint(1), make_fingerprint(2), make_fingerprint(3)],
+            &[
+                make_fingerprint(1),
+                make_fingerprint(2),
+                make_fingerprint(3),
+            ],
             BTreeMap::new(),
         );
 
         // fp(1) and fp(3) are baselined; fp(10) is new.
-        let current = vec![make_fingerprint(1), make_fingerprint(3), make_fingerprint(10)];
+        let current = vec![
+            make_fingerprint(1),
+            make_fingerprint(3),
+            make_fingerprint(10),
+        ];
         let diff = diff_findings(&current, &baseline);
 
         assert_eq!(diff.new_count, 1);
         assert_eq!(diff.baselined_count, 2);
         assert_eq!(diff.resolved_count, 1); // fp(2) was resolved
         assert_eq!(diff.new_fingerprints, vec![make_fingerprint(10)]);
-        assert_eq!(diff.baselined_fingerprints, vec![make_fingerprint(1), make_fingerprint(3)]);
+        assert_eq!(
+            diff.baselined_fingerprints,
+            vec![make_fingerprint(1), make_fingerprint(3)]
+        );
         assert_eq!(diff.resolved_fingerprints, vec![make_fingerprint(2)]);
     }
 
@@ -741,7 +798,10 @@ mod tests {
         assert_eq!(diff.baselined_count, 2);
         assert_eq!(diff.resolved_count, 2);
         assert!(diff.new_fingerprints.is_empty());
-        assert_eq!(diff.resolved_fingerprints, vec![make_fingerprint(2), make_fingerprint(4)]);
+        assert_eq!(
+            diff.resolved_fingerprints,
+            vec![make_fingerprint(2), make_fingerprint(4)]
+        );
     }
 
     #[test]
@@ -765,7 +825,11 @@ mod tests {
         let baseline = create_baseline(
             "old-scan",
             "0.1.0",
-            &[make_fingerprint(1), make_fingerprint(2), make_fingerprint(3)],
+            &[
+                make_fingerprint(1),
+                make_fingerprint(2),
+                make_fingerprint(3),
+            ],
             BTreeMap::new(),
         );
 

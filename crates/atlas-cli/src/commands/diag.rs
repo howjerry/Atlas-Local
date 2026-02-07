@@ -32,8 +32,7 @@ pub fn execute(args: DiagArgs) -> Result<ExitCode, anyhow::Error> {
     let info = collect_diag_info();
 
     if args.json {
-        let json = serde_json::to_string_pretty(&info)
-            .context("serializing diagnostic info")?;
+        let json = serde_json::to_string_pretty(&info).context("serializing diagnostic info")?;
         println!("{json}");
     } else {
         print_diag_info(&info);

@@ -131,7 +131,9 @@ const SUSPICIOUS_NAMES: &[&str] = &[
 #[must_use]
 pub fn is_suspicious_variable_name(name: &str) -> bool {
     let lower = name.to_lowercase();
-    SUSPICIOUS_NAMES.iter().any(|pattern| lower.contains(pattern))
+    SUSPICIOUS_NAMES
+        .iter()
+        .any(|pattern| lower.contains(pattern))
 }
 
 /// Checks if a string value combined with a variable name suggests a
@@ -211,7 +213,10 @@ mod tests {
     #[test]
     fn entropy_repeated_char() {
         let entropy = shannon_entropy("aaaaaaaaaa");
-        assert!(entropy < 0.01, "repeated chars should have near-zero entropy: {entropy}");
+        assert!(
+            entropy < 0.01,
+            "repeated chars should have near-zero entropy: {entropy}"
+        );
     }
 
     #[test]
@@ -228,7 +233,10 @@ mod tests {
     fn entropy_high_for_random_looking() {
         // A typical AWS key has high entropy
         let entropy = shannon_entropy("AKIAIOSFODNN7EXAMPLE");
-        assert!(entropy > 3.5, "AWS key-like string should have high entropy: {entropy}");
+        assert!(
+            entropy > 3.5,
+            "AWS key-like string should have high entropy: {entropy}"
+        );
     }
 
     #[test]
@@ -244,7 +252,10 @@ mod tests {
     fn entropy_very_high_for_hex() {
         // Random hex string
         let entropy = shannon_entropy("a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6");
-        assert!(entropy > 3.5, "hex string should have high entropy: {entropy}");
+        assert!(
+            entropy > 3.5,
+            "hex string should have high entropy: {entropy}"
+        );
     }
 
     // -- High entropy secret tests -------------------------------------------
@@ -344,10 +355,7 @@ mod tests {
 
     #[test]
     fn contextual_secret_low_entropy_value() {
-        assert!(!is_contextual_secret(
-            "API_KEY",
-            "hello"
-        ));
+        assert!(!is_contextual_secret("API_KEY", "hello"));
     }
 
     // -- Known prefix tests --------------------------------------------------

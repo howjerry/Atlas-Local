@@ -257,8 +257,8 @@ pub fn write_bundle_archive(bundle: &AuditBundle, output: &Path) -> Result<(), A
 
 /// Reads an audit bundle archive and verifies manifest checksums.
 pub fn verify_bundle_archive(path: &Path) -> Result<AuditBundle, AuditError> {
-    let file = std::fs::File::open(path)
-        .map_err(|e| AuditError::Io(format!("opening bundle: {e}")))?;
+    let file =
+        std::fs::File::open(path).map_err(|e| AuditError::Io(format!("opening bundle: {e}")))?;
     let dec = flate2::read::GzDecoder::new(file);
     let mut archive = tar::Archive::new(dec);
 
@@ -281,16 +281,18 @@ pub fn verify_bundle_archive(path: &Path) -> Result<AuditBundle, AuditError> {
     }
 
     // Parse manifest
-    let manifest_data = files
-        .get("manifest.json")
-        .ok_or_else(|| AuditError::MissingField("manifest.json not found in archive".to_string()))?;
+    let manifest_data = files.get("manifest.json").ok_or_else(|| {
+        AuditError::MissingField("manifest.json not found in archive".to_string())
+    })?;
     let manifest: AuditManifest = serde_json::from_slice(manifest_data)
         .map_err(|e| AuditError::Serialization(format!("parsing manifest: {e}")))?;
 
     // Verify checksums
     for (filename, expected_hash) in &manifest.files {
         let data = files.get(filename.as_str()).ok_or_else(|| {
-            AuditError::IntegrityViolation(format!("{filename} listed in manifest but not in archive"))
+            AuditError::IntegrityViolation(format!(
+                "{filename} listed in manifest but not in archive"
+            ))
         })?;
         let actual_hash = sha256_hex(&String::from_utf8_lossy(data));
         if actual_hash != *expected_hash {
@@ -319,9 +321,9 @@ pub fn verify_bundle_archive(path: &Path) -> Result<AuditBundle, AuditError> {
     let config: BTreeMap<String, serde_json::Value> = serde_json::from_slice(config_data)
         .map_err(|e| AuditError::Serialization(format!("parsing config: {e}")))?;
 
-    let policy = files.get("policy.json").and_then(|data| {
-        serde_json::from_slice(data).ok()
-    });
+    let policy = files
+        .get("policy.json")
+        .and_then(|data| serde_json::from_slice(data).ok());
 
     info!(path = %path.display(), "audit bundle verified");
 

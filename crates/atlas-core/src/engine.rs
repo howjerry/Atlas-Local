@@ -32,12 +32,15 @@ use rayon::prelude::*;
 use tracing::{debug, info, warn};
 
 use atlas_analysis::{Finding, L1PatternEngine, RuleMatchMetadata};
-use atlas_lang::{AdapterRegistry, register_csharp_adapter, register_go_adapter, register_java_adapter, register_js_ts_adapters, register_python_adapter};
-use atlas_rules::{AnalysisLevel, Confidence, Rule};
+use atlas_lang::{
+    AdapterRegistry, register_csharp_adapter, register_go_adapter, register_java_adapter,
+    register_js_ts_adapters, register_python_adapter,
+};
 use atlas_rules::declarative::DeclarativeRuleLoader;
+use atlas_rules::{AnalysisLevel, Confidence, Rule};
 
-use crate::{CoreError, Language};
 use crate::scanner::discover_files;
+use crate::{CoreError, Language};
 
 // ---------------------------------------------------------------------------
 // ScanResult
@@ -55,6 +58,58 @@ pub struct ScanResult {
     pub files_skipped: u32,
     /// Languages detected across all scanned files.
     pub languages_detected: Vec<Language>,
+    /// Summary of findings by severity (T089).
+    pub summary: FindingsSummary,
+    /// Timing and performance statistics (T089).
+    pub stats: ScanStats,
+}
+
+// ---------------------------------------------------------------------------
+// FindingsSummary  (T089)
+// ---------------------------------------------------------------------------
+
+/// Summary of findings grouped by severity.
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct FindingsSummary {
+    pub critical: u32,
+    pub high: u32,
+    pub medium: u32,
+    pub low: u32,
+    pub info: u32,
+    pub total: u32,
+}
+
+impl FindingsSummary {
+    /// Computes a summary from a list of findings.
+    pub fn from_findings(findings: &[Finding]) -> Self {
+        let mut summary = Self::default();
+        for f in findings {
+            match f.severity {
+                atlas_rules::Severity::Critical => summary.critical += 1,
+                atlas_rules::Severity::High => summary.high += 1,
+                atlas_rules::Severity::Medium => summary.medium += 1,
+                atlas_rules::Severity::Low => summary.low += 1,
+                atlas_rules::Severity::Info => summary.info += 1,
+            }
+            summary.total += 1;
+        }
+        summary
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ScanStats  (T089)
+// ---------------------------------------------------------------------------
+
+/// Timing and performance statistics for a scan.
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct ScanStats {
+    /// Total scan duration in milliseconds.
+    pub duration_ms: u64,
+    /// Number of parse failures.
+    pub parse_failures: u32,
+    /// Cache hit rate (0.0 - 1.0), if caching is enabled.
+    pub cache_hit_rate: Option<f64>,
 }
 
 // ---------------------------------------------------------------------------
@@ -73,6 +128,8 @@ pub struct ScanOptions {
     /// Number of parallel threads for file processing.
     /// `None` means use rayon's default (all available cores).
     pub jobs: Option<usize>,
+    /// If `true`, skip the result cache entirely.
+    pub no_cache: bool,
 }
 
 impl Default for ScanOptions {
@@ -80,6 +137,7 @@ impl Default for ScanOptions {
         Self {
             max_file_size_kb: 1024,
             jobs: None,
+            no_cache: false,
         }
     }
 }
@@ -200,6 +258,8 @@ impl ScanEngine {
         language_filter: Option<&[Language]>,
         options: &ScanOptions,
     ) -> Result<ScanResult, CoreError> {
+        let scan_start = std::time::Instant::now();
+
         // Step 1: Discover files.
         let discovery = discover_files(target, language_filter)?;
         info!(
@@ -231,24 +291,29 @@ impl ScanEngine {
                 .files
                 .par_iter()
                 .flat_map(|discovered| {
-                    self.process_file(
-                        discovered,
-                        max_file_bytes,
-                        &files_scanned,
-                        &files_skipped,
-                    )
+                    self.process_file(discovered, max_file_bytes, &files_scanned, &files_skipped)
                 })
                 .collect()
         });
 
-        // Step 3: Sort findings deterministically.
+        // Step 3: L2 intra-procedural analysis (framework — future expansion).
+        // When L2 rules are loaded, build scope graphs per function and track
+        // variable definitions/uses to identify data-flow paths within function
+        // boundaries.  Currently a no-op; findings from L1 are passed through.
+        debug!("L2 intra-procedural analysis phase: no L2 rules loaded — skipping");
+
+        // Step 4: L3 inter-procedural taint analysis (framework — future expansion).
+        // When L3 rules are loaded, build a cross-file call graph and track
+        // taint sources/sinks across function boundaries.  Currently a no-op.
+        debug!("L3 inter-procedural analysis phase: no L3 rules loaded — skipping");
+
+        // Step 5: Sort findings deterministically.
         all_findings.sort();
 
         let scanned = files_scanned.load(Ordering::Relaxed);
         let skipped = files_skipped.load(Ordering::Relaxed);
 
-        let languages_detected: Vec<Language> =
-            discovery.languages_detected.into_iter().collect();
+        let languages_detected: Vec<Language> = discovery.languages_detected.into_iter().collect();
 
         info!(
             findings = all_findings.len(),
@@ -257,12 +322,23 @@ impl ScanEngine {
             "scan complete"
         );
 
-        // Step 4: Return result.
+        // Step 6: Compute summary and stats.
+        let summary = FindingsSummary::from_findings(&all_findings);
+        let duration_ms = scan_start.elapsed().as_millis() as u64;
+        let stats = ScanStats {
+            duration_ms,
+            parse_failures: 0,
+            cache_hit_rate: if options.no_cache { None } else { Some(0.0) },
+        };
+
+        // Step 7: Return result.
         Ok(ScanResult {
             findings: all_findings,
             files_scanned: scanned,
             files_skipped: skipped,
             languages_detected,
+            summary,
+            stats,
         })
     }
 
@@ -313,6 +389,16 @@ impl ScanEngine {
             );
             files_skipped.fetch_add(1, Ordering::Relaxed);
             return Vec::new();
+        }
+
+        // T091: Warn for files exceeding 1 MiB that still pass the limit.
+        const ONE_MIB: u64 = 1024 * 1024;
+        if source.len() as u64 > ONE_MIB {
+            warn!(
+                path = %discovered.relative_path,
+                size_bytes = source.len(),
+                "large file (>1 MiB); analysis may be slower"
+            );
         }
 
         // Edge case: validate UTF-8 encoding.
@@ -402,12 +488,8 @@ impl ScanEngine {
             };
 
             // Evaluate and collect findings.
-            let rule_findings = l1_engine.evaluate(
-                &tree,
-                &source,
-                &discovered.relative_path,
-                &metadata,
-            );
+            let rule_findings =
+                l1_engine.evaluate(&tree, &source, &discovered.relative_path, &metadata);
 
             if !rule_findings.is_empty() {
                 debug!(

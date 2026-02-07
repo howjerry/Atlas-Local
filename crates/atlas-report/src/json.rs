@@ -408,12 +408,10 @@ mod tests {
     use super::*;
 
     use atlas_analysis::{FindingBuilder, LineRange};
-    use atlas_core::engine::ScanResult;
-    use atlas_core::config::AtlasConfig;
     use atlas_core::Language;
-    use atlas_rules::{
-        AnalysisLevel, Category, Confidence, Rule, RuleType, Severity,
-    };
+    use atlas_core::config::AtlasConfig;
+    use atlas_core::engine::ScanResult;
+    use atlas_rules::{AnalysisLevel, Category, Confidence, Rule, RuleType, Severity};
 
     // -- Test helpers ---------------------------------------------------------
 
@@ -459,11 +457,14 @@ mod tests {
 
     /// Creates a ScanResult with the given findings.
     fn make_scan_result(findings: Vec<Finding>) -> ScanResult {
+        let summary = atlas_core::engine::FindingsSummary::from_findings(&findings);
         ScanResult {
             findings,
             files_scanned: 5,
             files_skipped: 1,
             languages_detected: vec![Language::TypeScript, Language::JavaScript],
+            summary,
+            stats: atlas_core::engine::ScanStats::default(),
         }
     }
 
@@ -566,7 +567,10 @@ mod tests {
         let config_a = AtlasConfig::default();
         let mut config_b = AtlasConfig::default();
         config_b.scan.max_file_size_kb = 9999;
-        assert_ne!(compute_config_hash(&config_a), compute_config_hash(&config_b));
+        assert_ne!(
+            compute_config_hash(&config_a),
+            compute_config_hash(&config_b)
+        );
     }
 
     // -- Findings summary tests -----------------------------------------------
@@ -620,8 +624,8 @@ mod tests {
         let json = format_report(&scan_result, "/project/src", &rules, &config, false);
 
         // Must parse as valid JSON.
-        let parsed: serde_json::Value = serde_json::from_str(&json)
-            .expect("report must be valid JSON");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&json).expect("report must be valid JSON");
 
         // Top-level structure.
         assert_eq!(parsed["schema_version"], "1.0.0");
@@ -648,7 +652,10 @@ mod tests {
         let json1 = format_report(&scan_result, "/project/src", &rules, &config, false);
         let json2 = format_report(&scan_result, "/project/src", &rules, &config, false);
 
-        assert_eq!(json1, json2, "two runs without timestamp must produce identical output");
+        assert_eq!(
+            json1, json2,
+            "two runs without timestamp must produce identical output"
+        );
     }
 
     #[test]
@@ -735,6 +742,8 @@ mod tests {
             files_scanned: 3,
             files_skipped: 0,
             languages_detected: vec![],
+            summary: atlas_core::engine::FindingsSummary::default(),
+            stats: atlas_core::engine::ScanStats::default(),
         };
         let rules: Vec<Rule> = vec![];
         let config = AtlasConfig::default();
@@ -774,8 +783,8 @@ mod tests {
         let json = format_report(&scan_result, "/project/src", &rules, &config, false);
 
         // Must deserialize back into AtlasReport.
-        let report: AtlasReport = serde_json::from_str(&json)
-            .expect("report must deserialize back to AtlasReport");
+        let report: AtlasReport =
+            serde_json::from_str(&json).expect("report must deserialize back to AtlasReport");
 
         assert_eq!(report.schema_version, "1.0.0");
         assert_eq!(report.findings.len(), 1);
@@ -794,7 +803,8 @@ mod tests {
 
         let rules_version = compute_rules_version(&rules);
         let config_hash = compute_config_hash(&config);
-        let expected_id = compute_scan_id("/project/src", ENGINE_VERSION, &config_hash, &rules_version);
+        let expected_id =
+            compute_scan_id("/project/src", ENGINE_VERSION, &config_hash, &rules_version);
 
         let scan_result = make_scan_result(vec![]);
         let json = format_report(&scan_result, "/project/src", &rules, &config, false);

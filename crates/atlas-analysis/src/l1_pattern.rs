@@ -13,13 +13,13 @@
 //!   findings (severity, category, description, etc.).
 //! - [`L1Error`] covers query compilation failures and evaluation errors.
 
-use tree_sitter::{Query, QueryCursor, StreamingIterator, Tree};
 use tracing::{debug, warn};
+use tree_sitter::{Query, QueryCursor, StreamingIterator, Tree};
 
 use atlas_rules::{AnalysisLevel, Category, Confidence, Severity};
 
-use crate::finding::{FindingBuilder, LineRange};
 use crate::Finding;
+use crate::finding::{FindingBuilder, LineRange};
 
 // ---------------------------------------------------------------------------
 // L1Error
@@ -108,15 +108,10 @@ impl L1PatternEngine {
     ///
     /// Returns [`L1Error::QueryCompilationFailed`] if the pattern is not a
     /// valid S-expression for the given language.
-    pub fn new(
-        language: &tree_sitter::Language,
-        pattern: &str,
-    ) -> Result<Self, L1Error> {
-        let query = Query::new(language, pattern).map_err(|e| {
-            L1Error::QueryCompilationFailed {
-                pattern: pattern.to_string(),
-                error: e.to_string(),
-            }
+    pub fn new(language: &tree_sitter::Language, pattern: &str) -> Result<Self, L1Error> {
+        let query = Query::new(language, pattern).map_err(|e| L1Error::QueryCompilationFailed {
+            pattern: pattern.to_string(),
+            error: e.to_string(),
         })?;
 
         debug!(
@@ -294,8 +289,7 @@ mod tests {
             category: Category::Security,
             cwe_id: Some("CWE-95".to_string()),
             description: "Use of dangerous function call detected.".to_string(),
-            remediation: "Avoid dangerous function calls. Use safer alternatives."
-                .to_string(),
+            remediation: "Avoid dangerous function calls. Use safer alternatives.".to_string(),
             confidence: Confidence::High,
         }
     }
@@ -332,10 +326,7 @@ mod tests {
             ref error,
         }) = result
         {
-            assert!(
-                !error.is_empty(),
-                "error message should not be empty"
-            );
+            assert!(!error.is_empty(), "error message should not be empty");
         } else {
             panic!("expected QueryCompilationFailed, got: {result:?}");
         }
@@ -440,7 +431,10 @@ mod tests {
         let result = L1PatternEngine::new(&lang, pattern);
         assert!(result.is_err());
         match result {
-            Err(L1Error::QueryCompilationFailed { pattern: p, error: e }) => {
+            Err(L1Error::QueryCompilationFailed {
+                pattern: p,
+                error: e,
+            }) => {
                 assert_eq!(p, "((((not_a_real_node");
                 assert!(!e.is_empty());
             }
@@ -467,8 +461,14 @@ mod tests {
 
         assert_eq!(findings.len(), 1);
         let lr = &findings[0].line_range;
-        assert_eq!(lr.start_line, 3, "row 2 (0-based) should become line 3 (1-based)");
-        assert_eq!(lr.start_col, 5, "col 4 (0-based) should become col 5 (1-based)");
+        assert_eq!(
+            lr.start_line, 3,
+            "row 2 (0-based) should become line 3 (1-based)"
+        );
+        assert_eq!(
+            lr.start_col, 5,
+            "col 4 (0-based) should become col 5 (1-based)"
+        );
     }
 
     // -- Snippet extraction ---------------------------------------------------

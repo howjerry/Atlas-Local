@@ -250,11 +250,14 @@ mod tests {
 
     /// Creates a ScanResult with the given findings.
     fn make_scan_result(findings: Vec<Finding>) -> ScanResult {
+        let summary = atlas_core::engine::FindingsSummary::from_findings(&findings);
         ScanResult {
             findings,
             files_scanned: 5,
             files_skipped: 1,
             languages_detected: vec![Language::TypeScript, Language::JavaScript],
+            summary,
+            stats: atlas_core::engine::ScanStats::default(),
         }
     }
 

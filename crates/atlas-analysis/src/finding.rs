@@ -53,9 +53,7 @@ pub enum AnalysisError {
 /// - `start_line >= 1` and `end_line >= 1`
 /// - `start_line <= end_line`
 /// - If `start_line == end_line`, then `start_col <= end_col`
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct LineRange {
     /// 1-indexed start line.
     pub start_line: u32,
@@ -902,7 +900,7 @@ mod tests {
                 .unwrap()
         };
 
-        let mut findings = vec![
+        let mut findings = [
             build("src/z.js", line_b, "atlas/security/js/b"),
             build("src/a.js", line_a, "atlas/security/js/b"),
             build("src/a.js", line_c, "atlas/security/js/a"),

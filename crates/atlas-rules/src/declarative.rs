@@ -32,9 +32,7 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 use walkdir::WalkDir;
 
-use crate::{
-    AnalysisLevel, Category, Language, Rule, RuleError, RuleType, Severity,
-};
+use crate::{AnalysisLevel, Category, Language, Rule, RuleError, RuleType, Severity};
 
 // ---------------------------------------------------------------------------
 // DeclarativeError
@@ -207,7 +205,9 @@ impl DeclarativeRuleLoader {
 
         for entry in WalkDir::new(dir).follow_links(true) {
             let entry = entry.map_err(|e| {
-                let path = e.path().map_or_else(|| dir.to_path_buf(), Path::to_path_buf);
+                let path = e
+                    .path()
+                    .map_or_else(|| dir.to_path_buf(), Path::to_path_buf);
                 DeclarativeError::IoError {
                     path,
                     source: std::io::Error::other(e),
@@ -235,11 +235,7 @@ impl DeclarativeRuleLoader {
     /// Parses a YAML string and returns validated rule(s).
     ///
     /// The `source_path` is used only for error messages.
-    fn load_from_str(
-        &self,
-        yaml: &str,
-        source_path: &Path,
-    ) -> Result<Vec<Rule>, DeclarativeError> {
+    fn load_from_str(&self, yaml: &str, source_path: &Path) -> Result<Vec<Rule>, DeclarativeError> {
         let file: DeclarativeRuleFile =
             serde_yml::from_str(yaml).map_err(|e| DeclarativeError::YamlParseError {
                 path: source_path.to_path_buf(),
@@ -577,16 +573,25 @@ version: 0.1.0
         }
 
         // Verify specific severities.
-        let sql = rules.iter().find(|r| r.id.contains("sql-injection")).unwrap();
+        let sql = rules
+            .iter()
+            .find(|r| r.id.contains("sql-injection"))
+            .unwrap();
         assert_eq!(sql.severity, Severity::Critical);
 
-        let cmd = rules.iter().find(|r| r.id.contains("command-injection")).unwrap();
+        let cmd = rules
+            .iter()
+            .find(|r| r.id.contains("command-injection"))
+            .unwrap();
         assert_eq!(cmd.severity, Severity::Critical);
 
         let eval = rules.iter().find(|r| r.id.contains("eval-usage")).unwrap();
         assert_eq!(eval.severity, Severity::Critical);
 
-        let deser = rules.iter().find(|r| r.id.contains("unsafe-deserialization")).unwrap();
+        let deser = rules
+            .iter()
+            .find(|r| r.id.contains("unsafe-deserialization"))
+            .unwrap();
         assert_eq!(deser.severity, Severity::High);
     }
 
@@ -639,7 +644,10 @@ version: 0.1.0
         }
 
         // Verify specific severities.
-        let sql = rules.iter().find(|r| r.id.contains("sql-injection")).unwrap();
+        let sql = rules
+            .iter()
+            .find(|r| r.id.contains("sql-injection"))
+            .unwrap();
         assert_eq!(sql.severity, Severity::Critical);
         assert_eq!(sql.cwe_id.as_deref(), Some("CWE-89"));
 
@@ -647,11 +655,17 @@ version: 0.1.0
         assert_eq!(xss.severity, Severity::High);
         assert_eq!(xss.cwe_id.as_deref(), Some("CWE-79"));
 
-        let deser = rules.iter().find(|r| r.id.contains("insecure-deserialization")).unwrap();
+        let deser = rules
+            .iter()
+            .find(|r| r.id.contains("insecure-deserialization"))
+            .unwrap();
         assert_eq!(deser.severity, Severity::Critical);
         assert_eq!(deser.cwe_id.as_deref(), Some("CWE-502"));
 
-        let path = rules.iter().find(|r| r.id.contains("path-traversal")).unwrap();
+        let path = rules
+            .iter()
+            .find(|r| r.id.contains("path-traversal"))
+            .unwrap();
         assert_eq!(path.severity, Severity::High);
         assert_eq!(path.cwe_id.as_deref(), Some("CWE-22"));
     }

@@ -36,7 +36,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use rhai::packages::Package;
-use rhai::{Array, Dynamic, Engine, Map, Scope, AST};
+use rhai::{AST, Array, Dynamic, Engine, Map, Scope};
 use tracing::debug;
 
 // ---------------------------------------------------------------------------
@@ -98,26 +98,13 @@ impl NodeContext {
 
         map.insert("node_type".into(), self.node_type.clone().into());
         map.insert("node_text".into(), self.node_text.clone().into());
-        map.insert(
-            "start_line".into(),
-            Dynamic::from(self.start_line as i64),
-        );
-        map.insert(
-            "end_line".into(),
-            Dynamic::from(self.end_line as i64),
-        );
-        map.insert(
-            "start_col".into(),
-            Dynamic::from(self.start_col as i64),
-        );
-        map.insert(
-            "end_col".into(),
-            Dynamic::from(self.end_col as i64),
-        );
+        map.insert("start_line".into(), Dynamic::from(self.start_line as i64));
+        map.insert("end_line".into(), Dynamic::from(self.end_line as i64));
+        map.insert("start_col".into(), Dynamic::from(self.start_col as i64));
+        map.insert("end_col".into(), Dynamic::from(self.end_col as i64));
         map.insert("file_path".into(), self.file_path.clone().into());
 
-        let children_array: Array =
-            self.children.iter().map(|c| c.to_dynamic()).collect();
+        let children_array: Array = self.children.iter().map(|c| c.to_dynamic()).collect();
         map.insert("children".into(), children_array.into());
 
         map.into()
@@ -187,10 +174,7 @@ impl ScriptedRuleEngine {
     ///
     /// Returns [`ScriptedRuleError::Compilation`] if the script contains
     /// syntax errors.
-    pub fn compile(
-        &self,
-        script: &str,
-    ) -> Result<AST, ScriptedRuleError> {
+    pub fn compile(&self, script: &str) -> Result<AST, ScriptedRuleError> {
         self.engine
             .compile(script)
             .map_err(|e| ScriptedRuleError::Compilation(e.to_string()))
@@ -224,8 +208,7 @@ impl ScriptedRuleEngine {
         let mut eval_engine = make_sandboxed_engine();
 
         // Shared findings collector.
-        let findings: Rc<RefCell<Vec<String>>> =
-            Rc::new(RefCell::new(Vec::new()));
+        let findings: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
         let findings_clone = Rc::clone(&findings);
 
         // Register `emit_finding` as a native function that pushes a
@@ -245,8 +228,7 @@ impl ScriptedRuleEngine {
         scope.push("file_path", node.file_path.clone());
 
         // Children as a Rhai array of maps.
-        let children_array: Array =
-            node.children.iter().map(|c| c.to_dynamic()).collect();
+        let children_array: Array = node.children.iter().map(|c| c.to_dynamic()).collect();
         scope.push("children", children_array);
 
         // Also expose the full node as a single map.
@@ -260,9 +242,7 @@ impl ScriptedRuleEngine {
         // Run the script.
         let run_result = eval_engine
             .run_ast_with_scope(&mut scope, ast)
-            .map_err(|e| {
-                ScriptedRuleError::Evaluation(e.to_string())
-            });
+            .map_err(|e| ScriptedRuleError::Evaluation(e.to_string()));
 
         // Drop the engine to release its Rc reference to the findings
         // collector (held by the registered `emit_finding` closure).
@@ -280,9 +260,7 @@ impl ScriptedRuleEngine {
             .into_inner();
 
         // Also extract scope-based findings (from `findings.push()`).
-        if let Some(scope_findings) =
-            scope.get_value::<Array>("findings")
-        {
+        if let Some(scope_findings) = scope.get_value::<Array>("findings") {
             for val in scope_findings {
                 if let Ok(s) = val.into_string() {
                     result.push(s);
@@ -369,10 +347,7 @@ mod tests {
             }
         "#;
         let result = engine.compile(script);
-        assert!(
-            result.is_ok(),
-            "valid script should compile successfully"
-        );
+        assert!(result.is_ok(), "valid script should compile successfully");
     }
 
     // -------------------------------------------------------------------
@@ -384,10 +359,7 @@ mod tests {
         let engine = ScriptedRuleEngine::new();
         let script = "if { {{{{ not valid rhai";
         let result = engine.compile(script);
-        assert!(
-            result.is_err(),
-            "invalid script should fail to compile"
-        );
+        assert!(result.is_err(), "invalid script should fail to compile");
         let err = result.unwrap_err();
         assert!(
             matches!(err, ScriptedRuleError::Compilation(_)),
@@ -485,8 +457,7 @@ mod tests {
             .unwrap();
 
         // Should match.
-        let node =
-            make_node("call_expression", "dangerous(user_input)");
+        let node = make_node("call_expression", "dangerous(user_input)");
         let findings = engine.evaluate(&ast, &node).unwrap();
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0], "Dangerous call detected");
@@ -517,15 +488,7 @@ mod tests {
             )
             .unwrap();
 
-        let node = make_node_with_pos(
-            "block",
-            "{ ... }",
-            42,
-            44,
-            5,
-            6,
-            "src/main.ts",
-        );
+        let node = make_node_with_pos("block", "{ ... }", 42, 44, 5, 6, "src/main.ts");
         let findings = engine.evaluate(&ast, &node).unwrap();
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0], "found at expected lines");
@@ -588,10 +551,7 @@ mod tests {
 
         let findings = engine.evaluate(&ast, &node).unwrap();
         assert_eq!(findings.len(), 1);
-        assert_eq!(
-            findings[0],
-            "first child is identifier: my_func"
-        );
+        assert_eq!(findings[0], "first child is identifier: my_func");
     }
 
     // -------------------------------------------------------------------
@@ -656,52 +616,23 @@ mod tests {
         let map = dynamic.cast::<Map>();
 
         assert_eq!(
-            map.get("node_type")
-                .unwrap()
-                .clone()
-                .into_string()
-                .unwrap(),
+            map.get("node_type").unwrap().clone().into_string().unwrap(),
             "call_expression"
         );
         assert_eq!(
-            map.get("node_text")
-                .unwrap()
-                .clone()
-                .into_string()
-                .unwrap(),
+            map.get("node_text").unwrap().clone().into_string().unwrap(),
             "foo(bar)"
         );
+        assert_eq!(map.get("start_line").unwrap().as_int().unwrap(), 10);
+        assert_eq!(map.get("end_line").unwrap().as_int().unwrap(), 12);
+        assert_eq!(map.get("start_col").unwrap().as_int().unwrap(), 3);
+        assert_eq!(map.get("end_col").unwrap().as_int().unwrap(), 11);
         assert_eq!(
-            map.get("start_line").unwrap().as_int().unwrap(),
-            10
-        );
-        assert_eq!(
-            map.get("end_line").unwrap().as_int().unwrap(),
-            12
-        );
-        assert_eq!(
-            map.get("start_col").unwrap().as_int().unwrap(),
-            3
-        );
-        assert_eq!(
-            map.get("end_col").unwrap().as_int().unwrap(),
-            11
-        );
-        assert_eq!(
-            map.get("file_path")
-                .unwrap()
-                .clone()
-                .into_string()
-                .unwrap(),
+            map.get("file_path").unwrap().clone().into_string().unwrap(),
             "src/main.ts"
         );
 
-        let children = map
-            .get("children")
-            .unwrap()
-            .clone()
-            .into_array()
-            .unwrap();
+        let children = map.get("children").unwrap().clone().into_array().unwrap();
         assert_eq!(children.len(), 1);
 
         let child_map = children[0].clone().cast::<Map>();
@@ -750,39 +681,27 @@ mod tests {
 
         // unsafe_call: should match first condition.
         let findings = engine
-            .evaluate(
-                &ast,
-                &make_node("call_expression", "unsafe_call(x)"),
-            )
+            .evaluate(&ast, &make_node("call_expression", "unsafe_call(x)"))
             .unwrap();
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0], "unsafe_call() is dangerous");
 
         // risky_op: should match second condition.
         let findings = engine
-            .evaluate(
-                &ast,
-                &make_node("call_expression", "risky_op(cmd)"),
-            )
+            .evaluate(&ast, &make_node("call_expression", "risky_op(cmd)"))
             .unwrap();
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0], "risky_op() is dangerous");
 
         // safe call: should match neither.
         let findings = engine
-            .evaluate(
-                &ast,
-                &make_node("call_expression", "console.log(x)"),
-            )
+            .evaluate(&ast, &make_node("call_expression", "console.log(x)"))
             .unwrap();
         assert!(findings.is_empty());
 
         // wrong node type: should match nothing.
         let findings = engine
-            .evaluate(
-                &ast,
-                &make_node("identifier", "unsafe_call"),
-            )
+            .evaluate(&ast, &make_node("identifier", "unsafe_call"))
             .unwrap();
         assert!(findings.is_empty());
     }
@@ -852,15 +771,7 @@ mod tests {
             )
             .unwrap();
 
-        let node = make_node_with_pos(
-            "identifier",
-            "x",
-            1,
-            1,
-            5,
-            20,
-            "src/lib.rs",
-        );
+        let node = make_node_with_pos("identifier", "x", 1, 1, 5, 20, "src/lib.rs");
         let findings = engine.evaluate(&ast, &node).unwrap();
         assert_eq!(findings.len(), 1);
         assert_eq!(findings[0], "correct location");
@@ -885,14 +796,10 @@ mod tests {
             )
             .unwrap();
 
-        let node =
-            make_node("call_expression", "dangerous_func()");
+        let node = make_node("call_expression", "dangerous_func()");
         let findings = engine.evaluate(&ast, &node).unwrap();
         assert_eq!(findings.len(), 1);
-        assert_eq!(
-            findings[0],
-            "node map works: dangerous_func()"
-        );
+        assert_eq!(findings[0], "node map works: dangerous_func()");
     }
 
     // -------------------------------------------------------------------
@@ -916,9 +823,7 @@ mod tests {
     #[test]
     fn evaluate_does_not_leak_findings_between_calls() {
         let engine = ScriptedRuleEngine::new();
-        let ast = engine
-            .compile(r#"emit_finding("hello");"#)
-            .unwrap();
+        let ast = engine.compile(r#"emit_finding("hello");"#).unwrap();
 
         let node = make_node("identifier", "x");
 

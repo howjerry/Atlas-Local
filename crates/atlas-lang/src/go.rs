@@ -39,11 +39,7 @@ impl LanguageAdapter for GoAdapter {
         let lang: tree_sitter::Language = tree_sitter_go::LANGUAGE.into();
         parser.set_language(&lang)?;
 
-        debug!(
-            language = "Go",
-            source_len = source.len(),
-            "parsing source"
-        );
+        debug!(language = "Go", source_len = source.len(), "parsing source");
 
         parser.parse(source, None).ok_or(LangError::ParseFailed)
     }
@@ -132,7 +128,9 @@ type Reader interface {
         // so tree-sitter may produce a tree with error nodes. We verify that
         // parsing itself does not fail (returns a tree), but the tree will
         // contain errors because a valid Go file requires `package <name>`.
-        let tree = adapter.parse(b"").expect("empty source should still produce a tree");
+        let tree = adapter
+            .parse(b"")
+            .expect("empty source should still produce a tree");
         let root = tree.root_node();
         assert_eq!(root.kind(), "source_file");
         // Empty source may or may not have errors depending on the grammar;

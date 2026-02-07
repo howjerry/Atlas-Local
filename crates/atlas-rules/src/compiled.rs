@@ -231,10 +231,7 @@ impl CompiledRule {
     /// - [`CompiledRuleError::InvalidData`] if the plugin returns unparseable
     ///   JSON.
     /// - [`CompiledRuleError::Unsupported`] if loading is not yet available.
-    pub fn evaluate(
-        &self,
-        _node: &NodeData,
-    ) -> Result<Vec<PluginFinding>, CompiledRuleError> {
+    pub fn evaluate(&self, _node: &NodeData) -> Result<Vec<PluginFinding>, CompiledRuleError> {
         Err(CompiledRuleError::Unsupported(
             "compiled rule evaluation is not yet implemented; \
              the libloading dependency is required"
@@ -266,8 +263,7 @@ pub type RuleMetadataFn = unsafe extern "C" fn() -> *mut std::ffi::c_char;
 /// Accepts a JSON string representing [`NodeData`] and returns a JSON array
 /// of [`PluginFinding`]. The caller must free the returned pointer with
 /// [`RuleFreeStringFn`].
-pub type RuleEvaluateFn =
-    unsafe extern "C" fn(*const std::ffi::c_char) -> *mut std::ffi::c_char;
+pub type RuleEvaluateFn = unsafe extern "C" fn(*const std::ffi::c_char) -> *mut std::ffi::c_char;
 
 /// Type alias for the `rule_free_string` C ABI function.
 ///
@@ -397,8 +393,7 @@ fn validate_plugin_extension(path: &Path) -> Result<(), CompiledRuleError> {
         }),
         None => Err(CompiledRuleError::LoadError {
             path: path.to_path_buf(),
-            reason: "file has no extension; expected .so, .dylib, or .dll"
-                .into(),
+            reason: "file has no extension; expected .so, .dylib, or .dll".into(),
         }),
     }
 }
@@ -428,8 +423,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&metadata).unwrap();
-        let deserialized: PluginMetadata =
-            serde_json::from_str(&json).unwrap();
+        let deserialized: PluginMetadata = serde_json::from_str(&json).unwrap();
         assert_eq!(metadata, deserialized);
     }
 
@@ -499,8 +493,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&finding).unwrap();
-        let deserialized: PluginFinding =
-            serde_json::from_str(&json).unwrap();
+        let deserialized: PluginFinding = serde_json::from_str(&json).unwrap();
         assert_eq!(finding, deserialized);
     }
 
@@ -520,8 +513,7 @@ mod tests {
         ];
 
         let json = serde_json::to_string(&findings).unwrap();
-        let deserialized: Vec<PluginFinding> =
-            serde_json::from_str(&json).unwrap();
+        let deserialized: Vec<PluginFinding> = serde_json::from_str(&json).unwrap();
         assert_eq!(findings, deserialized);
     }
 
@@ -559,8 +551,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&node).unwrap();
-        let value: serde_json::Value =
-            serde_json::from_str(&json).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
 
         // Verify every expected field is present with the correct type.
         assert_eq!(value["node_type"], "identifier");
@@ -573,11 +564,7 @@ mod tests {
 
         // Verify there are no unexpected fields.
         let obj = value.as_object().unwrap();
-        assert_eq!(
-            obj.len(),
-            7,
-            "NodeData should have exactly 7 fields"
-        );
+        assert_eq!(obj.len(), 7, "NodeData should have exactly 7 fields");
     }
 
     // -------------------------------------------------------------------
@@ -587,8 +574,8 @@ mod tests {
     #[test]
     fn compiled_rule_loader_new_creates_instance() {
         let _loader = CompiledRuleLoader::new();
-        // Verify it can also be created via Default.
-        let _loader2 = CompiledRuleLoader::default();
+        // Verify it can also be created via Default (unit struct).
+        let _loader2 = CompiledRuleLoader;
     }
 
     #[test]
@@ -755,8 +742,9 @@ mod tests {
 
     #[test]
     fn error_display_invalid_data() {
-        let err =
-            CompiledRuleError::InvalidData { reason: "bad json".into() };
+        let err = CompiledRuleError::InvalidData {
+            reason: "bad json".into(),
+        };
         assert!(err.to_string().contains("bad json"));
     }
 
@@ -792,8 +780,6 @@ mod tests {
     #[test]
     fn validate_extension_rejects_no_extension() {
         assert!(validate_plugin_extension(Path::new("plugin")).is_err());
-        assert!(
-            validate_plugin_extension(Path::new("path/to/plugin")).is_err()
-        );
+        assert!(validate_plugin_extension(Path::new("path/to/plugin")).is_err());
     }
 }

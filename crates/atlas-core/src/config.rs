@@ -15,7 +15,7 @@ use crate::{AnalysisLevel, CoreError};
 // ---------------------------------------------------------------------------
 
 /// Top-level Atlas configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AtlasConfig {
     /// Scan-related settings.
@@ -28,18 +28,6 @@ pub struct AtlasConfig {
     pub reporting: ReportingConfig,
     /// Rulepack settings.
     pub rulepacks: RulepackConfig,
-}
-
-impl Default for AtlasConfig {
-    fn default() -> Self {
-        Self {
-            scan: ScanConfig::default(),
-            analysis: AnalysisConfig::default(),
-            cache: CacheConfig::default(),
-            reporting: ReportingConfig::default(),
-            rulepacks: RulepackConfig::default(),
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -148,22 +136,13 @@ impl Default for ReportingConfig {
 // ---------------------------------------------------------------------------
 
 /// Rulepack settings.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct RulepackConfig {
     /// Trusted ed25519 public keys (base64-encoded).
     pub trusted_keys: Vec<String>,
     /// Path to the rulepack store directory.
     pub store_path: Option<String>,
-}
-
-impl Default for RulepackConfig {
-    fn default() -> Self {
-        Self {
-            trusted_keys: Vec::new(),
-            store_path: None,
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------

@@ -27,3 +27,8 @@ atlas-analysis = { path = "../atlas-analysis" }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "scan_benchmark"
+harness = false

@@ -137,6 +137,7 @@ fn execute_create(args: CreateArgs) -> Result<ExitCode, anyhow::Error> {
     let scan_options = ScanOptions {
         max_file_size_kb: config.scan.max_file_size_kb,
         jobs: None,
+        no_cache: false,
     };
 
     let result = engine
@@ -167,12 +168,7 @@ fn execute_create(args: CreateArgs) -> Result<ExitCode, anyhow::Error> {
         BTreeMap::new(),
     );
     atlas_policy::baseline::save_baseline(&baseline, &args.output)
-        .with_context(|| {
-            format!(
-                "failed to save baseline to '{}'",
-                args.output.display()
-            )
-        })?;
+        .with_context(|| format!("failed to save baseline to '{}'", args.output.display()))?;
 
     println!(
         "Created baseline with {} findings at {}",
@@ -220,6 +216,7 @@ fn execute_diff(args: DiffArgs) -> Result<ExitCode, anyhow::Error> {
     let scan_options = ScanOptions {
         max_file_size_kb: config.scan.max_file_size_kb,
         jobs: None,
+        no_cache: false,
     };
 
     let result = engine
@@ -235,12 +232,7 @@ fn execute_diff(args: DiffArgs) -> Result<ExitCode, anyhow::Error> {
 
     // 4. Load existing baseline.
     let baseline = atlas_policy::baseline::load_baseline(&args.baseline)
-        .with_context(|| {
-            format!(
-                "failed to load baseline from '{}'",
-                args.baseline.display()
-            )
-        })?;
+        .with_context(|| format!("failed to load baseline from '{}'", args.baseline.display()))?;
 
     // 5. Collect current fingerprints and diff against baseline.
     let current_fingerprints: Vec<String> = result
@@ -287,10 +279,7 @@ mod tests {
             output: PathBuf::from("/tmp/baseline.json"),
             policy: Some(PathBuf::from("/tmp/policy.yaml")),
         };
-        assert_eq!(
-            args.policy,
-            Some(PathBuf::from("/tmp/policy.yaml"))
-        );
+        assert_eq!(args.policy, Some(PathBuf::from("/tmp/policy.yaml")));
     }
 
     #[test]

@@ -39,8 +39,8 @@ use std::collections::HashMap;
 use std::io::Read as IoRead;
 use std::path::{Path, PathBuf};
 
-use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
+use base64::engine::general_purpose::STANDARD as BASE64;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
@@ -255,9 +255,9 @@ pub fn verify_manifest(
     public_key_b64: &str,
 ) -> Result<(), RulepackError> {
     // Decode public key from base64.
-    let pk_bytes = BASE64
-        .decode(public_key_b64)
-        .map_err(|e| RulepackError::SignatureVerification(format!("invalid public key base64: {e}")))?;
+    let pk_bytes = BASE64.decode(public_key_b64).map_err(|e| {
+        RulepackError::SignatureVerification(format!("invalid public key base64: {e}"))
+    })?;
 
     let pk_array: [u8; 32] = pk_bytes.try_into().map_err(|v: Vec<u8>| {
         RulepackError::SignatureVerification(format!(
@@ -271,15 +271,12 @@ pub fn verify_manifest(
     })?;
 
     // Decode signature from base64.
-    let sig_bytes = BASE64
-        .decode(signature_b64)
-        .map_err(|e| RulepackError::SignatureVerification(format!("invalid signature base64: {e}")))?;
+    let sig_bytes = BASE64.decode(signature_b64).map_err(|e| {
+        RulepackError::SignatureVerification(format!("invalid signature base64: {e}"))
+    })?;
 
     let sig_array: [u8; 64] = sig_bytes.try_into().map_err(|v: Vec<u8>| {
-        RulepackError::SignatureVerification(format!(
-            "signature must be 64 bytes, got {}",
-            v.len()
-        ))
+        RulepackError::SignatureVerification(format!("signature must be 64 bytes, got {}", v.len()))
     })?;
 
     let signature = Signature::from_bytes(&sig_array);
@@ -583,9 +580,7 @@ fn archive_previous_version(pack_dir: &Path, _pack_id: &str) -> Result<bool, Rul
 /// Recursively copies all files and subdirectories from `src` to `dst`.
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), RulepackError> {
     for entry in walkdir::WalkDir::new(src) {
-        let entry = entry.map_err(|e| {
-            std::io::Error::other(e.to_string())
-        })?;
+        let entry = entry.map_err(|e| std::io::Error::other(e.to_string()))?;
 
         let relative = entry
             .path()
@@ -625,10 +620,7 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), RulepackError> {
 ///
 /// - [`RulepackError::NotFound`] if the pack is not installed.
 /// - [`RulepackError::NoRollback`] if no rollback archive exists.
-pub fn rollback_rulepack(
-    pack_id: &str,
-    store_dir: &Path,
-) -> Result<RollbackResult, RulepackError> {
+pub fn rollback_rulepack(pack_id: &str, store_dir: &Path) -> Result<RollbackResult, RulepackError> {
     let pack_dir = store_dir.join(pack_id);
 
     if !pack_dir.exists() {
@@ -778,8 +770,8 @@ mod tests {
     use super::*;
 
     use ed25519_dalek::SigningKey;
-    use flate2::write::GzEncoder;
     use flate2::Compression;
+    use flate2::write::GzEncoder;
     use tempfile::TempDir;
 
     // -- Helpers ----------------------------------------------------------
@@ -835,9 +827,7 @@ mod tests {
             header.set_size(manifest_bytes.len() as u64);
             header.set_mode(0o644);
             header.set_cksum();
-            builder
-                .append(&header, manifest_bytes.as_slice())
-                .unwrap();
+            builder.append(&header, manifest_bytes.as_slice()).unwrap();
 
             // Add rule files.
             for (path, contents) in rule_contents {
@@ -898,9 +888,7 @@ mod tests {
 
     /// Returns a (public_key_b64, signature_b64) for a manifest without
     /// mutating it. Used by standalone verification tests.
-    fn sign_manifest(
-        manifest: &RulepackManifest,
-    ) -> (String, String) {
+    fn sign_manifest(manifest: &RulepackManifest) -> (String, String) {
         use ed25519_dalek::Signer;
 
         let counter = TEST_KEY_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -1015,7 +1003,10 @@ mod tests {
 
         let result = verify_manifest(&signable, &bad_sig, &pk_b64);
         assert!(result.is_err());
-        assert!(matches!(result, Err(RulepackError::SignatureVerification(_))));
+        assert!(matches!(
+            result,
+            Err(RulepackError::SignatureVerification(_))
+        ));
     }
 
     #[test]
@@ -1273,10 +1264,14 @@ mod tests {
         let p1 = write_pack_file(tmp.path(), "m1.pack", &a1);
         install_rulepack(&p1, &store, &[]).unwrap();
 
-        let m2 = make_manifest("alpha-pack", "2.0.0", vec![
-            make_rule_entry("r2", "1.0.0"),
-            make_rule_entry("r3", "1.0.0"),
-        ]);
+        let m2 = make_manifest(
+            "alpha-pack",
+            "2.0.0",
+            vec![
+                make_rule_entry("r2", "1.0.0"),
+                make_rule_entry("r3", "1.0.0"),
+            ],
+        );
         let a2 = build_pack_archive(&m2, &HashMap::new());
         let p2 = write_pack_file(tmp.path(), "m2.pack", &a2);
         install_rulepack(&p2, &store, &[]).unwrap();

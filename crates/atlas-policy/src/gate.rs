@@ -172,7 +172,7 @@ pub fn evaluate_gate<F: GateFinding>(
     check_thresholds(
         &global_counts,
         fail_on,
-        None,  // no category filter
+        None, // no category filter
         "fail",
         &mut breached,
     );
@@ -190,13 +190,7 @@ pub fn evaluate_gate<F: GateFinding>(
 
     // Step 6: Check warn_on global thresholds.
     if let Some(warn) = warn_on {
-        check_thresholds(
-            &global_counts,
-            warn,
-            None,
-            "warn",
-            &mut breached,
-        );
+        check_thresholds(&global_counts, warn, None, "warn", &mut breached);
     }
 
     // Step 7: Check category-specific warn_on overrides.
@@ -754,7 +748,10 @@ mod tests {
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
         assert_eq!(details.result, GateResult::Fail);
         assert_eq!(details.breached_thresholds.len(), 1);
-        assert_eq!(details.breached_thresholds[0].category.as_deref(), Some("quality"));
+        assert_eq!(
+            details.breached_thresholds[0].category.as_deref(),
+            Some("quality")
+        );
         assert_eq!(details.breached_thresholds[0].severity, "total");
         assert_eq!(details.breached_thresholds[0].actual, 4);
     }
@@ -777,7 +774,10 @@ mod tests {
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
         assert_eq!(details.result, GateResult::Fail);
         assert_eq!(details.breached_thresholds.len(), 1);
-        assert_eq!(details.breached_thresholds[0].category.as_deref(), Some("secrets"));
+        assert_eq!(
+            details.breached_thresholds[0].category.as_deref(),
+            Some("secrets")
+        );
         assert_eq!(details.breached_thresholds[0].severity, "critical");
     }
 

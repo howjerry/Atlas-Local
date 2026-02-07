@@ -11,8 +11,8 @@ use atlas_core::engine::{ScanEngine, ScanOptions};
 use atlas_core::{Category, GateResult, Severity};
 use atlas_policy::gate::{self, GateFinding};
 use atlas_report::{
-    format_report, format_report_with_options, AtlasReport, GateBreachedThreshold, GateDetails,
-    ReportOptions, SCHEMA_VERSION,
+    AtlasReport, GateBreachedThreshold, GateDetails, ReportOptions, SCHEMA_VERSION, format_report,
+    format_report_with_options,
 };
 
 /// Returns the workspace root directory.
@@ -58,7 +58,10 @@ fn e2e_scan_finds_vulnerabilities_in_fixtures() {
         !result.findings.is_empty(),
         "scan must produce findings for vulnerable fixtures"
     );
-    assert!(result.files_scanned >= 4, "should scan at least 4 .ts files");
+    assert!(
+        result.files_scanned >= 4,
+        "should scan at least 4 .ts files"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -80,7 +83,11 @@ fn e2e_detects_sql_injection() {
         !sqli_findings.is_empty(),
         "must detect SQL injection in sql-injection.ts"
     );
-    assert!(sqli_findings.iter().all(|f| f.file_path == "sql-injection.ts"));
+    assert!(
+        sqli_findings
+            .iter()
+            .all(|f| f.file_path == "sql-injection.ts")
+    );
 }
 
 #[test]
@@ -109,7 +116,10 @@ fn e2e_detects_code_injection() {
     let code_injection_findings: Vec<_> = result
         .findings
         .iter()
-        .filter(|f| f.rule_id.starts_with("atlas/security/typescript/code-injection"))
+        .filter(|f| {
+            f.rule_id
+                .starts_with("atlas/security/typescript/code-injection")
+        })
         .collect();
 
     assert!(

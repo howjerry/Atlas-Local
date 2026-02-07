@@ -11,8 +11,8 @@
 
 use tracing::{info, warn};
 
-use crate::validator::License;
 use crate::LicenseError;
+use crate::validator::License;
 
 // ---------------------------------------------------------------------------
 // FloatingClient
@@ -183,7 +183,10 @@ mod tests {
         lic.server_url = None;
         let result = FloatingClient::new(&lic);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), LicenseError::MissingServerUrl));
+        assert!(matches!(
+            result.unwrap_err(),
+            LicenseError::MissingServerUrl
+        ));
     }
 
     #[test]

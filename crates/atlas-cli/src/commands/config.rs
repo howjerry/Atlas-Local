@@ -44,8 +44,7 @@ pub fn execute(args: ConfigArgs) -> Result<ExitCode, anyhow::Error> {
 fn execute_show() -> Result<ExitCode, anyhow::Error> {
     let cfg = config::load_config(None).context("failed to load configuration")?;
 
-    let yaml =
-        serde_yml::to_string(&cfg).context("failed to serialize configuration to YAML")?;
+    let yaml = serde_yml::to_string(&cfg).context("failed to serialize configuration to YAML")?;
 
     print!("{yaml}");
 

@@ -128,7 +128,9 @@ class Greeter:
     #[test]
     fn parse_empty_source() {
         let adapter = PythonAdapter;
-        let tree = adapter.parse(b"").expect("empty Python source should parse");
+        let tree = adapter
+            .parse(b"")
+            .expect("empty Python source should parse");
         assert_eq!(tree.root_node().kind(), "module");
     }
 

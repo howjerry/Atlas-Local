@@ -1,7 +1,5 @@
 //! Error types for the atlas-lang crate.
 
-use std::fmt;
-
 /// Errors that can occur during language adapter operations.
 #[derive(Debug, thiserror::Error)]
 pub enum LangError {

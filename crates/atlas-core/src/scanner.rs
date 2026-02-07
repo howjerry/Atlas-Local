@@ -279,10 +279,7 @@ fn is_secrets_excluded(path: &Path) -> bool {
     };
 
     // Check against known exclusion patterns.
-    if SECRETS_EXCLUSION_PATTERNS
-        .iter()
-        .any(|p| file_name == *p)
-    {
+    if SECRETS_EXCLUSION_PATTERNS.iter().any(|p| file_name == *p) {
         return true;
     }
 
@@ -450,7 +447,7 @@ mod tests {
         let result = discover_files(tmp.path(), None).unwrap();
 
         // Should find the file through both the real path and the symlink.
-        assert!(result.files.len() >= 1);
+        assert!(!result.files.is_empty());
     }
 
     #[test]
@@ -464,8 +461,16 @@ mod tests {
         let result2 = discover_files(tmp.path(), None).unwrap();
 
         // Same order both times.
-        let paths1: Vec<&str> = result1.files.iter().map(|f| f.relative_path.as_str()).collect();
-        let paths2: Vec<&str> = result2.files.iter().map(|f| f.relative_path.as_str()).collect();
+        let paths1: Vec<&str> = result1
+            .files
+            .iter()
+            .map(|f| f.relative_path.as_str())
+            .collect();
+        let paths2: Vec<&str> = result2
+            .files
+            .iter()
+            .map(|f| f.relative_path.as_str())
+            .collect();
         assert_eq!(paths1, paths2);
 
         // Sorted alphabetically.
@@ -532,17 +537,17 @@ mod tests {
     fn discover_marks_example_files_as_secrets_excluded() {
         let tmp = tempfile::tempdir().unwrap();
         fs::write(tmp.path().join("app.ts"), "const a = 1;").unwrap();
-        fs::write(
-            tmp.path().join("config.example.ts"),
-            "const key = 'test';",
-        )
-        .unwrap();
+        fs::write(tmp.path().join("config.example.ts"), "const key = 'test';").unwrap();
 
         let result = discover_files(tmp.path(), None).unwrap();
 
         assert_eq!(result.files.len(), 2);
 
-        let normal = result.files.iter().find(|f| f.relative_path == "app.ts").unwrap();
+        let normal = result
+            .files
+            .iter()
+            .find(|f| f.relative_path == "app.ts")
+            .unwrap();
         assert!(!normal.secrets_excluded);
 
         let example = result

@@ -17,10 +17,10 @@ use std::cmp::Ordering;
 use std::fmt;
 
 // Future modules -- uncomment as they are implemented.
-pub mod declarative;
-pub mod scripted;
 pub mod compiled;
+pub mod declarative;
 pub mod rulepack;
+pub mod scripted;
 
 // ---------------------------------------------------------------------------
 // Severity
@@ -460,7 +460,9 @@ fn is_valid_semver(version: &str) -> bool {
     if parts.len() != 3 {
         return false;
     }
-    parts.iter().all(|p| !p.is_empty() && p.parse::<u64>().is_ok())
+    parts
+        .iter()
+        .all(|p| !p.is_empty() && p.parse::<u64>().is_ok())
 }
 
 // ---------------------------------------------------------------------------
@@ -482,7 +484,10 @@ mod tests {
             language: Language::TypeScript,
             analysis_level: AnalysisLevel::L1,
             rule_type: RuleType::Declarative,
-            pattern: Some("(binary_expression left: (identifier) @source right: (template_string) @sink)".to_owned()),
+            pattern: Some(
+                "(binary_expression left: (identifier) @source right: (template_string) @sink)"
+                    .to_owned(),
+            ),
             script: None,
             plugin: None,
             cwe_id: Some("CWE-89".to_owned()),
@@ -783,10 +788,10 @@ mod tests {
 
     #[test]
     fn rules_are_ordered_by_id() {
-        let mut rules = vec![
-            make_compiled_rule(),   // "atlas/security/java/inter-proc-taint"
+        let mut rules = [
+            make_compiled_rule(),    // "atlas/security/java/inter-proc-taint"
             make_declarative_rule(), // "atlas/security/typescript/sql-injection"
-            make_scripted_rule(),   // "atlas/security/python/taint-flow"
+            make_scripted_rule(),    // "atlas/security/python/taint-flow"
         ];
         rules.sort();
         assert_eq!(rules[0].id, "atlas/security/java/inter-proc-taint");
@@ -894,7 +899,10 @@ mod tests {
             rule_id: "test".to_owned(),
             set_count: 0,
         };
-        assert!(err.to_string().contains("exactly one of pattern/script/plugin"));
+        assert!(
+            err.to_string()
+                .contains("exactly one of pattern/script/plugin")
+        );
 
         let err = RuleError::AnalysisLevelMismatch {
             rule_id: "test".to_owned(),

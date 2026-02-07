@@ -221,24 +221,24 @@
 
 **Purpose**: Performance optimization, caching, L2/L3 analysis, and robustness improvements across all stories
 
-- [ ] T083 [P] Implement SQLite-based result cache in `crates/atlas-cache/src/cache.rs`: cache key = SHA-256(file_content + rule_version_hash + config_hash), cache value = bincode-serialized Vec<Finding>, LRU eviction, self-invalidation on engine/rule version change
-- [ ] T084 [P] Implement cache corruption detection and recovery in `crates/atlas-cache/src/cache.rs`: detect SQLITE_CORRUPT, log warning, delete cache file, proceed without cache
-- [ ] T085 Integrate cache with scan pipeline in `crates/atlas-core/src/scanner.rs`: check cache before parsing, store results after analysis, respect --no-cache flag
-- [ ] T086 [P] Implement L2 intra-procedural data flow analysis in `crates/atlas-analysis/src/l2_intraprocedural.rs`: build scope graph per function, track variable definitions and uses, identify data flow paths within function boundaries
-- [ ] T087 [P] Implement L3 inter-procedural taint analysis in `crates/atlas-analysis/src/l3_interprocedural.rs`: build cross-file call graph, track taint sources/sinks across function boundaries with configurable call-depth limit
-- [ ] T088 Integrate L2/L3 analysis phases into scan pipeline in `crates/atlas-core/src/engine.rs`: after L1, run L2 on files needing deeper analysis, then L3 for cross-file taint tracking
-- [ ] T089 [P] Implement FindingsSummary computation (count by severity) and ScanStats (duration, cache hit rate, parse failures, timing breakdown) in `crates/atlas-core/src/engine.rs`
-- [ ] T090 [P] Implement schema_version field in all output formats (Atlas JSON, SARIF, JSONL, Policy, Baseline, Audit Bundle) to satisfy Constitution IV
-- [ ] T091 [P] Add edge case handling: max file size limit (skip files exceeding config), files with >1MB size warning, graceful degradation when analysis level exceeds language adapter capability
-- [ ] T092 Run quickstart.md validation: verify all CLI commands documented in quickstart.md work as expected end-to-end
-- [ ] T093 Verify determinism guarantee: run scan twice on same fixture, assert byte-identical output (SC-003)
-- [ ] T094 Verify offline operation: run scan with network blocked, assert zero network calls (SC-005)
-- [ ] T095 [P] Create positive and negative test case files for each TypeScript builtin rule in `rules/builtin/typescript/tests/`: each rule gets a `pass/` dir (code that should NOT trigger) and `fail/` dir (code that MUST trigger), per Constitution Testing Discipline
-- [ ] T096 [P] Create positive and negative test case files for each Java builtin rule in `rules/builtin/java/tests/` and each Python builtin rule in `rules/builtin/python/tests/`, per Constitution Testing Discipline
-- [ ] T097 [P] Create positive and negative test case files for each secrets detection rule in `rules/builtin/secrets/tests/`, per Constitution Testing Discipline
-- [ ] T098 [P] Implement fingerprint stability test suite in `tests/integration/fingerprint_stability.rs` covering 4 categories: line-drift (insert lines above finding), unrelated-edit (change code elsewhere in file), rename-refactor (rename file), cross-version (verify fingerprint across engine versions), per Constitution Testing Discipline
-- [ ] T099 [P] Create criterion benchmark suite in `tests/benchmarks/` with reference repos: small (~1K LOC), medium (~50K LOC), large (~500K LOC). Benchmarks MUST measure L1 scan time and MUST NOT regress beyond defined SLA (SC-002: 100K LOC < 30s), per Constitution Testing Discipline
-- [ ] T100 [P] Configure cross-platform CI pipeline in `.github/workflows/ci.yml`: lint (clippy), format check (rustfmt), unit tests, integration tests on Linux x64 + macOS ARM64 + Windows x64; build release binary on all 3 platforms, per Constitution Testing Discipline (cross-platform CI MUST build and run basic scans on all three target OS families)
+- [x] T083 [P] Implement SQLite-based result cache in `crates/atlas-cache/src/cache.rs`: cache key = SHA-256(file_content + rule_version_hash + config_hash), cache value = bincode-serialized Vec<Finding>, LRU eviction, self-invalidation on engine/rule version change
+- [x] T084 [P] Implement cache corruption detection and recovery in `crates/atlas-cache/src/cache.rs`: detect SQLITE_CORRUPT, log warning, delete cache file, proceed without cache
+- [x] T085 Integrate cache with scan pipeline in `crates/atlas-core/src/scanner.rs`: check cache before parsing, store results after analysis, respect --no-cache flag
+- [x] T086 [P] Implement L2 intra-procedural data flow analysis in `crates/atlas-analysis/src/l2_intraprocedural.rs`: build scope graph per function, track variable definitions and uses, identify data flow paths within function boundaries
+- [x] T087 [P] Implement L3 inter-procedural taint analysis in `crates/atlas-analysis/src/l3_interprocedural.rs`: build cross-file call graph, track taint sources/sinks across function boundaries with configurable call-depth limit
+- [x] T088 Integrate L2/L3 analysis phases into scan pipeline in `crates/atlas-core/src/engine.rs`: after L1, run L2 on files needing deeper analysis, then L3 for cross-file taint tracking
+- [x] T089 [P] Implement FindingsSummary computation (count by severity) and ScanStats (duration, cache hit rate, parse failures, timing breakdown) in `crates/atlas-core/src/engine.rs`
+- [x] T090 [P] Implement schema_version field in all output formats (Atlas JSON, SARIF, JSONL, Policy, Baseline, Audit Bundle) to satisfy Constitution IV
+- [x] T091 [P] Add edge case handling: max file size limit (skip files exceeding config), files with >1MB size warning, graceful degradation when analysis level exceeds language adapter capability
+- [x] T092 Run quickstart.md validation: verify all CLI commands documented in quickstart.md work as expected end-to-end
+- [x] T093 Verify determinism guarantee: run scan twice on same fixture, assert byte-identical output (SC-003)
+- [x] T094 Verify offline operation: run scan with network blocked, assert zero network calls (SC-005)
+- [x] T095 [P] Create positive and negative test case files for each TypeScript builtin rule in `rules/builtin/typescript/tests/`: each rule gets a `pass/` dir (code that should NOT trigger) and `fail/` dir (code that MUST trigger), per Constitution Testing Discipline
+- [x] T096 [P] Create positive and negative test case files for each Java builtin rule in `rules/builtin/java/tests/` and each Python builtin rule in `rules/builtin/python/tests/`, per Constitution Testing Discipline
+- [x] T097 [P] Create positive and negative test case files for each secrets detection rule in `rules/builtin/secrets/tests/`, per Constitution Testing Discipline
+- [x] T098 [P] Implement fingerprint stability test suite in `tests/integration/fingerprint_stability.rs` covering 4 categories: line-drift (insert lines above finding), unrelated-edit (change code elsewhere in file), rename-refactor (rename file), cross-version (verify fingerprint across engine versions), per Constitution Testing Discipline
+- [x] T099 [P] Create criterion benchmark suite in `tests/benchmarks/` with reference repos: small (~1K LOC), medium (~50K LOC), large (~500K LOC). Benchmarks MUST measure L1 scan time and MUST NOT regress beyond defined SLA (SC-002: 100K LOC < 30s), per Constitution Testing Discipline
+- [x] T100 [P] Configure cross-platform CI pipeline in `.github/workflows/ci.yml`: lint (clippy), format check (rustfmt), unit tests, integration tests on Linux x64 + macOS ARM64 + Windows x64; build release binary on all 3 platforms, per Constitution Testing Discipline (cross-platform CI MUST build and run basic scans on all three target OS families)
 
 ---
 

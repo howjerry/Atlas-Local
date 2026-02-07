@@ -11,7 +11,7 @@
 
 use std::path::Path;
 
-use ed25519_dalek::{Signature, VerifyingKey, Verifier};
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tracing::{debug, warn};
@@ -179,7 +179,11 @@ pub fn load_license(path: &Path) -> Result<License, LicenseError> {
 
 /// Returns the licence status summary for a loaded licence.
 pub fn license_status(license: &License, machine_fingerprint: Option<&str>) -> LicenseStatus {
-    let fingerprint_match = match (&license.license_type, &license.fingerprint, machine_fingerprint) {
+    let fingerprint_match = match (
+        &license.license_type,
+        &license.fingerprint,
+        machine_fingerprint,
+    ) {
         (atlas_core::LicenseType::NodeLocked, Some(expected), Some(actual)) => {
             Some(expected == actual)
         }
@@ -285,7 +289,10 @@ mod tests {
         lic.expiry = "not-a-date".to_string();
         let result = check_expiry(&lic);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), LicenseError::InvalidExpiry(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            LicenseError::InvalidExpiry(_)
+        ));
     }
 
     #[test]

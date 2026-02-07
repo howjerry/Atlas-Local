@@ -29,8 +29,7 @@ use crate::ENGINE_VERSION;
 const SARIF_VERSION: &str = "2.1.0";
 
 /// SARIF JSON schema URL.
-const SARIF_SCHEMA: &str =
-    "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json";
+const SARIF_SCHEMA: &str = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json";
 
 /// Tool driver name.
 const TOOL_NAME: &str = "Atlas Local SAST";
@@ -349,11 +348,7 @@ pub fn format_sarif(scan_result: &ScanResult, rules: &[Rule]) -> String {
     }
 
     // Convert findings to SARIF results.
-    let results: Vec<SarifResult> = scan_result
-        .findings
-        .iter()
-        .map(finding_to_result)
-        .collect();
+    let results: Vec<SarifResult> = scan_result.findings.iter().map(finding_to_result).collect();
 
     let report = SarifReport {
         version: SARIF_VERSION.to_string(),
@@ -382,8 +377,8 @@ mod tests {
     use super::*;
 
     use atlas_analysis::{FindingBuilder, LineRange};
-    use atlas_core::engine::ScanResult;
     use atlas_core::Language;
+    use atlas_core::engine::ScanResult;
     use atlas_rules::{AnalysisLevel, Category, Confidence, Rule, RuleType, Severity};
 
     // -- Test helpers ---------------------------------------------------------
@@ -430,11 +425,14 @@ mod tests {
 
     /// Creates a ScanResult with the given findings.
     fn make_scan_result(findings: Vec<Finding>) -> ScanResult {
+        let summary = atlas_core::engine::FindingsSummary::from_findings(&findings);
         ScanResult {
             findings,
             files_scanned: 5,
             files_skipped: 1,
             languages_detected: vec![Language::TypeScript, Language::JavaScript],
+            summary,
+            stats: atlas_core::engine::ScanStats::default(),
         }
     }
 
@@ -533,10 +531,7 @@ mod tests {
         assert_eq!(location["region"]["startColumn"], 1);
         assert_eq!(location["region"]["endLine"], 12);
         assert_eq!(location["region"]["endColumn"], 30);
-        assert_eq!(
-            location["artifactLocation"]["uri"],
-            "src/app.ts"
-        );
+        assert_eq!(location["artifactLocation"]["uri"], "src/app.ts");
     }
 
     #[test]
@@ -685,11 +680,11 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
 
         let results = parsed["runs"][0]["results"].as_array().unwrap();
-        assert_eq!(results[0]["level"], "error");   // Critical
-        assert_eq!(results[1]["level"], "error");   // High
+        assert_eq!(results[0]["level"], "error"); // Critical
+        assert_eq!(results[1]["level"], "error"); // High
         assert_eq!(results[2]["level"], "warning"); // Medium
-        assert_eq!(results[3]["level"], "note");    // Low
-        assert_eq!(results[4]["level"], "none");    // Info
+        assert_eq!(results[3]["level"], "note"); // Low
+        assert_eq!(results[4]["level"], "none"); // Info
     }
 
     #[test]
@@ -712,10 +707,8 @@ mod tests {
 
     #[test]
     fn sarif_rule_no_help_uri_when_no_references() {
-        let scan_result = make_scan_result(vec![make_finding(
-            Severity::High,
-            "atlas/security/ts/sqli",
-        )]);
+        let scan_result =
+            make_scan_result(vec![make_finding(Severity::High, "atlas/security/ts/sqli")]);
         let rules = vec![make_rule("atlas/security/ts/sqli", "1.0.0")];
 
         let json = format_sarif(&scan_result, &rules);
@@ -737,12 +730,8 @@ mod tests {
         let json = format_sarif(&scan_result, &rules);
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
 
-        let region =
-            &parsed["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["region"];
-        assert_eq!(
-            region["snippet"]["text"],
-            "const q = sql + input;"
-        );
+        let region = &parsed["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["region"];
+        assert_eq!(region["snippet"]["text"], "const q = sql + input;");
     }
 
     #[test]

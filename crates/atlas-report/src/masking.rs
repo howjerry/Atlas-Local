@@ -34,7 +34,14 @@ pub fn mask_secret(value: &str) -> String {
         "****".to_string()
     } else {
         let first4: String = value.chars().take(4).collect();
-        let last4: String = value.chars().rev().take(4).collect::<Vec<_>>().into_iter().rev().collect();
+        let last4: String = value
+            .chars()
+            .rev()
+            .take(4)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect();
         format!("{first4}****{last4}")
     }
 }

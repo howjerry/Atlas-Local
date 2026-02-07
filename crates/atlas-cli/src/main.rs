@@ -4,7 +4,10 @@ use atlas_cli::commands;
 
 /// Atlas Local -- Offline SAST Code Analysis Tool.
 #[derive(Parser)]
-#[command(name = "atlas", about = "Atlas Local -- Offline SAST Code Analysis Tool")]
+#[command(
+    name = "atlas",
+    about = "Atlas Local -- Offline SAST Code Analysis Tool"
+)]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]

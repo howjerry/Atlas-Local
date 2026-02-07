@@ -8,11 +8,11 @@ use tracing::info;
 
 use atlas_core::engine::{ScanEngine, ScanOptions};
 use atlas_core::{Category, GateResult, Language, Severity};
-use atlas_policy::gate::{self, GateFinding};
 use atlas_policy::baseline;
+use atlas_policy::gate::{self, GateFinding};
 use atlas_report::{
-    generate_reports, parse_formats, BaselineDiff, GateBreachedThreshold, GateDetails,
-    ReportOptions,
+    BaselineDiff, GateBreachedThreshold, GateDetails, ReportOptions, generate_reports,
+    parse_formats,
 };
 
 use crate::ExitCode;
@@ -161,8 +161,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
             match atlas_license::validator::load_license(&license_path) {
                 Ok(license) => {
                     let fp = atlas_license::node_locked::hardware_fingerprint();
-                    let status =
-                        atlas_license::validator::license_status(&license, Some(&fp));
+                    let status = atlas_license::validator::license_status(&license, Some(&fp));
                     if !status.valid {
                         eprintln!(
                             "atlas: license validation failed: {}",
@@ -212,6 +211,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
     let scan_options = ScanOptions {
         max_file_size_kb: config.scan.max_file_size_kb,
         jobs: args.jobs,
+        no_cache: args.no_cache,
     };
 
     // 7. Show progress spinner (unless --quiet).
@@ -238,7 +238,9 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
     if let Some(pb) = spinner {
         pb.finish_with_message(format!(
             "Scanned {} files ({} skipped), found {} findings",
-            result.files_scanned, result.files_skipped, result.findings.len()
+            result.files_scanned,
+            result.files_skipped,
+            result.findings.len()
         ));
     }
 
@@ -296,11 +298,8 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
     // Filter findings for gate evaluation: only new findings count against thresholds.
     let findings_for_gate: Vec<&atlas_analysis::Finding> =
         if let Some(ref diff) = baseline_diff_result {
-            let new_set: std::collections::HashSet<&str> = diff
-                .new_fingerprints
-                .iter()
-                .map(String::as_str)
-                .collect();
+            let new_set: std::collections::HashSet<&str> =
+                diff.new_fingerprints.iter().map(String::as_str).collect();
             result
                 .findings
                 .iter()
@@ -310,8 +309,10 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
             result.findings.iter().collect()
         };
 
-    let adapted: Vec<FindingAdapter<'_>> =
-        findings_for_gate.iter().map(|f| FindingAdapter(f)).collect();
+    let adapted: Vec<FindingAdapter<'_>> = findings_for_gate
+        .iter()
+        .map(|f| FindingAdapter(f))
+        .collect();
     let gate_eval = gate::evaluate_gate(
         &adapted,
         &policy.fail_on,
@@ -345,8 +346,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
     );
 
     // 10. Parse output formats and generate reports.
-    let formats = parse_formats(&args.format)
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let formats = parse_formats(&args.format).map_err(|e| anyhow::anyhow!(e))?;
 
     let target_path = std::fs::canonicalize(&args.target)
         .unwrap_or_else(|_| args.target.clone())
@@ -372,29 +372,40 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
 
     // 11. Write output.
     if let Some(output_path) = &args.output {
-        let is_dir = output_path.is_dir()
-            || (formats.len() > 1 && output_path.extension().is_none());
+        let is_dir =
+            output_path.is_dir() || (formats.len() > 1 && output_path.extension().is_none());
 
         if is_dir || formats.len() > 1 {
             // Output to directory: one file per format.
-            std::fs::create_dir_all(output_path)
-                .with_context(|| format!("failed to create output directory '{}'", output_path.display()))?;
+            std::fs::create_dir_all(output_path).with_context(|| {
+                format!(
+                    "failed to create output directory '{}'",
+                    output_path.display()
+                )
+            })?;
             for report in &reports {
                 let file_path = output_path.join(report.format.default_filename());
-                std::fs::write(&file_path, &report.content)
-                    .with_context(|| format!("failed to write {} to '{}'", report.format.extension(), file_path.display()))?;
+                std::fs::write(&file_path, &report.content).with_context(|| {
+                    format!(
+                        "failed to write {} to '{}'",
+                        report.format.extension(),
+                        file_path.display()
+                    )
+                })?;
                 info!(path = %file_path.display(), format = report.format.extension(), "wrote scan results");
             }
         } else {
             // Single format to a file path.
             if let Some(parent) = output_path.parent() {
                 if !parent.as_os_str().is_empty() {
-                    std::fs::create_dir_all(parent)
-                        .with_context(|| format!("failed to create output directory '{}'", parent.display()))?;
+                    std::fs::create_dir_all(parent).with_context(|| {
+                        format!("failed to create output directory '{}'", parent.display())
+                    })?;
                 }
             }
-            std::fs::write(output_path, &reports[0].content)
-                .with_context(|| format!("failed to write output to '{}'", output_path.display()))?;
+            std::fs::write(output_path, &reports[0].content).with_context(|| {
+                format!("failed to write output to '{}'", output_path.display())
+            })?;
             info!(path = %output_path.display(), "wrote scan results");
         }
     } else {
@@ -616,8 +627,8 @@ fail_on:
         let jsonl_content = std::fs::read_to_string(&jsonl_file).unwrap();
         for line in jsonl_content.lines() {
             if !line.is_empty() {
-                let _: serde_json::Value = serde_json::from_str(line)
-                    .expect("each JSONL line must be valid JSON");
+                let _: serde_json::Value =
+                    serde_json::from_str(line).expect("each JSONL line must be valid JSON");
             }
         }
     }
@@ -641,6 +652,9 @@ fail_on:
         let result = execute(args);
         assert!(result.is_err());
         let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("xml"), "error should mention unknown format");
+        assert!(
+            err_msg.contains("xml"),
+            "error should mention unknown format"
+        );
     }
 }

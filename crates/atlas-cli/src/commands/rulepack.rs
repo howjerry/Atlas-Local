@@ -103,17 +103,14 @@ fn execute_install(args: InstallArgs) -> Result<ExitCode, anyhow::Error> {
         "installing rulepack"
     );
 
-    let result = atlas_rules::rulepack::install_rulepack(
-        &args.pack_file,
-        &store_dir,
-        &trusted_keys,
-    )
-    .with_context(|| {
-        format!(
-            "failed to install rulepack from '{}'",
-            args.pack_file.display()
-        )
-    })?;
+    let result =
+        atlas_rules::rulepack::install_rulepack(&args.pack_file, &store_dir, &trusted_keys)
+            .with_context(|| {
+                format!(
+                    "failed to install rulepack from '{}'",
+                    args.pack_file.display()
+                )
+            })?;
 
     println!(
         "Installed rulepack '{}' v{} ({} rules)",

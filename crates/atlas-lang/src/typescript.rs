@@ -145,7 +145,9 @@ mod tests {
     fn typescript_parse_simple() {
         let adapter = TypeScriptAdapter;
         let source = b"const x: number = 42;";
-        let tree = adapter.parse(source).expect("should parse valid TypeScript");
+        let tree = adapter
+            .parse(source)
+            .expect("should parse valid TypeScript");
         let root = tree.root_node();
         assert_eq!(root.kind(), "program");
         assert!(!root.has_error(), "AST should have no errors");
@@ -165,7 +167,9 @@ mod tests {
     fn javascript_parse_simple() {
         let adapter = JavaScriptAdapter;
         let source = b"const x = 42;";
-        let tree = adapter.parse(source).expect("should parse valid JavaScript");
+        let tree = adapter
+            .parse(source)
+            .expect("should parse valid JavaScript");
         let root = tree.root_node();
         assert_eq!(root.kind(), "program");
         assert!(!root.has_error(), "AST should have no errors");
@@ -233,10 +237,14 @@ mod tests {
     #[test]
     fn parse_empty_source() {
         // An empty file should still parse successfully (produces an empty program node).
-        let ts_tree = TypeScriptAdapter.parse(b"").expect("empty TS source should parse");
+        let ts_tree = TypeScriptAdapter
+            .parse(b"")
+            .expect("empty TS source should parse");
         assert_eq!(ts_tree.root_node().kind(), "program");
 
-        let js_tree = JavaScriptAdapter.parse(b"").expect("empty JS source should parse");
+        let js_tree = JavaScriptAdapter
+            .parse(b"")
+            .expect("empty JS source should parse");
         assert_eq!(js_tree.root_node().kind(), "program");
     }
 }

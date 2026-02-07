@@ -14,11 +14,11 @@ pub use json::{
     AtlasReport, BaselineDiff, FindingsSummary, GateBreachedThreshold, GateDetails,
     GateResultReport, ReportOptions, ScanMetadata, ScanStats,
 };
+pub use json::{ENGINE_VERSION, SCHEMA_VERSION};
 pub use json::{
     compute_config_hash, compute_findings_summary, compute_rules_version, compute_scan_id,
     format_report, format_report_with_options,
 };
-pub use json::{ENGINE_VERSION, SCHEMA_VERSION};
 
 // ---------------------------------------------------------------------------
 // Report output format

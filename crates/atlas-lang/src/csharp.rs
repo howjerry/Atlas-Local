@@ -108,7 +108,9 @@ namespace MyApp
     }
 }
 "#;
-        let tree = adapter.parse(source).expect("should parse C# with namespace");
+        let tree = adapter
+            .parse(source)
+            .expect("should parse C# with namespace");
         let root = tree.root_node();
         assert_eq!(root.kind(), "compilation_unit");
         assert!(!root.has_error(), "AST should have no errors");

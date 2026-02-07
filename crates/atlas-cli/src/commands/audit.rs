@@ -83,6 +83,7 @@ fn execute_bundle(args: BundleArgs) -> Result<ExitCode, anyhow::Error> {
     let scan_options = ScanOptions {
         max_file_size_kb: config.scan.max_file_size_kb,
         jobs: None,
+        no_cache: false,
     };
 
     let result = engine
@@ -129,17 +130,19 @@ fn execute_bundle(args: BundleArgs) -> Result<ExitCode, anyhow::Error> {
         .report(report_value)
         .rules_applied(rules_meta)
         .config_entry("target", serde_json::json!(args.target.to_string_lossy()))
-        .config_entry("max_file_size_kb", serde_json::json!(config.scan.max_file_size_kb));
+        .config_entry(
+            "max_file_size_kb",
+            serde_json::json!(config.scan.max_file_size_kb),
+        );
 
     // 7. Add policy if provided.
     if let Some(ref policy_path) = args.policy {
         let policy_data = std::fs::read_to_string(policy_path)
             .with_context(|| format!("reading policy file {}", policy_path.display()))?;
-        let policy_value: serde_json::Value = serde_json::from_str(&policy_data)
-            .or_else(|_| {
-                serde_yml::from_str::<serde_json::Value>(&policy_data)
-                    .map_err(|e| anyhow::anyhow!("parsing policy: {e}"))
-            })?;
+        let policy_value: serde_json::Value = serde_json::from_str(&policy_data).or_else(|_| {
+            serde_yml::from_str::<serde_json::Value>(&policy_data)
+                .map_err(|e| anyhow::anyhow!("parsing policy: {e}"))
+        })?;
         builder = builder.policy(policy_value);
     }
 
@@ -153,9 +156,7 @@ fn execute_bundle(args: BundleArgs) -> Result<ExitCode, anyhow::Error> {
         "Audit bundle written to {} ({} rules, {} findings)",
         args.output.display(),
         bundle.rules_applied.len(),
-        bundle.report["findings"]
-            .as_array()
-            .map_or(0, |a| a.len()),
+        bundle.report["findings"].as_array().map_or(0, |a| a.len()),
     );
 
     Ok(ExitCode::Pass)

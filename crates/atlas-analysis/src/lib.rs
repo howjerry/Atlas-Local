@@ -2,6 +2,8 @@
 
 pub mod finding;
 pub mod l1_pattern;
+pub mod l2_intraprocedural;
+pub mod l3_interprocedural;
 pub mod secrets;
 
 pub use finding::{AnalysisError, Finding, FindingBuilder, LineRange};

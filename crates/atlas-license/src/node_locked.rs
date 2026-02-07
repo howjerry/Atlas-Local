@@ -14,8 +14,8 @@
 use sha2::{Digest, Sha256};
 use tracing::{debug, info};
 
-use crate::validator::{self, License, LicenseStatus};
 use crate::LicenseError;
+use crate::validator::{self, License, LicenseStatus};
 
 // ---------------------------------------------------------------------------
 // Hardware fingerprint generation  (T074)
@@ -249,9 +249,7 @@ pub fn validate_node_locked(
 
 /// Validates a node-locked licence from a file path, skipping signature
 /// verification (no public key embedded at this stage).
-pub fn validate_from_file(
-    path: &std::path::Path,
-) -> Result<LicenseStatus, LicenseError> {
+pub fn validate_from_file(path: &std::path::Path) -> Result<LicenseStatus, LicenseError> {
     let license = validator::load_license(path)?;
     validate_node_locked(&license, None)
 }
@@ -285,7 +283,10 @@ mod tests {
     #[test]
     fn os_identifier_format() {
         let os = os_identifier();
-        assert!(os.contains('-'), "os identifier must contain dash separator");
+        assert!(
+            os.contains('-'),
+            "os identifier must contain dash separator"
+        );
         assert!(
             os.contains(std::env::consts::OS),
             "os identifier must contain OS name"
@@ -369,7 +370,9 @@ mod tests {
             license_type: atlas_core::LicenseType::NodeLocked,
             expiry: "2099-12-31T23:59:59Z".to_string(),
             entitled_features: vec!["scan".to_string()],
-            fingerprint: Some("0000000000000000000000000000000000000000000000000000000000000000".to_string()),
+            fingerprint: Some(
+                "0000000000000000000000000000000000000000000000000000000000000000".to_string(),
+            ),
             max_seats: None,
             server_url: None,
             signature: "dGVzdA==".to_string(),

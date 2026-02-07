@@ -10,7 +10,9 @@
 
 use std::collections::HashMap;
 
-use crate::error::{LangError, LangResult};
+#[cfg(test)]
+use crate::error::LangError;
+use crate::error::LangResult;
 use crate::language::Language;
 
 // ---------------------------------------------------------------------------
