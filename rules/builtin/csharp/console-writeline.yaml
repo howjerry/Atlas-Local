@@ -1,0 +1,29 @@
+id: atlas/quality/csharp/console-writeline
+name: Console.WriteLine Residual
+description: >
+  Detects usage of Console.WriteLine and Console.Write methods. These
+  are typically debug artifacts that should be replaced with a proper
+  logging framework.
+severity: low
+category: quality
+language: CSharp
+confidence: high
+pattern: |
+  (invocation_expression
+    function: (member_access_expression
+      expression: (identifier) @cls
+      name: (identifier) @method
+      (#eq? @cls "Console")
+      (#match? @method "^(WriteLine|Write)$")))
+  @match
+remediation: >
+  Replace Console.Write* calls with a logging framework like ILogger,
+  Serilog, or NLog that supports log levels and structured output.
+references:
+  - https://learn.microsoft.com/en-us/aspnet/core/fundamentals/logging/
+tags:
+  - code-quality
+  - debug-residual
+metadata:
+  quality_domain: "debug-residual"
+version: 1.0.0

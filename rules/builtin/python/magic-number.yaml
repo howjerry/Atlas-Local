@@ -1,0 +1,28 @@
+id: atlas/quality/python/magic-number
+name: Magic Number in Comparison
+description: >
+  Detects numeric literals (other than 0 and 1) used directly in comparison
+  expressions. Magic numbers make code harder to understand and maintain.
+  Extracting them into named constants improves readability and makes the
+  intent of the comparison clear.
+severity: low
+category: quality
+language: Python
+confidence: low
+pattern: |
+  (comparison_operator
+    [(integer) (float)] @num
+    (#not-match? @num "^[01]$"))
+  @match
+remediation: >
+  Extract the magic number into a named constant with a descriptive name.
+  For example, replace `if temperature > 212:` with
+  `BOILING_POINT = 212; if temperature > BOILING_POINT:`.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/convention/magic-value-comparison.html
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

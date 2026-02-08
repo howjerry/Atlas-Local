@@ -1,0 +1,42 @@
+id: atlas/quality/java/string-concat-in-loop
+name: String Concatenation in Loop
+description: >
+  Detects string concatenation using += inside loops. Since Java strings
+  are immutable, each += creates a new String object, leading to O(n^2)
+  time complexity and excessive garbage collection pressure. Use
+  StringBuilder instead.
+severity: medium
+category: quality
+language: Java
+confidence: high
+pattern: |
+  [
+    (for_statement
+      body: (_
+        (expression_statement
+          (assignment_expression
+            operator: "+="))))
+    (while_statement
+      body: (_
+        (expression_statement
+          (assignment_expression
+            operator: "+="))))
+    (enhanced_for_statement
+      body: (_
+        (expression_statement
+          (assignment_expression
+            operator: "+="))))
+  ]
+  @match
+remediation: >
+  Replace string concatenation with StringBuilder. Initialize a
+  StringBuilder before the loop, use append() inside the loop, and
+  call toString() after the loop completes.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-1643/
+tags:
+  - code-quality
+  - performance
+metadata:
+  quality_domain: "performance"
+version: 1.0.0

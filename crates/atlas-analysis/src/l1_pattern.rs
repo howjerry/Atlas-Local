@@ -13,6 +13,8 @@
 //!   findings (severity, category, description, etc.).
 //! - [`L1Error`] covers query compilation failures and evaluation errors.
 
+use std::collections::BTreeMap;
+
 use tracing::{debug, warn};
 use tree_sitter::{Query, QueryCursor, StreamingIterator, Tree};
 
@@ -70,6 +72,8 @@ pub struct RuleMatchMetadata {
     pub remediation: String,
     /// Detection confidence level.
     pub confidence: Confidence,
+    /// Arbitrary metadata to stamp onto findings (e.g. `quality_domain`).
+    pub metadata: BTreeMap<String, serde_json::Value>,
 }
 
 // ---------------------------------------------------------------------------
@@ -215,6 +219,10 @@ impl L1PatternEngine {
                 builder = builder.cwe_id(cwe);
             }
 
+            if !rule_metadata.metadata.is_empty() {
+                builder = builder.metadata(rule_metadata.metadata.clone());
+            }
+
             match builder.build() {
                 Ok(finding) => {
                     debug!(
@@ -291,6 +299,7 @@ mod tests {
             description: "Use of dangerous function call detected.".to_string(),
             remediation: "Avoid dangerous function calls. Use safer alternatives.".to_string(),
             confidence: Confidence::High,
+            metadata: BTreeMap::new(),
         }
     }
 
@@ -512,6 +521,7 @@ mod tests {
             description: "Avoid dangerous calls".to_string(),
             remediation: "Remove dangerous call usage".to_string(),
             confidence: Confidence::Medium,
+            metadata: BTreeMap::new(),
         };
 
         let findings = engine.evaluate(&tree, source, "src/test.ts", &metadata);

@@ -1,0 +1,25 @@
+id: atlas/quality/python/print-statement
+name: Print Statement Residual
+description: >
+  Detects usage of the print() function in production code. Print statements
+  are typically debug artifacts that should be replaced with proper logging.
+severity: low
+category: quality
+language: Python
+confidence: high
+pattern: |
+  (call
+    function: (identifier) @fn
+    (#eq? @fn "print"))
+  @match
+remediation: >
+  Replace print() calls with a logging framework like Python's built-in
+  `logging` module that supports log levels and structured output.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/print-function.html
+tags:
+  - code-quality
+  - debug-residual
+metadata:
+  quality_domain: debug-residual
+version: 1.0.0

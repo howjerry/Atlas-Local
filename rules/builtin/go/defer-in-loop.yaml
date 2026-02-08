@@ -1,0 +1,27 @@
+id: atlas/quality/go/defer-in-loop
+name: Defer in Loop
+description: >
+  Detects defer statements inside for loops. Deferred calls accumulate until the
+  enclosing function returns, not until the loop iteration ends, which can cause
+  resource leaks and excessive memory usage.
+severity: medium
+category: quality
+language: Go
+confidence: high
+pattern: |
+  (for_statement
+    body: (block
+      (defer_statement)))
+  @match
+remediation: >
+  Move the deferred operation into a separate function called from within the
+  loop, or manage the resource explicitly without defer. For example, extract
+  the loop body into a helper function where defer executes at each call.
+references:
+  - https://go.dev/doc/effective_go#defer
+tags:
+  - code-quality
+  - performance
+metadata:
+  quality_domain: performance
+version: 1.0.0

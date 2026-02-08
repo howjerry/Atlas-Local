@@ -12,6 +12,8 @@
 //! which prevents importing them from `atlas-core` (circular dependency).
 //! `atlas-core` re-exports these types from its own module.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt;
@@ -362,6 +364,10 @@ pub struct Rule {
 
     /// Rule version in SemVer format (e.g. "1.0.0").
     pub version: String,
+
+    /// Arbitrary metadata carried through to findings (e.g. `quality_domain`).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub metadata: BTreeMap<String, serde_json::Value>,
 }
 
 impl Rule {
@@ -550,6 +556,7 @@ mod tests {
             references: vec!["https://cwe.mitre.org/data/definitions/89.html".to_owned()],
             tags: vec!["sql".to_owned(), "injection".to_owned()],
             version: "1.0.0".to_owned(),
+            metadata: BTreeMap::new(),
         }
     }
 
@@ -573,6 +580,7 @@ mod tests {
             references: vec![],
             tags: vec!["taint".to_owned(), "xss".to_owned()],
             version: "2.1.0".to_owned(),
+            metadata: BTreeMap::new(),
         }
     }
 
@@ -596,6 +604,7 @@ mod tests {
             references: vec![],
             tags: vec![],
             version: "0.1.0".to_owned(),
+            metadata: BTreeMap::new(),
         }
     }
 

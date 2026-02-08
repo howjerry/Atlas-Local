@@ -1,0 +1,30 @@
+id: atlas/quality/typescript/console-log
+name: Console Log Residual
+description: >
+  Detects console.log and similar console output methods left in production
+  code. These are typically debug artifacts that should be replaced with
+  structured logging.
+severity: low
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (call_expression
+    function: (member_expression
+      object: (identifier) @obj
+      property: (property_identifier) @prop
+      (#eq? @obj "console")
+      (#match? @prop "^(log|warn|error|debug|info|trace|dir)$")))
+  @match
+remediation: >
+  Remove console output statements or replace them with a structured logging
+  library (e.g., winston, pino, bunyan) that supports log levels and
+  structured output.
+references:
+  - https://eslint.org/docs/latest/rules/no-console
+tags:
+  - code-quality
+  - debug-residual
+metadata:
+  quality_domain: debug-residual
+version: 1.0.0

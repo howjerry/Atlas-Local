@@ -1,0 +1,31 @@
+id: atlas/quality/go/empty-error-check
+name: Empty Error Check
+description: >
+  Detects if statements checking `err != nil` with an empty body. This pattern
+  indicates an error is detected but silently ignored, which can hide bugs and
+  make debugging difficult.
+severity: medium
+category: quality
+language: Go
+confidence: high
+pattern: |
+  (if_statement
+    condition: (binary_expression
+      left: (identifier) @err
+      operator: "!="
+      right: (nil))
+    consequence: (block
+      .
+      "}"))
+  @match
+remediation: >
+  Handle the error by returning it, logging it, or wrapping it with additional
+  context using fmt.Errorf or errors.Wrap. Never silently ignore errors in Go.
+references:
+  - https://go.dev/blog/error-handling-and-go
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

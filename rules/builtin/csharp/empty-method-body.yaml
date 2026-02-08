@@ -1,0 +1,28 @@
+id: atlas/quality/csharp/empty-method-body
+name: Empty Method Body
+description: >
+  Detects methods with empty bodies. Empty methods may indicate
+  incomplete implementations, forgotten stubs, or dead code that
+  should be removed or implemented.
+severity: low
+category: quality
+language: CSharp
+confidence: medium
+pattern: |
+  (method_declaration
+    body: (block
+      .
+      "}"))
+  @match
+remediation: >
+  Implement the method body, remove the method if unused, or add a
+  comment explaining why it is intentionally empty (e.g. interface
+  adapter or event handler stub).
+references:
+  - https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/methods
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

@@ -1,0 +1,30 @@
+id: atlas/quality/python/mutable-default-arg
+name: Mutable Default Argument
+description: >
+  Detects function parameters with mutable default values (lists or
+  dictionaries). Mutable defaults are shared across all calls to the function,
+  causing unexpected behavior when the default is modified.
+severity: medium
+category: quality
+language: Python
+confidence: high
+pattern: |
+  [
+    (default_parameter
+      value: (list))
+    (default_parameter
+      value: (dictionary))
+  ]
+  @match
+remediation: >
+  Use `None` as the default value and create the mutable object inside the
+  function body. For example, replace `def foo(items=[])` with
+  `def foo(items=None)` and `if items is None: items = []`.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/dangerous-default-value.html
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: best-practices
+version: 1.0.0

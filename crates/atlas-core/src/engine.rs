@@ -506,6 +506,7 @@ impl ScanEngine {
                 description: rule.description.clone(),
                 remediation: rule.remediation.clone(),
                 confidence: rule.confidence,
+                metadata: rule.metadata.clone(),
             };
 
             // Evaluate and collect findings.
@@ -631,6 +632,7 @@ mod tests {
             references: vec![],
             tags: vec![],
             version: "1.0.0".to_owned(),
+            metadata: std::collections::BTreeMap::new(),
         };
 
         engine.add_rules(vec![rule]);

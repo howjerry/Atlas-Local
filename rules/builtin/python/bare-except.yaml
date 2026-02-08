@@ -1,0 +1,25 @@
+id: atlas/quality/python/bare-except
+name: Bare Except Clause
+description: >
+  Detects bare `except:` clauses without specifying an exception type. Bare
+  except clauses catch all exceptions including SystemExit and
+  KeyboardInterrupt, making it harder to debug issues and potentially masking
+  critical errors.
+severity: medium
+category: quality
+language: Python
+confidence: high
+pattern: |
+  (except_clause . ":") @match
+remediation: >
+  Specify the exception types you want to catch. Use `except Exception:` at
+  minimum to avoid catching SystemExit and KeyboardInterrupt. Prefer specific
+  exceptions like `except ValueError:`.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/bare-except.html
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

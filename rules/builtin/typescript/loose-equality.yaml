@@ -1,0 +1,23 @@
+id: atlas/quality/typescript/loose-equality
+name: Loose Equality Operator
+description: >
+  Detects usage of loose equality operators (== and !=) instead of strict
+  equality (=== and !==). Loose equality performs type coercion which can
+  lead to unexpected behavior.
+severity: medium
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (binary_expression operator: ["==" "!="]) @match
+remediation: >
+  Replace == with === and != with !==. Strict equality avoids type coercion
+  and makes comparisons explicit and predictable.
+references:
+  - https://eslint.org/docs/latest/rules/eqeqeq
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: best-practices
+version: 1.0.0

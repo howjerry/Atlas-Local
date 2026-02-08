@@ -1,0 +1,28 @@
+id: atlas/quality/csharp/object-type-usage
+name: Object Type Parameter
+description: >
+  Detects method parameters typed as `object`. Using `object`
+  bypasses compile-time type checking, which can lead to runtime
+  errors and makes code harder to understand and maintain.
+severity: low
+category: quality
+language: CSharp
+confidence: low
+pattern: |
+  (parameter
+    type: (predefined_type) @type
+    (#eq? @type "object"))
+  @match
+remediation: >
+  Use a specific type, generic type parameter with constraints, or
+  an interface instead of `object`. For example, use `T` with
+  `where T : IProcessable` to maintain type safety while keeping
+  flexibility.
+references:
+  - https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/generics/
+tags:
+  - code-quality
+  - type-safety
+metadata:
+  quality_domain: "type-safety"
+version: 1.0.0

@@ -1,0 +1,38 @@
+id: atlas/quality/go/unchecked-error
+name: Unchecked Error
+description: >
+  Detects function calls whose error return value is discarded by assigning it
+  to the blank identifier `_`. Ignoring errors can mask failures and lead to
+  silent data corruption, resource leaks, or undefined behaviour.
+severity: high
+category: quality
+language: Go
+confidence: medium
+pattern: |
+  [
+    (assignment_statement
+      left: (expression_list
+        (identifier) @blank
+        (#eq? @blank "_"))
+      right: (expression_list
+        (call_expression)))
+    (short_var_declaration
+      left: (expression_list
+        (identifier) @blank
+        (#eq? @blank "_"))
+      right: (expression_list
+        (call_expression)))
+  ]
+  @match
+remediation: >
+  Assign the error to a named variable and handle it explicitly. At minimum,
+  log the error or return it to the caller. Use `errcheck` or `golangci-lint`
+  to enforce error checking across the codebase.
+references:
+  - https://go.dev/blog/error-handling-and-go
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

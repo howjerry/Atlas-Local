@@ -1,0 +1,38 @@
+id: atlas/quality/typescript/empty-function-body
+name: Empty Function Body
+description: >
+  Detects functions with empty bodies. Empty functions are often placeholders
+  that were never implemented, or dead code that should be removed. They can
+  mask missing logic and lead to silent failures.
+severity: low
+category: quality
+language: TypeScript
+confidence: medium
+pattern: |
+  [
+    (function_declaration
+      body: (statement_block
+        .
+        "}"))
+    (function_expression
+      body: (statement_block
+        .
+        "}"))
+    (arrow_function
+      body: (statement_block
+        .
+        "}"))
+  ]
+  @match
+remediation: >
+  Implement the function body with the intended logic. If the function is
+  intentionally a no-op, add a comment explaining why, or remove the function
+  entirely if it is unused.
+references:
+  - https://eslint.org/docs/latest/rules/no-empty-function
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

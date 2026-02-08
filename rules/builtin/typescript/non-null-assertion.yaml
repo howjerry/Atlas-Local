@@ -1,0 +1,24 @@
+id: atlas/quality/typescript/non-null-assertion
+name: Non-Null Assertion Operator
+description: >
+  Detects usage of the TypeScript non-null assertion operator (!.). This operator
+  tells the compiler to ignore the possibility of null or undefined, bypassing
+  type safety checks and potentially causing runtime errors.
+severity: info
+category: quality
+language: TypeScript
+confidence: medium
+pattern: |
+  (non_null_expression) @match
+remediation: >
+  Replace the non-null assertion with optional chaining (?.) and a fallback
+  value using the nullish coalescing operator (??), or add an explicit null
+  check before accessing the value.
+references:
+  - https://typescript-eslint.io/rules/no-non-null-assertion
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: best-practices
+version: 1.0.0

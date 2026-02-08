@@ -1,0 +1,24 @@
+id: atlas/quality/typescript/empty-catch-block
+name: Empty Catch Block
+description: >
+  Detects try-catch blocks where the catch clause has an empty body. Empty
+  catch blocks silently swallow exceptions, hiding errors that could indicate
+  bugs, security issues, or operational problems.
+severity: medium
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (catch_clause body: (statement_block . "}")) @match
+remediation: >
+  Handle the caught exception explicitly. Log the error, re-throw it, or
+  handle it with appropriate recovery logic. If intentionally ignoring the
+  error, add a comment explaining why.
+references:
+  - https://eslint.org/docs/latest/rules/no-empty
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

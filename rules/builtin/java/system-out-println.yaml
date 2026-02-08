@@ -1,0 +1,32 @@
+id: atlas/quality/java/system-out-println
+name: System.out.println Residual
+description: >
+  Detects usage of System.out.println and similar System.out/System.err
+  print methods. These are typically debug artifacts that should be
+  replaced with a proper logging framework.
+severity: low
+category: quality
+language: Java
+confidence: high
+pattern: |
+  (method_invocation
+    object: (field_access
+      object: (identifier) @cls
+      field: (identifier) @field
+      (#eq? @cls "System")
+      (#match? @field "^(out|err)$"))
+    name: (identifier) @method
+    (#match? @method "^(println|print|printf|format)$"))
+  @match
+remediation: >
+  Replace System.out/err print calls with a logging framework like
+  SLF4J, Log4j, or java.util.logging that supports log levels and
+  structured output.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-106/
+tags:
+  - code-quality
+  - debug-residual
+metadata:
+  quality_domain: "debug-residual"
+version: 1.0.0

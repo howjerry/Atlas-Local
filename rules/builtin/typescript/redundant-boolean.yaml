@@ -1,0 +1,27 @@
+id: atlas/quality/typescript/redundant-boolean
+name: Redundant Boolean Comparison
+description: >
+  Detects comparisons against boolean literals (true or false). Comparing a
+  value to true or false is redundant and reduces readability. The boolean
+  value itself can be used directly in conditions.
+severity: low
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (binary_expression
+    operator: ["==" "===" "!=" "!=="]
+    [(true) (false)])
+  @match
+remediation: >
+  Remove the redundant comparison. Use the boolean value directly in
+  conditions: replace `x === true` with `x`, and `x === false` with `!x`.
+references:
+  - https://eslint.org/docs/latest/rules/no-extra-boolean-cast
+  - https://typescript-eslint.io/rules/no-unnecessary-boolean-literal-compare
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: best-practices
+version: 1.0.0

@@ -1,0 +1,32 @@
+id: atlas/quality/python/empty-function-body
+name: Empty Function Body
+description: >
+  Detects functions whose body consists solely of a `pass` statement. Empty
+  function stubs are often leftover scaffolding or incomplete implementations
+  that should be completed or removed. Functions with only a docstring are not
+  flagged, as docstring-only bodies are a valid pattern for abstract methods
+  and interface definitions.
+severity: low
+category: quality
+language: Python
+confidence: medium
+pattern: |
+  (function_definition
+    body: (block
+      .
+      (pass_statement)
+      .))
+  @match
+remediation: >
+  Implement the function body or remove the function if it is no longer needed.
+  If the function is intentionally a no-op, add a docstring explaining why, or
+  use `...` (Ellipsis) to indicate an intentional placeholder in abstract
+  methods.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/unnecessary-pass.html
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

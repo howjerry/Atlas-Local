@@ -1,0 +1,27 @@
+id: atlas/quality/csharp/redundant-boolean
+name: Redundant Boolean Comparison
+description: >
+  Detects comparisons of boolean expressions against boolean literals
+  (e.g. `if (x == true)` or `if (y != false)`). These comparisons
+  are redundant and reduce readability.
+severity: low
+category: quality
+language: CSharp
+confidence: high
+pattern: |
+  (binary_expression
+    operator: ["==" "!="]
+    (boolean_literal))
+  @match
+remediation: >
+  Remove the redundant boolean literal comparison. Use `if (x)`
+  instead of `if (x == true)` and `if (!x)` instead of
+  `if (x != true)` or `if (x == false)`.
+references:
+  - https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/boolean-logical-operators
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: "best-practices"
+version: 1.0.0

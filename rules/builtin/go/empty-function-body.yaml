@@ -1,0 +1,28 @@
+id: atlas/quality/go/empty-function-body
+name: Empty Function Body
+description: >
+  Detects function declarations with empty bodies. Empty functions are often
+  placeholders or stubs that were never implemented. They can hide missing
+  logic and cause unexpected no-op behaviour at runtime.
+severity: low
+category: quality
+language: Go
+confidence: medium
+pattern: |
+  (function_declaration
+    body: (block
+      .
+      "}"))
+  @match
+remediation: >
+  Implement the function body, or if the function intentionally does nothing,
+  add an explicit comment explaining why. Consider removing the function if it
+  is no longer needed.
+references:
+  - https://go.dev/doc/effective_go#functions
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

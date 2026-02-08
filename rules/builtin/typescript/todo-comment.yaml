@@ -1,0 +1,25 @@
+id: atlas/quality/typescript/todo-comment
+name: TODO/FIXME Comment
+description: >
+  Detects TODO, FIXME, HACK, and XXX comments left in source code. These
+  comments indicate incomplete work or known issues that should be tracked
+  in an issue tracker rather than left as code comments.
+severity: info
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (comment) @match
+  (#match? @match "(TODO|FIXME|HACK|XXX)")
+remediation: >
+  Create an issue in your project tracker for the outstanding work described
+  in the comment, then remove the TODO/FIXME comment. If the task is no longer
+  relevant, simply delete the comment.
+references:
+  - https://eslint.org/docs/latest/rules/no-warning-comments
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

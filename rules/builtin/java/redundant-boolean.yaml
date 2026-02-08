@@ -1,0 +1,27 @@
+id: atlas/quality/java/redundant-boolean
+name: Redundant Boolean Comparison
+description: >
+  Detects comparisons of boolean expressions against boolean literals
+  (true or false). Comparing a boolean value to true or false is redundant
+  and reduces code readability.
+severity: low
+category: quality
+language: Java
+confidence: high
+pattern: |
+  (binary_expression
+    operator: ["==" "!="]
+    [(true) (false)])
+  @match
+remediation: >
+  Remove the redundant boolean literal comparison. Use the boolean
+  expression directly: replace `x == true` with `x`, `x != true` with
+  `!x`, `x == false` with `!x`, and `x != false` with `x`.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-1125/
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: "best-practices"
+version: 1.0.0

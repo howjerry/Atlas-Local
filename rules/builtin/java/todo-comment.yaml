@@ -1,0 +1,25 @@
+id: atlas/quality/java/todo-comment
+name: TODO/FIXME Comment
+description: >
+  Detects TODO, FIXME, HACK, and XXX comments left in source code.
+  These are typically temporary markers that indicate incomplete work,
+  known issues, or workarounds that should be tracked and resolved.
+severity: info
+category: quality
+language: Java
+confidence: high
+pattern: |
+  (comment) @match
+  (#match? @match "(TODO|FIXME|HACK|XXX)")
+remediation: >
+  Resolve the underlying issue described in the comment and remove it,
+  or create a ticket in your issue tracker and reference it in the comment
+  so the work is not forgotten.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-1135/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

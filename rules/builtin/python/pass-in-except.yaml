@@ -1,0 +1,29 @@
+id: atlas/quality/python/pass-in-except
+name: Pass in Except Block
+description: >
+  Detects except blocks that contain only a `pass` statement. This silently
+  swallows exceptions without any handling, logging, or recovery, making it
+  difficult to diagnose issues.
+severity: medium
+category: quality
+language: Python
+confidence: high
+pattern: |
+  (except_clause
+    (block
+      .
+      (pass_statement)
+      .))
+  @match
+remediation: >
+  Replace `pass` with appropriate error handling. At minimum, log the
+  exception. If the exception is truly ignorable, add a comment explaining why
+  and consider using `contextlib.suppress()`.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/bare-except.html
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

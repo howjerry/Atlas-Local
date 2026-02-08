@@ -1,0 +1,25 @@
+id: atlas/quality/go/todo-comment
+name: TODO Comment
+description: >
+  Detects TODO, FIXME, HACK, and XXX comments left in source code. These
+  markers indicate incomplete work or known issues that should be tracked in
+  an issue tracker and resolved before merging to production.
+severity: info
+category: quality
+language: Go
+confidence: high
+pattern: |
+  (comment) @match
+  (#match? @match "(TODO|FIXME|HACK|XXX)")
+remediation: >
+  Create an issue in the project tracker for the outstanding work described
+  in the comment, then either resolve the issue or replace the comment with
+  a reference to the issue number.
+references:
+  - https://go.dev/doc/comment
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

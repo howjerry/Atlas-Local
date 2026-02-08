@@ -403,6 +403,7 @@ mod tests {
             tags: vec![],
             version: version.to_string(),
             confidence: Confidence::Medium,
+            metadata: std::collections::BTreeMap::new(),
         }
     }
 

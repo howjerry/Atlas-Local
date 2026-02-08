@@ -27,6 +27,7 @@
 //! version: 1.0.0
 //! ```
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
@@ -122,6 +123,10 @@ pub struct DeclarativeRuleFile {
 
     /// Rule version in SemVer format (e.g. `1.0.0`).
     pub version: String,
+
+    /// Arbitrary metadata carried through to findings (e.g. `quality_domain`).
+    #[serde(default)]
+    pub metadata: Option<BTreeMap<String, serde_json::Value>>,
 }
 
 impl From<DeclarativeRuleFile> for Rule {
@@ -144,6 +149,7 @@ impl From<DeclarativeRuleFile> for Rule {
             references: file.references,
             tags: file.tags,
             version: file.version,
+            metadata: file.metadata.unwrap_or_default(),
         }
     }
 }
@@ -492,6 +498,7 @@ version: not-semver
             tags: vec![],
             version: "1.0.0".to_owned(),
             confidence: None,
+            metadata: None,
         };
 
         let rule: Rule = file.into();
@@ -552,13 +559,20 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Python rules should load successfully");
 
-        assert_eq!(rules.len(), 4, "expected exactly 4 Python rules");
+        assert_eq!(rules.len(), 11, "expected exactly 11 Python rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(
             ids,
             vec![
+                "atlas/quality/python/bare-except",
+                "atlas/quality/python/empty-function-body",
+                "atlas/quality/python/magic-number",
+                "atlas/quality/python/mutable-default-arg",
+                "atlas/quality/python/pass-in-except",
+                "atlas/quality/python/print-statement",
+                "atlas/quality/python/todo-comment",
                 "atlas/security/python/command-injection",
                 "atlas/security/python/eval-usage",
                 "atlas/security/python/sql-injection",
@@ -572,24 +586,33 @@ version: 0.1.0
             assert_eq!(rule.analysis_level, AnalysisLevel::L1);
             assert_eq!(rule.rule_type, RuleType::Declarative);
             assert!(rule.pattern.is_some());
-            assert_eq!(rule.category, Category::Security);
-            assert!(rule.cwe_id.is_some());
             assert!(!rule.tags.is_empty());
             assert_eq!(rule.version, "1.0.0");
         }
 
-        // Verify specific severities.
+        // Verify security rules.
+        let security_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Security)
+            .collect();
+        assert_eq!(security_rules.len(), 4, "expected 4 security rules");
+        for rule in &security_rules {
+            assert!(rule.cwe_id.is_some());
+        }
+
         let sql = rules
             .iter()
             .find(|r| r.id.contains("sql-injection"))
             .unwrap();
         assert_eq!(sql.severity, Severity::Critical);
+        assert_eq!(sql.cwe_id.as_deref(), Some("CWE-89"));
 
         let cmd = rules
             .iter()
             .find(|r| r.id.contains("command-injection"))
             .unwrap();
         assert_eq!(cmd.severity, Severity::Critical);
+        assert_eq!(cmd.cwe_id.as_deref(), Some("CWE-78"));
 
         let eval = rules.iter().find(|r| r.id.contains("eval-usage")).unwrap();
         assert_eq!(eval.severity, Severity::Critical);
@@ -599,6 +622,65 @@ version: 0.1.0
             .find(|r| r.id.contains("unsafe-deserialization"))
             .unwrap();
         assert_eq!(deser.severity, Severity::High);
+
+        // Verify quality rules.
+        let quality_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Quality)
+            .collect();
+        assert_eq!(quality_rules.len(), 7, "expected 7 quality rules");
+        for rule in &quality_rules {
+            assert!(rule.cwe_id.is_none());
+        }
+
+        let bare_except = rules
+            .iter()
+            .find(|r| r.id.contains("bare-except"))
+            .unwrap();
+        assert_eq!(bare_except.severity, Severity::Medium);
+        assert_eq!(bare_except.category, Category::Quality);
+
+        let print_stmt = rules
+            .iter()
+            .find(|r| r.id.contains("print-statement"))
+            .unwrap();
+        assert_eq!(print_stmt.severity, Severity::Low);
+        assert_eq!(print_stmt.category, Category::Quality);
+
+        let pass_except = rules
+            .iter()
+            .find(|r| r.id.contains("pass-in-except"))
+            .unwrap();
+        assert_eq!(pass_except.severity, Severity::Medium);
+        assert_eq!(pass_except.category, Category::Quality);
+
+        let mutable_default = rules
+            .iter()
+            .find(|r| r.id.contains("mutable-default-arg"))
+            .unwrap();
+        assert_eq!(mutable_default.severity, Severity::Medium);
+        assert_eq!(mutable_default.category, Category::Quality);
+
+        let empty_fn = rules
+            .iter()
+            .find(|r| r.id.contains("empty-function-body"))
+            .unwrap();
+        assert_eq!(empty_fn.severity, Severity::Low);
+        assert_eq!(empty_fn.category, Category::Quality);
+
+        let todo_comment = rules
+            .iter()
+            .find(|r| r.id.contains("todo-comment"))
+            .unwrap();
+        assert_eq!(todo_comment.severity, Severity::Info);
+        assert_eq!(todo_comment.category, Category::Quality);
+
+        let magic_num = rules
+            .iter()
+            .find(|r| r.id.contains("magic-number"))
+            .unwrap();
+        assert_eq!(magic_num.severity, Severity::Low);
+        assert_eq!(magic_num.category, Category::Quality);
     }
 
     // -------------------------------------------------------------------
@@ -623,13 +705,20 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Java rules should load successfully");
 
-        assert_eq!(rules.len(), 4, "expected exactly 4 Java rules");
+        assert_eq!(rules.len(), 11, "expected exactly 11 Java rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(
             ids,
             vec![
+                "atlas/quality/java/empty-catch-block",
+                "atlas/quality/java/empty-method-body",
+                "atlas/quality/java/raw-type-usage",
+                "atlas/quality/java/redundant-boolean",
+                "atlas/quality/java/string-concat-in-loop",
+                "atlas/quality/java/system-out-println",
+                "atlas/quality/java/todo-comment",
                 "atlas/security/java/insecure-deserialization",
                 "atlas/security/java/path-traversal",
                 "atlas/security/java/sql-injection",
@@ -643,13 +732,20 @@ version: 0.1.0
             assert_eq!(rule.analysis_level, AnalysisLevel::L1);
             assert_eq!(rule.rule_type, RuleType::Declarative);
             assert!(rule.pattern.is_some());
-            assert_eq!(rule.category, Category::Security);
-            assert!(rule.cwe_id.is_some());
             assert!(!rule.tags.is_empty());
             assert_eq!(rule.version, "1.0.0");
         }
 
-        // Verify specific severities.
+        // Verify security rules.
+        let security_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Security)
+            .collect();
+        assert_eq!(security_rules.len(), 4, "expected 4 security rules");
+        for rule in &security_rules {
+            assert!(rule.cwe_id.is_some());
+        }
+
         let sql = rules
             .iter()
             .find(|r| r.id.contains("sql-injection"))
@@ -674,6 +770,82 @@ version: 0.1.0
             .unwrap();
         assert_eq!(path.severity, Severity::High);
         assert_eq!(path.cwe_id.as_deref(), Some("CWE-22"));
+
+        // Verify quality rules.
+        let quality_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Quality)
+            .collect();
+        assert_eq!(quality_rules.len(), 7, "expected 7 quality rules");
+
+        let empty_catch = rules
+            .iter()
+            .find(|r| r.id.contains("empty-catch-block"))
+            .unwrap();
+        assert_eq!(empty_catch.severity, Severity::Medium);
+        assert_eq!(empty_catch.category, Category::Quality);
+        assert!(empty_catch.cwe_id.is_none());
+        assert_eq!(empty_catch.confidence, crate::Confidence::High);
+
+        let sysout = rules
+            .iter()
+            .find(|r| r.id.contains("system-out-println"))
+            .unwrap();
+        assert_eq!(sysout.severity, Severity::Low);
+        assert_eq!(sysout.category, Category::Quality);
+        assert!(sysout.cwe_id.is_none());
+        assert_eq!(sysout.confidence, crate::Confidence::High);
+
+        // Verify new quality rules.
+        let todo = rules
+            .iter()
+            .find(|r| r.id.contains("todo-comment"))
+            .unwrap();
+        assert_eq!(todo.severity, Severity::Info);
+        assert_eq!(todo.category, Category::Quality);
+        assert!(todo.cwe_id.is_none());
+        assert_eq!(todo.confidence, crate::Confidence::High);
+        assert!(todo.tags.contains(&"maintainability".to_owned()));
+
+        let empty_method = rules
+            .iter()
+            .find(|r| r.id.contains("empty-method-body"))
+            .unwrap();
+        assert_eq!(empty_method.severity, Severity::Low);
+        assert_eq!(empty_method.category, Category::Quality);
+        assert!(empty_method.cwe_id.is_none());
+        assert_eq!(empty_method.confidence, crate::Confidence::Medium);
+        assert!(empty_method.tags.contains(&"maintainability".to_owned()));
+
+        let redundant_bool = rules
+            .iter()
+            .find(|r| r.id.contains("redundant-boolean"))
+            .unwrap();
+        assert_eq!(redundant_bool.severity, Severity::Low);
+        assert_eq!(redundant_bool.category, Category::Quality);
+        assert!(redundant_bool.cwe_id.is_none());
+        assert_eq!(redundant_bool.confidence, crate::Confidence::High);
+        assert!(redundant_bool.tags.contains(&"best-practices".to_owned()));
+
+        let str_concat = rules
+            .iter()
+            .find(|r| r.id.contains("string-concat-in-loop"))
+            .unwrap();
+        assert_eq!(str_concat.severity, Severity::Medium);
+        assert_eq!(str_concat.category, Category::Quality);
+        assert!(str_concat.cwe_id.is_none());
+        assert_eq!(str_concat.confidence, crate::Confidence::High);
+        assert!(str_concat.tags.contains(&"performance".to_owned()));
+
+        let raw_type = rules
+            .iter()
+            .find(|r| r.id.contains("raw-type-usage"))
+            .unwrap();
+        assert_eq!(raw_type.severity, Severity::Low);
+        assert_eq!(raw_type.category, Category::Quality);
+        assert!(raw_type.cwe_id.is_none());
+        assert_eq!(raw_type.confidence, crate::Confidence::Medium);
+        assert!(raw_type.tags.contains(&"type-safety".to_owned()));
     }
 
     // -------------------------------------------------------------------
@@ -698,13 +870,19 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all C# rules should load successfully");
 
-        assert_eq!(rules.len(), 5, "expected exactly 5 C# rules");
+        assert_eq!(rules.len(), 11, "expected exactly 11 C# rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(
             ids,
             vec![
+                "atlas/quality/csharp/console-writeline",
+                "atlas/quality/csharp/empty-catch-block",
+                "atlas/quality/csharp/empty-method-body",
+                "atlas/quality/csharp/object-type-usage",
+                "atlas/quality/csharp/redundant-boolean",
+                "atlas/quality/csharp/todo-comment",
                 "atlas/security/csharp/command-injection",
                 "atlas/security/csharp/insecure-deserialization",
                 "atlas/security/csharp/path-traversal",
@@ -719,11 +897,71 @@ version: 0.1.0
             assert_eq!(rule.analysis_level, AnalysisLevel::L1);
             assert_eq!(rule.rule_type, RuleType::Declarative);
             assert!(rule.pattern.is_some());
-            assert_eq!(rule.category, Category::Security);
-            assert!(rule.cwe_id.is_some());
             assert!(!rule.tags.is_empty());
             assert_eq!(rule.version, "1.0.0");
         }
+
+        // Verify security rules have CWE and security category.
+        let security_rules: Vec<_> = rules
+            .iter()
+            .filter(|r| r.category == Category::Security)
+            .collect();
+        assert_eq!(security_rules.len(), 5);
+        for rule in &security_rules {
+            assert!(rule.cwe_id.is_some());
+        }
+
+        // Verify quality rules.
+        let quality_rules: Vec<_> = rules
+            .iter()
+            .filter(|r| r.category == Category::Quality)
+            .collect();
+        assert_eq!(quality_rules.len(), 6);
+        for rule in &quality_rules {
+            assert!(rule.cwe_id.is_none());
+        }
+
+        let empty_catch = rules
+            .iter()
+            .find(|r| r.id.contains("empty-catch-block"))
+            .unwrap();
+        assert_eq!(empty_catch.severity, Severity::Medium);
+        assert_eq!(empty_catch.category, Category::Quality);
+
+        let console_wl = rules
+            .iter()
+            .find(|r| r.id.contains("console-writeline"))
+            .unwrap();
+        assert_eq!(console_wl.severity, Severity::Low);
+        assert_eq!(console_wl.category, Category::Quality);
+
+        let empty_method = rules
+            .iter()
+            .find(|r| r.id.contains("empty-method-body"))
+            .unwrap();
+        assert_eq!(empty_method.severity, Severity::Low);
+        assert_eq!(empty_method.category, Category::Quality);
+
+        let object_type = rules
+            .iter()
+            .find(|r| r.id.contains("object-type-usage"))
+            .unwrap();
+        assert_eq!(object_type.severity, Severity::Low);
+        assert_eq!(object_type.category, Category::Quality);
+
+        let redundant_bool = rules
+            .iter()
+            .find(|r| r.id.contains("redundant-boolean"))
+            .unwrap();
+        assert_eq!(redundant_bool.severity, Severity::Low);
+        assert_eq!(redundant_bool.category, Category::Quality);
+
+        let todo_comment = rules
+            .iter()
+            .find(|r| r.id.contains("todo-comment"))
+            .unwrap();
+        assert_eq!(todo_comment.severity, Severity::Info);
+        assert_eq!(todo_comment.category, Category::Quality);
 
         // Verify specific severities.
         let sql_concat = rules
@@ -784,13 +1022,19 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Go rules should load successfully");
 
-        assert_eq!(rules.len(), 3, "expected exactly 3 Go rules");
+        assert_eq!(rules.len(), 9, "expected exactly 9 Go rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(
             ids,
             vec![
+                "atlas/quality/go/defer-in-loop",
+                "atlas/quality/go/empty-error-check",
+                "atlas/quality/go/empty-function-body",
+                "atlas/quality/go/fmt-println",
+                "atlas/quality/go/todo-comment",
+                "atlas/quality/go/unchecked-error",
                 "atlas/security/go/command-injection",
                 "atlas/security/go/path-traversal",
                 "atlas/security/go/sql-injection",
@@ -803,13 +1047,20 @@ version: 0.1.0
             assert_eq!(rule.analysis_level, AnalysisLevel::L1);
             assert_eq!(rule.rule_type, RuleType::Declarative);
             assert!(rule.pattern.is_some());
-            assert_eq!(rule.category, Category::Security);
-            assert!(rule.cwe_id.is_some());
             assert!(!rule.tags.is_empty());
             assert_eq!(rule.version, "1.0.0");
         }
 
-        // Verify specific severities.
+        // Verify security rules.
+        let security_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Security)
+            .collect();
+        assert_eq!(security_rules.len(), 3, "expected 3 security rules");
+        for rule in &security_rules {
+            assert!(rule.cwe_id.is_some());
+        }
+
         let sql = rules
             .iter()
             .find(|r| r.id.contains("sql-injection"))
@@ -830,5 +1081,57 @@ version: 0.1.0
             .unwrap();
         assert_eq!(path.severity, Severity::High);
         assert_eq!(path.cwe_id.as_deref(), Some("CWE-22"));
+
+        // Verify quality rules.
+        let quality_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Quality)
+            .collect();
+        assert_eq!(quality_rules.len(), 6, "expected 6 quality rules");
+        for rule in &quality_rules {
+            assert!(rule.cwe_id.is_none());
+        }
+
+        let defer_loop = rules
+            .iter()
+            .find(|r| r.id.contains("defer-in-loop"))
+            .unwrap();
+        assert_eq!(defer_loop.severity, Severity::Medium);
+        assert_eq!(defer_loop.category, Category::Quality);
+
+        let empty_err = rules
+            .iter()
+            .find(|r| r.id.contains("empty-error-check"))
+            .unwrap();
+        assert_eq!(empty_err.severity, Severity::Medium);
+        assert_eq!(empty_err.category, Category::Quality);
+
+        let fmt_println = rules
+            .iter()
+            .find(|r| r.id.contains("fmt-println"))
+            .unwrap();
+        assert_eq!(fmt_println.severity, Severity::Low);
+        assert_eq!(fmt_println.category, Category::Quality);
+
+        let empty_fn = rules
+            .iter()
+            .find(|r| r.id.contains("empty-function-body"))
+            .unwrap();
+        assert_eq!(empty_fn.severity, Severity::Low);
+        assert_eq!(empty_fn.category, Category::Quality);
+
+        let todo = rules
+            .iter()
+            .find(|r| r.id.contains("todo-comment"))
+            .unwrap();
+        assert_eq!(todo.severity, Severity::Info);
+        assert_eq!(todo.category, Category::Quality);
+
+        let unchecked = rules
+            .iter()
+            .find(|r| r.id.contains("unchecked-error"))
+            .unwrap();
+        assert_eq!(unchecked.severity, Severity::High);
+        assert_eq!(unchecked.category, Category::Quality);
     }
 }

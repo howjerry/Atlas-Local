@@ -1,0 +1,30 @@
+id: atlas/quality/java/empty-method-body
+name: Empty Method Body
+description: >
+  Detects methods with empty bodies. An empty method body often indicates
+  stub code that was never implemented, or a callback/event handler that
+  silently ignores events. This can lead to subtle bugs and makes intent
+  unclear.
+severity: low
+category: quality
+language: Java
+confidence: medium
+pattern: |
+  (method_declaration
+    body: (block
+      .
+      "}"))
+  @match
+remediation: >
+  Implement the method body with appropriate logic. If the method is
+  intentionally empty (e.g. a no-op override), add a comment explaining
+  why. Consider using an abstract method if subclasses should provide
+  the implementation.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-1186/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

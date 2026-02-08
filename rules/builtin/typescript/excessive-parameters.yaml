@@ -1,0 +1,28 @@
+id: atlas/quality/typescript/excessive-parameters
+name: Excessive Function Parameters
+description: >
+  Detects functions with six or more parameters. Functions with many parameters
+  are difficult to call correctly, test, and maintain. They often indicate that
+  the function is doing too much or that related parameters should be grouped
+  into an object or data structure.
+severity: medium
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (function_declaration
+    parameters: (formal_parameters
+      (_) @p1 . (_) @p2 . (_) @p3 . (_) @p4 . (_) @p5 . (_) @p6))
+  @match
+remediation: >
+  Refactor the function to accept fewer parameters. Group related parameters
+  into an options object or interface, split the function into smaller focused
+  functions, or use the builder pattern for complex construction.
+references:
+  - https://eslint.org/docs/latest/rules/max-params
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

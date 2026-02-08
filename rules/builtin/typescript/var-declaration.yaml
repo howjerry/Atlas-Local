@@ -1,0 +1,24 @@
+id: atlas/quality/typescript/var-declaration
+name: Var Declaration
+description: >
+  Detects usage of `var` keyword for variable declarations. In modern
+  TypeScript/JavaScript, `let` and `const` provide block scoping and should
+  be preferred over function-scoped `var`.
+severity: low
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (variable_declaration) @match
+remediation: >
+  Replace `var` with `const` for values that don't change, or `let` for
+  values that need reassignment. Both provide block-level scoping, preventing
+  common scope-related bugs.
+references:
+  - https://eslint.org/docs/latest/rules/no-var
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: best-practices
+version: 1.0.0

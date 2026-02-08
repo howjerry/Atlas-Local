@@ -1,0 +1,27 @@
+id: atlas/quality/java/raw-type-usage
+name: Raw Type Usage
+description: >
+  Detects usage of raw generic types (e.g. List, Map, Set) without type
+  parameters. Raw types bypass generic type checking, losing compile-time
+  type safety and risking ClassCastException at runtime.
+severity: low
+category: quality
+language: Java
+confidence: medium
+pattern: |
+  (local_variable_declaration
+    type: (type_identifier) @type
+    (#match? @type "^(List|Map|Set|Collection|Iterator|Iterable|Queue|Deque)$"))
+  @match
+remediation: >
+  Add explicit type parameters to the generic type declaration.
+  For example, replace `List items` with `List<String> items` or
+  `Map data` with `Map<String, Object> data`.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-3740/
+tags:
+  - code-quality
+  - type-safety
+metadata:
+  quality_domain: "type-safety"
+version: 1.0.0

@@ -1,0 +1,31 @@
+id: atlas/quality/typescript/any-type-usage
+name: TypeScript Any Type Usage
+description: >
+  Detects usage of the `any` type annotation in TypeScript. Using `any`
+  bypasses the type system, losing compile-time safety and enabling potential
+  runtime errors.
+severity: low
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  [
+    (type_annotation
+      (predefined_type) @type
+      (#eq? @type "any"))
+    (as_expression
+      (predefined_type) @type
+      (#eq? @type "any"))
+  ]
+  @match
+remediation: >
+  Replace `any` with a specific type, `unknown`, or a generic type parameter.
+  Use `unknown` when the type is truly dynamic, and narrow it with type guards.
+references:
+  - https://typescript-eslint.io/rules/no-explicit-any
+tags:
+  - code-quality
+  - type-safety
+metadata:
+  quality_domain: type-safety
+version: 1.0.0

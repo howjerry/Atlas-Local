@@ -1,0 +1,28 @@
+id: atlas/quality/go/fmt-println
+name: fmt.Println Residual
+description: >
+  Detects usage of fmt.Println, fmt.Printf, and fmt.Print for output. These are
+  typically debug artifacts that should be replaced with structured logging.
+severity: low
+category: quality
+language: Go
+confidence: high
+pattern: |
+  (call_expression
+    function: (selector_expression
+      operand: (identifier) @pkg
+      field: (field_identifier) @fn
+      (#eq? @pkg "fmt")
+      (#match? @fn "^(Println|Printf|Print)$")))
+  @match
+remediation: >
+  Replace fmt.Print* calls with a structured logging library like log/slog,
+  logrus, or zap that supports log levels and structured output.
+references:
+  - https://pkg.go.dev/log/slog
+tags:
+  - code-quality
+  - debug-residual
+metadata:
+  quality_domain: debug-residual
+version: 1.0.0
