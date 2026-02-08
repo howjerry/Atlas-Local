@@ -54,9 +54,10 @@ Desktop.ini
 *.log
 
 # =========================
-# Atlas-Local cache
+# Atlas-Local cache & reports
 # =========================
 .atlas-cache/
+reports/
 
 # =========================
 # Miscellaneous
