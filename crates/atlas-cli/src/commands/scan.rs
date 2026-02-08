@@ -1,6 +1,6 @@
 //! The `scan` CLI subcommand -- scans a project for security vulnerabilities.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -129,6 +129,25 @@ fn parse_language_filter(lang_arg: &str) -> Vec<Language> {
             }
         })
         .collect()
+}
+
+// ---------------------------------------------------------------------------
+// Output directory organisation
+// ---------------------------------------------------------------------------
+
+/// Resolves the final output directory for directory-mode output.
+///
+/// Given a base directory (the user's `--output` path) and the scan target,
+/// produces `{base}/{project_name}/{YYYYMMDD-HHmmss}/` so that successive
+/// scans never overwrite each other.
+fn resolve_output_dir(base: &Path, target: &Path) -> PathBuf {
+    let project_name = target
+        .file_name()
+        .unwrap_or_else(|| std::ffi::OsStr::new("unknown"))
+        .to_string_lossy();
+    let timestamp = chrono::Local::now().format("%Y%m%d-%H%M%S");
+    base.join(project_name.as_ref())
+        .join(timestamp.to_string())
 }
 
 // ---------------------------------------------------------------------------
@@ -394,15 +413,16 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
             output_path.is_dir() || (formats.len() > 1 && output_path.extension().is_none());
 
         if is_dir || formats.len() > 1 {
-            // Output to directory: one file per format.
-            std::fs::create_dir_all(output_path).with_context(|| {
+            // Output to directory: organise under {project}/{timestamp}/.
+            let final_dir = resolve_output_dir(output_path, &args.target);
+            std::fs::create_dir_all(&final_dir).with_context(|| {
                 format!(
                     "failed to create output directory '{}'",
-                    output_path.display()
+                    final_dir.display()
                 )
             })?;
             for report in &reports {
-                let file_path = output_path.join(report.format.default_filename());
+                let file_path = final_dir.join(report.format.default_filename());
                 std::fs::write(&file_path, &report.content).with_context(|| {
                     format!(
                         "failed to write {} to '{}'",
@@ -605,8 +625,9 @@ fail_on:
     fn execute_multi_format_output() {
         let tmp = tempfile::tempdir().unwrap();
         let output_dir = tmp.path().join("reports");
+        let target = tmp.path().to_path_buf();
         let args = ScanArgs {
-            target: tmp.path().to_path_buf(),
+            target: target.clone(),
             format: "json,sarif,jsonl".to_string(),
             output: Some(output_dir.clone()),
             policy: None,
@@ -622,10 +643,24 @@ fail_on:
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), ExitCode::Pass);
 
+        // Directory mode now organises under {project}/{timestamp}/.
+        // Discover the auto-created subdirectory.
+        let project_name = target.file_name().unwrap().to_string_lossy().to_string();
+        let project_dir = output_dir.join(&project_name);
+        assert!(project_dir.is_dir(), "project subdirectory must exist");
+
+        let mut ts_dirs: Vec<_> = std::fs::read_dir(&project_dir)
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
+            .collect();
+        assert_eq!(ts_dirs.len(), 1, "exactly one timestamp dir expected");
+        let ts_dir = ts_dirs.remove(0).path();
+
         // Verify all three output files were created.
-        let json_file = output_dir.join("atlas-report.json");
-        let sarif_file = output_dir.join("atlas-report.sarif");
-        let jsonl_file = output_dir.join("atlas-report.jsonl");
+        let json_file = ts_dir.join("atlas-report.json");
+        let sarif_file = ts_dir.join("atlas-report.sarif");
+        let jsonl_file = ts_dir.join("atlas-report.jsonl");
 
         assert!(json_file.exists(), "JSON report must exist");
         assert!(sarif_file.exists(), "SARIF report must exist");
@@ -649,6 +684,52 @@ fail_on:
                     serde_json::from_str(line).expect("each JSONL line must be valid JSON");
             }
         }
+    }
+
+    #[test]
+    fn resolve_output_dir_uses_project_and_timestamp() {
+        let base = PathBuf::from("/tmp/reports");
+        let target = PathBuf::from("/home/user/Projects/MyApp");
+        let result = resolve_output_dir(&base, &target);
+
+        // Should be /tmp/reports/MyApp/{YYYYMMDD-HHmmss}
+        assert!(result.starts_with("/tmp/reports/MyApp/"));
+        let ts_component = result.file_name().unwrap().to_string_lossy();
+        // Timestamp format: YYYYMMDD-HHmmss (15 chars)
+        assert_eq!(ts_component.len(), 15, "timestamp should be YYYYMMDD-HHmmss");
+        assert!(ts_component.contains('-'), "timestamp should contain a dash");
+    }
+
+    #[test]
+    fn resolve_output_dir_with_root_target() {
+        let base = PathBuf::from("/tmp/reports");
+        let target = PathBuf::from("/");
+        let result = resolve_output_dir(&base, &target);
+        // Root has no file_name, should fall back to "unknown".
+        assert!(result.starts_with("/tmp/reports/unknown/"));
+    }
+
+    #[test]
+    fn execute_single_file_output_unaffected() {
+        // Single-file mode should write directly to the specified path (no sub-dirs).
+        let tmp = tempfile::tempdir().unwrap();
+        let output_file = tmp.path().join("custom.json");
+        let args = ScanArgs {
+            target: tmp.path().to_path_buf(),
+            format: "json".to_string(),
+            output: Some(output_file.clone()),
+            policy: None,
+            baseline: None,
+            lang: None,
+            jobs: None,
+            no_cache: false,
+            verbose: false,
+            quiet: true,
+            timestamp: false,
+        };
+        let result = execute(args);
+        assert!(result.is_ok());
+        assert!(output_file.exists(), "single-file output must exist at exact path");
     }
 
     #[test]
