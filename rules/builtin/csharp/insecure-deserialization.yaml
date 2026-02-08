@@ -1,0 +1,50 @@
+id: atlas/security/csharp/insecure-deserialization
+name: Insecure Deserialization via BinaryFormatter or Unsafe JSON Settings
+description: >
+  Detects use of BinaryFormatter.Deserialize() which can execute arbitrary
+  code during deserialization of untrusted data, and assignment of
+  TypeNameHandling to All, Auto, Objects, or Arrays in Newtonsoft.Json,
+  which enables type-based attacks. Both patterns can lead to remote code
+  execution if an attacker controls the serialized input.
+severity: critical
+category: security
+language: CSharp
+cwe_id: CWE-502
+pattern: |
+  [
+    (invocation_expression
+      function: (member_access_expression
+        expression: (_) @obj
+        name: (identifier) @method
+        (#match? @method "^(Deserialize|UnsafeDeserialize)$"))
+      arguments: (argument_list
+        (argument
+          (_) @data_arg)))
+    @match
+
+    (assignment_expression
+      left: (member_access_expression
+        name: (identifier) @prop
+        (#eq? @prop "TypeNameHandling"))
+      right: (member_access_expression
+        name: (identifier) @value
+        (#match? @value "^(All|Auto|Objects|Arrays)$")))
+    @match
+  ]
+remediation: >
+  Never use BinaryFormatter; it has been deprecated by Microsoft. Use
+  System.Text.Json or Newtonsoft.Json with TypeNameHandling.None (the
+  default). For example:
+  `var settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.None };`.
+references:
+  - https://cwe.mitre.org/data/definitions/502.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html
+  - https://learn.microsoft.com/en-us/dotnet/standard/serialization/binaryformatter-security-guide
+tags:
+  - deserialization
+  - rce
+  - binary-formatter
+  - json-net
+  - owasp-top-10
+  - a08-insecure-deserialization
+version: 1.0.0

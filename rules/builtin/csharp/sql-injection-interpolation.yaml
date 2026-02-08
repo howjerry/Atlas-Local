@@ -1,0 +1,38 @@
+id: atlas/security/csharp/sql-injection-interpolation
+name: SQL Injection via String Interpolation in ADO.NET/Dapper
+description: >
+  Detects potential SQL injection vulnerabilities where SQL queries are
+  constructed using C# string interpolation ($"...{variable}...") and
+  passed to ADO.NET or Dapper database methods. String interpolation
+  embeds variables directly into the SQL string without parameterization,
+  allowing an attacker to manipulate query logic through crafted input.
+severity: critical
+category: security
+language: CSharp
+cwe_id: CWE-89
+pattern: |
+  (invocation_expression
+    function: (member_access_expression
+      name: (identifier) @method
+      (#match? @method "^(ExecuteReader|ExecuteNonQuery|ExecuteScalar|ExecuteAsync|QueryAsync|QueryFirstOrDefaultAsync|QueryFirstAsync|QuerySingleAsync|QuerySingleOrDefaultAsync|Execute|Query|QueryFirst|QueryFirstOrDefault|QuerySingle|QuerySingleOrDefault)$"))
+    arguments: (argument_list
+      (argument
+        (interpolated_string_expression) @sql_interp)))
+  @match
+remediation: >
+  Replace string interpolation with parameterized queries. For Dapper,
+  replace `connection.QueryAsync($"SELECT * FROM users WHERE id = {userId}")`
+  with `connection.QueryAsync("SELECT * FROM users WHERE id = @Id", new { Id = userId })`.
+references:
+  - https://cwe.mitre.org/data/definitions/89.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+  - https://www.learndapper.com/parameters
+tags:
+  - sql-injection
+  - injection
+  - string-interpolation
+  - dapper
+  - ado-net
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0

@@ -1,0 +1,41 @@
+id: atlas/security/csharp/sql-injection-concatenation
+name: SQL Injection via String Concatenation in ADO.NET/Dapper
+description: >
+  Detects potential SQL injection vulnerabilities where SQL queries are
+  constructed using string concatenation and passed to ADO.NET or Dapper
+  methods such as ExecuteReader, ExecuteNonQuery, ExecuteScalar,
+  QueryAsync, ExecuteAsync, or QueryFirstOrDefaultAsync. An attacker
+  can manipulate the concatenated input to alter the SQL query logic,
+  leading to unauthorized data access, modification, or deletion.
+severity: critical
+category: security
+language: CSharp
+cwe_id: CWE-89
+pattern: |
+  (invocation_expression
+    function: (member_access_expression
+      name: (identifier) @method
+      (#match? @method "^(ExecuteReader|ExecuteNonQuery|ExecuteScalar|ExecuteAsync|QueryAsync|QueryFirstOrDefaultAsync|QueryFirstAsync|QuerySingleAsync|QuerySingleOrDefaultAsync|Execute|Query|QueryFirst|QueryFirstOrDefault|QuerySingle|QuerySingleOrDefault)$"))
+    arguments: (argument_list
+      (argument
+        (binary_expression
+          left: (string_literal) @sql_string
+          right: (_) @concat_arg))))
+  @match
+remediation: >
+  Use parameterized queries instead of string concatenation. For Dapper,
+  use anonymous objects for parameter binding. Replace
+  `connection.QueryAsync("SELECT * FROM users WHERE id=" + id)` with
+  `connection.QueryAsync("SELECT * FROM users WHERE id=@Id", new { Id = id })`.
+references:
+  - https://cwe.mitre.org/data/definitions/89.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/SQL_Injection
+tags:
+  - sql-injection
+  - injection
+  - dapper
+  - ado-net
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0

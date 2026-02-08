@@ -669,4 +669,90 @@ version: 0.1.0
         assert_eq!(path.severity, Severity::High);
         assert_eq!(path.cwe_id.as_deref(), Some("CWE-22"));
     }
+
+    // -------------------------------------------------------------------
+    // C# builtin rules
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn load_builtin_csharp_rules_from_disk() {
+        let rules_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("rules/builtin/csharp");
+
+        if !rules_dir.exists() {
+            panic!("C# rules directory not found: {}", rules_dir.display());
+        }
+
+        let loader = DeclarativeRuleLoader;
+        let rules = loader
+            .load_from_dir(&rules_dir)
+            .expect("all C# rules should load successfully");
+
+        assert_eq!(rules.len(), 5, "expected exactly 5 C# rules");
+
+        // Verify all rules are sorted by ID.
+        let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "atlas/security/csharp/command-injection",
+                "atlas/security/csharp/insecure-deserialization",
+                "atlas/security/csharp/path-traversal",
+                "atlas/security/csharp/sql-injection-concatenation",
+                "atlas/security/csharp/sql-injection-interpolation",
+            ]
+        );
+
+        // Verify common properties across all rules.
+        for rule in &rules {
+            assert_eq!(rule.language, Language::CSharp);
+            assert_eq!(rule.analysis_level, AnalysisLevel::L1);
+            assert_eq!(rule.rule_type, RuleType::Declarative);
+            assert!(rule.pattern.is_some());
+            assert_eq!(rule.category, Category::Security);
+            assert!(rule.cwe_id.is_some());
+            assert!(!rule.tags.is_empty());
+            assert_eq!(rule.version, "1.0.0");
+        }
+
+        // Verify specific severities.
+        let sql_concat = rules
+            .iter()
+            .find(|r| r.id.contains("sql-injection-concatenation"))
+            .unwrap();
+        assert_eq!(sql_concat.severity, Severity::Critical);
+        assert_eq!(sql_concat.cwe_id.as_deref(), Some("CWE-89"));
+
+        let sql_interp = rules
+            .iter()
+            .find(|r| r.id.contains("sql-injection-interpolation"))
+            .unwrap();
+        assert_eq!(sql_interp.severity, Severity::Critical);
+        assert_eq!(sql_interp.cwe_id.as_deref(), Some("CWE-89"));
+
+        let deser = rules
+            .iter()
+            .find(|r| r.id.contains("insecure-deserialization"))
+            .unwrap();
+        assert_eq!(deser.severity, Severity::Critical);
+        assert_eq!(deser.cwe_id.as_deref(), Some("CWE-502"));
+
+        let path = rules
+            .iter()
+            .find(|r| r.id.contains("path-traversal"))
+            .unwrap();
+        assert_eq!(path.severity, Severity::High);
+        assert_eq!(path.cwe_id.as_deref(), Some("CWE-22"));
+
+        let cmd = rules
+            .iter()
+            .find(|r| r.id.contains("command-injection"))
+            .unwrap();
+        assert_eq!(cmd.severity, Severity::Critical);
+        assert_eq!(cmd.cwe_id.as_deref(), Some("CWE-78"));
+    }
 }

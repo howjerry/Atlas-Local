@@ -1,0 +1,49 @@
+id: atlas/security/csharp/path-traversal
+name: Path Traversal via File System Access
+description: >
+  Detects calls to File.ReadAllText, File.WriteAllText, File.Open,
+  Path.Combine, and similar file system methods, as well as creation of
+  FileStream, StreamReader, or StreamWriter objects where the path
+  argument may come from user input. An attacker can use path traversal
+  sequences (../) to access files outside the intended directory.
+severity: high
+category: security
+language: CSharp
+cwe_id: CWE-22
+pattern: |
+  [
+    (invocation_expression
+      function: (member_access_expression
+        expression: (identifier) @obj
+        name: (identifier) @method
+        (#match? @obj "^(File|Directory|Path)$")
+        (#match? @method "^(ReadAllText|ReadAllTextAsync|ReadAllBytes|ReadAllBytesAsync|ReadAllLines|ReadAllLinesAsync|WriteAllText|WriteAllTextAsync|WriteAllBytes|WriteAllBytesAsync|Open|OpenRead|OpenWrite|OpenText|Create|Delete|Copy|Move|Exists|Combine|GetFullPath)$"))
+      arguments: (argument_list
+        (argument
+          (_) @path_arg)))
+    @match
+
+    (object_creation_expression
+      type: (identifier) @type
+      arguments: (argument_list
+        (argument
+          (_) @path_arg))
+      (#match? @type "^(FileStream|StreamReader|StreamWriter|FileInfo|DirectoryInfo)$"))
+    @match
+  ]
+remediation: >
+  Validate and sanitize all file paths. Use Path.GetFullPath() to resolve
+  the path and verify it starts with the expected base directory. Reject
+  paths containing '..' sequences. For example:
+  `string fullPath = Path.GetFullPath(Path.Combine(baseDir, userInput));
+  if (!fullPath.StartsWith(baseDir)) throw new SecurityException("Path traversal");`.
+references:
+  - https://cwe.mitre.org/data/definitions/22.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Path_Traversal
+tags:
+  - path-traversal
+  - file-access
+  - owasp-top-10
+  - a01-broken-access-control
+version: 1.0.0

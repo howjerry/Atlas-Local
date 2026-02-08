@@ -1,0 +1,48 @@
+id: atlas/security/csharp/command-injection
+name: OS Command Injection via Process.Start
+description: >
+  Detects use of Process.Start() or ProcessStartInfo construction where
+  command arguments may include user-controlled input. An attacker can
+  inject arbitrary OS commands, leading to full system compromise.
+severity: critical
+category: security
+language: CSharp
+cwe_id: CWE-78
+pattern: |
+  [
+    (invocation_expression
+      function: (member_access_expression
+        expression: (identifier) @obj
+        name: (identifier) @method
+        (#eq? @obj "Process")
+        (#eq? @method "Start"))
+      arguments: (argument_list
+        (argument
+          (_) @first_arg)))
+    @match
+
+    (object_creation_expression
+      type: (identifier) @type
+      arguments: (argument_list
+        (argument
+          (_) @first_arg))
+      (#eq? @type "ProcessStartInfo"))
+    @match
+  ]
+remediation: >
+  Avoid using Process.Start with user-controlled input. If external
+  process execution is necessary, use a fixed command with validated
+  arguments. Never pass user input directly as the process filename.
+  Use ProcessStartInfo with UseShellExecute=false and validate all
+  arguments against an allowlist.
+references:
+  - https://cwe.mitre.org/data/definitions/78.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Command_Injection
+tags:
+  - command-injection
+  - injection
+  - process-start
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0
