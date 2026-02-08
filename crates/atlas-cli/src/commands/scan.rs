@@ -220,7 +220,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
     };
 
     // 8. Run the scan.
-    let result = engine
+    let mut result = engine
         .scan_with_options(&args.target, language_filter_ref, &scan_options)
         .context("scan engine failed")?;
 
@@ -248,6 +248,34 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
     } else {
         atlas_policy::default_policy()
     };
+
+    // 9.1. Apply suppressions from policy.
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    let suppressed_fps: std::collections::HashSet<&str> = policy
+        .suppressions
+        .iter()
+        .filter(|s| {
+            s.expires
+                .as_ref()
+                .map_or(true, |exp| exp.as_str() > today.as_str())
+        })
+        .map(|s| s.fingerprint.as_str())
+        .collect();
+
+    if !suppressed_fps.is_empty() {
+        let before = result.findings.len();
+        result
+            .findings
+            .retain(|f| !suppressed_fps.contains(f.fingerprint.as_str()));
+        let suppressed_count = before - result.findings.len();
+        if suppressed_count > 0 {
+            info!(
+                count = suppressed_count,
+                unique_fingerprints = suppressed_fps.len(),
+                "findings suppressed by policy"
+            );
+        }
+    }
 
     // 9.5. Load and apply baseline (if provided via CLI or policy).
     let baseline_path_str = args

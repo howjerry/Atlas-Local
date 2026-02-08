@@ -131,6 +131,22 @@ fn merge_optional_thresholds(
 }
 
 // ---------------------------------------------------------------------------
+// Suppression
+// ---------------------------------------------------------------------------
+
+/// A single suppression entry: a fingerprint to exclude from gate evaluation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Suppression {
+    /// SHA-256 fingerprint of the finding to suppress.
+    pub fingerprint: String,
+    /// Human-readable reason for the suppression.
+    pub reason: String,
+    /// ISO 8601 date (`YYYY-MM-DD`) after which this suppression expires (optional).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
 // Policy
 // ---------------------------------------------------------------------------
 
@@ -173,6 +189,10 @@ pub struct Policy {
     /// Rules to explicitly include in evaluation (unioned during merge).
     #[serde(default)]
     pub include_rules: Vec<String>,
+
+    /// Fingerprint-based suppressions for accepted findings.
+    #[serde(default)]
+    pub suppressions: Vec<Suppression>,
 }
 
 fn default_schema_version() -> String {
@@ -206,6 +226,7 @@ pub fn default_policy() -> Policy {
         baseline: None,
         exclude_rules: Vec::new(),
         include_rules: Vec::new(),
+        suppressions: Vec::new(),
     }
 }
 
@@ -319,6 +340,17 @@ pub fn merge_policies(policies: &[Policy]) -> Policy {
         for rule in &policy.include_rules {
             if !merged.include_rules.contains(rule) {
                 merged.include_rules.push(rule.clone());
+            }
+        }
+
+        // Suppressions: union by fingerprint (no duplicates).
+        for sup in &policy.suppressions {
+            if !merged
+                .suppressions
+                .iter()
+                .any(|s| s.fingerprint == sup.fingerprint)
+            {
+                merged.suppressions.push(sup.clone());
             }
         }
     }
@@ -937,5 +969,107 @@ exclude_rules:
         assert!(merged.exclude_rules.contains(&"RULE-A".to_string()));
         assert!(merged.exclude_rules.contains(&"RULE-B".to_string()));
         assert!(merged.exclude_rules.contains(&"RULE-C".to_string()));
+    }
+
+    // -- Suppression tests ----------------------------------------------------
+
+    #[test]
+    fn load_policy_with_suppressions() {
+        let yaml = r#"
+schema_version: "1.0.0"
+name: suppression-test
+fail_on:
+  critical: 0
+  high: 0
+suppressions:
+  - fingerprint: "abc123"
+    reason: "False positive in test helper"
+  - fingerprint: "def456"
+    reason: "Hardened with input validation"
+    expires: "2027-01-01"
+"#;
+        let policy = load_policy_from_str(yaml).unwrap();
+        assert_eq!(policy.suppressions.len(), 2);
+        assert_eq!(policy.suppressions[0].fingerprint, "abc123");
+        assert_eq!(policy.suppressions[0].reason, "False positive in test helper");
+        assert!(policy.suppressions[0].expires.is_none());
+        assert_eq!(policy.suppressions[1].fingerprint, "def456");
+        assert_eq!(
+            policy.suppressions[1].expires,
+            Some("2027-01-01".to_string())
+        );
+    }
+
+    #[test]
+    fn load_policy_without_suppressions_defaults_empty() {
+        let policy = load_policy_from_str(minimal_yaml()).unwrap();
+        assert!(policy.suppressions.is_empty());
+    }
+
+    #[test]
+    fn default_policy_has_empty_suppressions() {
+        let policy = super::default_policy();
+        assert!(policy.suppressions.is_empty());
+    }
+
+    #[test]
+    fn merge_suppressions_union_by_fingerprint() {
+        let org = load_policy_from_str(
+            r#"
+schema_version: "1.0.0"
+name: org
+level: Organization
+fail_on:
+  critical: 0
+suppressions:
+  - fingerprint: "fp-a"
+    reason: "org reason"
+  - fingerprint: "fp-b"
+    reason: "shared"
+"#,
+        )
+        .unwrap();
+
+        let local = load_policy_from_str(
+            r#"
+schema_version: "1.0.0"
+name: local
+level: Local
+fail_on:
+  critical: 0
+suppressions:
+  - fingerprint: "fp-b"
+    reason: "local reason"
+  - fingerprint: "fp-c"
+    reason: "local only"
+"#,
+        )
+        .unwrap();
+
+        let merged = merge_policies(&[org, local]);
+        // fp-a from org, fp-b from org (first seen), fp-c from local = 3 unique.
+        assert_eq!(merged.suppressions.len(), 3);
+        let fps: Vec<&str> = merged.suppressions.iter().map(|s| s.fingerprint.as_str()).collect();
+        assert!(fps.contains(&"fp-a"));
+        assert!(fps.contains(&"fp-b"));
+        assert!(fps.contains(&"fp-c"));
+    }
+
+    #[test]
+    fn suppression_serde_roundtrip() {
+        let yaml = r#"
+schema_version: "1.0.0"
+name: roundtrip-sup
+fail_on:
+  critical: 0
+suppressions:
+  - fingerprint: "aaa"
+    reason: "test"
+    expires: "2027-06-01"
+"#;
+        let policy = load_policy_from_str(yaml).unwrap();
+        let serialized = serde_yml::to_string(&policy).unwrap();
+        let deserialized: Policy = serde_yml::from_str(&serialized).unwrap();
+        assert_eq!(policy.suppressions, deserialized.suppressions);
     }
 }
