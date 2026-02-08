@@ -1,0 +1,42 @@
+id: atlas/security/go/sql-injection
+name: SQL Injection via String Concatenation in database/sql
+description: >
+  Detects potential SQL injection vulnerabilities where SQL queries are
+  constructed using string concatenation with the + operator and passed to
+  database/sql methods such as Query, Exec, QueryRow, or their Context
+  variants. An attacker can manipulate the concatenated input to alter the
+  SQL query logic, leading to unauthorized data access or modification.
+severity: critical
+category: security
+language: Go
+cwe_id: CWE-89
+pattern: |
+  (call_expression
+    function: (selector_expression
+      operand: (_) @obj
+      field: (field_identifier) @method
+      (#match? @method "^(Query|Exec|QueryRow|QueryContext|ExecContext|QueryRowContext)$"))
+    arguments: (argument_list
+      (binary_expression
+        left: (_) @left
+        operator: "+"
+        right: (_) @right)))
+  @match
+remediation: >
+  Use parameterized queries with placeholder arguments instead of string
+  concatenation to build SQL queries. Replace db.Query("SELECT ... " + id)
+  with db.Query("SELECT ... WHERE id = $1", id) for PostgreSQL or
+  db.Query("SELECT ... WHERE id = ?", id) for MySQL. The database/sql
+  package handles escaping automatically with parameterized queries.
+references:
+  - https://cwe.mitre.org/data/definitions/89.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/SQL_Injection
+  - https://go.dev/doc/database/querying
+tags:
+  - sql-injection
+  - injection
+  - database-sql
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0

@@ -42,6 +42,39 @@ pub enum Severity {
     Info,
 }
 
+impl Severity {
+    /// Returns a numeric score for this severity level.
+    ///
+    /// Higher values indicate higher severity:
+    /// - `Critical` = 4
+    /// - `High` = 3
+    /// - `Medium` = 2
+    /// - `Low` = 1
+    /// - `Info` = 0
+    #[must_use]
+    pub const fn numeric_score(self) -> u8 {
+        match self {
+            Self::Critical => 4,
+            Self::High => 3,
+            Self::Medium => 2,
+            Self::Low => 1,
+            Self::Info => 0,
+        }
+    }
+
+    /// Returns all severity variants in descending order (Critical first).
+    #[must_use]
+    pub const fn all() -> &'static [Severity] {
+        &[
+            Self::Critical,
+            Self::High,
+            Self::Medium,
+            Self::Low,
+            Self::Info,
+        ]
+    }
+}
+
 impl fmt::Display for Severity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let label = match self {
@@ -105,6 +138,18 @@ pub enum AnalysisLevel {
     L2,
     /// Level 3 -- Inter-procedural taint tracking.
     L3,
+}
+
+impl AnalysisLevel {
+    /// Returns a numeric depth for this level (1, 2, or 3).
+    #[must_use]
+    pub const fn depth(self) -> u8 {
+        match self {
+            Self::L1 => 1,
+            Self::L2 => 2,
+            Self::L3 => 3,
+        }
+    }
 }
 
 impl fmt::Display for AnalysisLevel {
@@ -284,6 +329,10 @@ pub struct Rule {
     /// Implementation strategy.
     pub rule_type: RuleType,
 
+    /// Detection confidence level. Defaults to `Medium` if not specified.
+    #[serde(default = "default_confidence")]
+    pub confidence: Confidence,
+
     /// Tree-sitter S-expression pattern for declarative (L1) rules.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pattern: Option<String>,
@@ -453,6 +502,11 @@ impl fmt::Display for Rule {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/// Default confidence level for rules that don't specify one.
+fn default_confidence() -> Confidence {
+    Confidence::Medium
+}
+
 /// Basic SemVer validation: must match `MAJOR.MINOR.PATCH` where each part is
 /// a non-negative integer. Pre-release and build metadata are not supported.
 fn is_valid_semver(version: &str) -> bool {
@@ -484,6 +538,7 @@ mod tests {
             language: Language::TypeScript,
             analysis_level: AnalysisLevel::L1,
             rule_type: RuleType::Declarative,
+            confidence: Confidence::High,
             pattern: Some(
                 "(binary_expression left: (identifier) @source right: (template_string) @sink)"
                     .to_owned(),
@@ -509,6 +564,7 @@ mod tests {
             language: Language::Python,
             analysis_level: AnalysisLevel::L2,
             rule_type: RuleType::Scripted,
+            confidence: Confidence::High,
             pattern: None,
             script: Some("rules/python/taint_flow.rhai".to_owned()),
             plugin: None,
@@ -531,6 +587,7 @@ mod tests {
             language: Language::Java,
             analysis_level: AnalysisLevel::L3,
             rule_type: RuleType::Compiled,
+            confidence: Confidence::Medium,
             pattern: None,
             script: None,
             plugin: Some("plugins/java/inter_proc_taint.so".to_owned()),

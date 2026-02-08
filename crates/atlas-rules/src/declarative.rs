@@ -98,6 +98,10 @@ pub struct DeclarativeRuleFile {
     /// Target programming language (PascalCase: TypeScript, JavaScript, etc.).
     pub language: Language,
 
+    /// Detection confidence level. Defaults to `Medium` if omitted.
+    #[serde(default)]
+    pub confidence: Option<crate::Confidence>,
+
     /// Tree-sitter S-expression pattern.
     pub pattern: String,
 
@@ -131,6 +135,7 @@ impl From<DeclarativeRuleFile> for Rule {
             language: file.language,
             analysis_level: AnalysisLevel::L1,
             rule_type: RuleType::Declarative,
+            confidence: file.confidence.unwrap_or(crate::Confidence::Medium),
             pattern: Some(file.pattern),
             script: None,
             plugin: None,
@@ -486,6 +491,7 @@ version: not-semver
             references: vec![],
             tags: vec![],
             version: "1.0.0".to_owned(),
+            confidence: None,
         };
 
         let rule: Rule = file.into();
@@ -754,5 +760,75 @@ version: 0.1.0
             .unwrap();
         assert_eq!(cmd.severity, Severity::Critical);
         assert_eq!(cmd.cwe_id.as_deref(), Some("CWE-78"));
+    }
+
+    // -------------------------------------------------------------------
+    // Load built-in Go rules from disk
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn load_builtin_go_rules_from_disk() {
+        let rules_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("rules/builtin/go");
+
+        if !rules_dir.exists() {
+            panic!("Go rules directory not found: {}", rules_dir.display());
+        }
+
+        let loader = DeclarativeRuleLoader;
+        let rules = loader
+            .load_from_dir(&rules_dir)
+            .expect("all Go rules should load successfully");
+
+        assert_eq!(rules.len(), 3, "expected exactly 3 Go rules");
+
+        // Verify all rules are sorted by ID.
+        let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "atlas/security/go/command-injection",
+                "atlas/security/go/path-traversal",
+                "atlas/security/go/sql-injection",
+            ]
+        );
+
+        // Verify common properties across all rules.
+        for rule in &rules {
+            assert_eq!(rule.language, Language::Go);
+            assert_eq!(rule.analysis_level, AnalysisLevel::L1);
+            assert_eq!(rule.rule_type, RuleType::Declarative);
+            assert!(rule.pattern.is_some());
+            assert_eq!(rule.category, Category::Security);
+            assert!(rule.cwe_id.is_some());
+            assert!(!rule.tags.is_empty());
+            assert_eq!(rule.version, "1.0.0");
+        }
+
+        // Verify specific severities.
+        let sql = rules
+            .iter()
+            .find(|r| r.id.contains("sql-injection"))
+            .unwrap();
+        assert_eq!(sql.severity, Severity::Critical);
+        assert_eq!(sql.cwe_id.as_deref(), Some("CWE-89"));
+
+        let cmd = rules
+            .iter()
+            .find(|r| r.id.contains("command-injection"))
+            .unwrap();
+        assert_eq!(cmd.severity, Severity::Critical);
+        assert_eq!(cmd.cwe_id.as_deref(), Some("CWE-78"));
+
+        let path = rules
+            .iter()
+            .find(|r| r.id.contains("path-traversal"))
+            .unwrap();
+        assert_eq!(path.severity, Severity::High);
+        assert_eq!(path.cwe_id.as_deref(), Some("CWE-22"));
     }
 }

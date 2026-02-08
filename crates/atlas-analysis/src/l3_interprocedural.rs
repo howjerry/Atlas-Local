@@ -4,9 +4,11 @@
 //! function boundaries, with a configurable call-depth limit to prevent
 //! explosion in large codebases.
 //!
-//! **Current status**: Framework with type definitions and call graph builder.
-//! Full cross-file taint propagation requires integration with the scan
-//! pipeline (T088).
+//! **Status: NOT YET INTEGRATED.** Type definitions and call-graph builder
+//! are scaffolded here but are not connected to the scan pipeline. No L3 rules
+//! exist yet. This module is retained as a design reference for future work.
+
+#![allow(dead_code)]
 
 use std::collections::{BTreeMap, BTreeSet};
 

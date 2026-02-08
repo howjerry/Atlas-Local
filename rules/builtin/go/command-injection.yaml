@@ -1,0 +1,38 @@
+id: atlas/security/go/command-injection
+name: OS Command Injection via os/exec
+description: >
+  Detects use of exec.Command or exec.CommandContext where command arguments
+  may include user-controlled input. An attacker can inject arbitrary OS
+  commands by manipulating the command name or arguments, leading to full
+  system compromise.
+severity: critical
+category: security
+language: Go
+cwe_id: CWE-78
+pattern: |
+  (call_expression
+    function: (selector_expression
+      operand: (identifier) @pkg
+      field: (field_identifier) @func
+      (#eq? @pkg "exec")
+      (#match? @func "^(Command|CommandContext)$"))
+    arguments: (argument_list
+      (_) @first_arg))
+  @match
+remediation: >
+  Avoid passing user-controlled input directly to exec.Command. If external
+  process execution is necessary, use a fixed command name and validate all
+  arguments against an allowlist. Never construct command strings from user
+  input. Consider using purpose-built libraries or APIs instead of shelling
+  out to external commands.
+references:
+  - https://cwe.mitre.org/data/definitions/78.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Command_Injection
+tags:
+  - command-injection
+  - injection
+  - os-exec
+  - owasp-top-10
+  - a03-injection
+version: 1.0.0

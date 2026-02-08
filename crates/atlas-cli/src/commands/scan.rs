@@ -72,30 +72,20 @@ pub struct ScanArgs {
 // GateFinding bridge
 // ---------------------------------------------------------------------------
 
-/// Wrapper that implements [`GateFinding`] for [`atlas_analysis::Finding`].
+/// Thin wrapper that implements [`GateFinding`] for [`atlas_analysis::Finding`].
 ///
-/// The gate engine uses `atlas_core::{Severity, Category}` while findings use
-/// `atlas_rules::{Severity, Category}`. These enums have identical variants,
-/// so we map between them here.
+/// Required by Rust's orphan rules since both `GateFinding` and `Finding` are
+/// defined in external crates. No conversion is needed — the enum types are
+/// unified via re-exports.
 struct FindingAdapter<'a>(&'a atlas_analysis::Finding);
 
 impl GateFinding for FindingAdapter<'_> {
     fn severity(&self) -> Severity {
-        match self.0.severity {
-            atlas_rules::Severity::Critical => Severity::Critical,
-            atlas_rules::Severity::High => Severity::High,
-            atlas_rules::Severity::Medium => Severity::Medium,
-            atlas_rules::Severity::Low => Severity::Low,
-            atlas_rules::Severity::Info => Severity::Info,
-        }
+        self.0.severity
     }
 
     fn category(&self) -> Category {
-        match self.0.category {
-            atlas_rules::Category::Security => Category::Security,
-            atlas_rules::Category::Quality => Category::Quality,
-            atlas_rules::Category::Secrets => Category::Secrets,
-        }
+        self.0.category
     }
 }
 

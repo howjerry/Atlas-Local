@@ -3,9 +3,11 @@
 //! Builds a scope graph per function, tracks variable definitions and uses,
 //! and identifies data flow paths within function boundaries.
 //!
-//! **Current status**: Framework with type definitions and scope-graph builder.
-//! Full analysis integration is in [`crate::l1_pattern`] for L1 findings that
-//! require deeper validation.
+//! **Status: NOT YET INTEGRATED.** Type definitions and scope-graph builder
+//! are scaffolded here but are not connected to the scan pipeline. No L2 rules
+//! exist yet. This module is retained as a design reference for future work.
+
+#![allow(dead_code)]
 
 use std::collections::BTreeMap;
 

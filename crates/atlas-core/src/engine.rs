@@ -25,6 +25,7 @@
 //! println!("Found {} findings in {} files", result.findings.len(), result.files_scanned);
 //! ```
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -37,7 +38,9 @@ use atlas_lang::{
     register_js_ts_adapters, register_python_adapter,
 };
 use atlas_rules::declarative::DeclarativeRuleLoader;
-use atlas_rules::{AnalysisLevel, Confidence, Rule};
+use atlas_rules::Rule;
+
+use crate::AnalysisLevel;
 
 use crate::scanner::discover_files;
 use crate::{CoreError, Language};
@@ -85,11 +88,11 @@ impl FindingsSummary {
         let mut summary = Self::default();
         for f in findings {
             match f.severity {
-                atlas_rules::Severity::Critical => summary.critical += 1,
-                atlas_rules::Severity::High => summary.high += 1,
-                atlas_rules::Severity::Medium => summary.medium += 1,
-                atlas_rules::Severity::Low => summary.low += 1,
-                atlas_rules::Severity::Info => summary.info += 1,
+                crate::Severity::Critical => summary.critical += 1,
+                crate::Severity::High => summary.high += 1,
+                crate::Severity::Medium => summary.medium += 1,
+                crate::Severity::Low => summary.low += 1,
+                crate::Severity::Info => summary.info += 1,
             }
             summary.total += 1;
         }
@@ -270,6 +273,14 @@ impl ScanEngine {
 
         let max_file_bytes = options.max_file_size_kb * 1024;
 
+        // Pre-compile L1 queries once per rule (not per file).
+        let query_cache = self.precompile_queries();
+        info!(
+            cached = query_cache.len(),
+            total_rules = self.rules.len(),
+            "L1 query pre-compilation complete"
+        );
+
         // Shared counters for parallel processing.
         let files_scanned = AtomicU32::new(0);
         let files_skipped = AtomicU32::new(0);
@@ -291,23 +302,22 @@ impl ScanEngine {
                 .files
                 .par_iter()
                 .flat_map(|discovered| {
-                    self.process_file(discovered, max_file_bytes, &files_scanned, &files_skipped)
+                    self.process_file(
+                        discovered,
+                        max_file_bytes,
+                        &query_cache,
+                        &files_scanned,
+                        &files_skipped,
+                    )
                 })
                 .collect()
         });
 
-        // Step 3: L2 intra-procedural analysis (framework — future expansion).
-        // When L2 rules are loaded, build scope graphs per function and track
-        // variable definitions/uses to identify data-flow paths within function
-        // boundaries.  Currently a no-op; findings from L1 are passed through.
-        debug!("L2 intra-procedural analysis phase: no L2 rules loaded — skipping");
+        // NOTE: L2 (intra-procedural) and L3 (inter-procedural) analysis modules
+        // exist as scaffolding in atlas-analysis but are not yet integrated into
+        // the scan pipeline. Only L1 pattern matching is active.
 
-        // Step 4: L3 inter-procedural taint analysis (framework — future expansion).
-        // When L3 rules are loaded, build a cross-file call graph and track
-        // taint sources/sinks across function boundaries.  Currently a no-op.
-        debug!("L3 inter-procedural analysis phase: no L3 rules loaded — skipping");
-
-        // Step 5: Sort findings deterministically.
+        // Step 3: Sort findings deterministically.
         all_findings.sort();
 
         let scanned = files_scanned.load(Ordering::Relaxed);
@@ -342,12 +352,48 @@ impl ScanEngine {
         })
     }
 
+    /// Pre-compiles tree-sitter queries for all L1 declarative rules.
+    ///
+    /// Returns a map from rule ID to compiled `L1PatternEngine`. Rules that
+    /// fail to compile are logged at WARN level and excluded from the cache.
+    fn precompile_queries(&self) -> HashMap<String, L1PatternEngine> {
+        let mut cache = HashMap::new();
+        for rule in &self.rules {
+            if rule.analysis_level != AnalysisLevel::L1 {
+                continue;
+            }
+            let pattern = match &rule.pattern {
+                Some(p) => p,
+                None => continue,
+            };
+            let adapter = match self.adapter_registry.get_by_language(rule.language) {
+                Some(a) => a,
+                None => continue,
+            };
+            let ts_lang = adapter.tree_sitter_language();
+            match L1PatternEngine::new(&ts_lang, pattern) {
+                Ok(engine) => {
+                    cache.insert(rule.id.clone(), engine);
+                }
+                Err(e) => {
+                    warn!(
+                        rule_id = %rule.id,
+                        error = %e,
+                        "failed to pre-compile rule pattern; rule will be skipped during scan"
+                    );
+                }
+            }
+        }
+        cache
+    }
+
     /// Process a single discovered file: read, validate, parse, and evaluate
     /// rules. Returns the findings for this file (may be empty).
     fn process_file(
         &self,
         discovered: &crate::scanner::DiscoveredFile,
         max_file_bytes: u64,
+        query_cache: &HashMap<String, L1PatternEngine>,
         files_scanned: &AtomicU32,
         files_skipped: &AtomicU32,
     ) -> Vec<Finding> {
@@ -425,24 +471,18 @@ impl ScanEngine {
             }
         };
 
-        let ts_lang = adapter.tree_sitter_language();
         let mut findings = Vec::new();
 
-        // 2d. Evaluate each matching rule.
+        // 2d. Evaluate each matching rule using pre-compiled queries.
         for rule in &self.rules {
             // Only evaluate rules that match the file's language.
             if rule.language != discovered.language {
                 continue;
             }
 
-            // Only L1 declarative rules are supported for now.
-            if rule.analysis_level != AnalysisLevel::L1 {
-                continue;
-            }
-
             // Skip secrets-category rules for files marked as secrets-excluded
             // (e.g. .env.example, .env.sample, .env.template).
-            if rule.category == atlas_rules::Category::Secrets && discovered.secrets_excluded {
+            if rule.category == crate::Category::Secrets && discovered.secrets_excluded {
                 debug!(
                     rule_id = %rule.id,
                     file = %discovered.relative_path,
@@ -451,29 +491,10 @@ impl ScanEngine {
                 continue;
             }
 
-            // Get the pattern string.
-            let pattern = match &rule.pattern {
-                Some(p) => p,
-                None => {
-                    warn!(
-                        rule_id = %rule.id,
-                        "declarative rule has no pattern; skipping"
-                    );
-                    continue;
-                }
-            };
-
-            // Compile the L1 pattern engine.
-            let l1_engine = match L1PatternEngine::new(&ts_lang, pattern) {
-                Ok(e) => e,
-                Err(e) => {
-                    warn!(
-                        rule_id = %rule.id,
-                        error = %e,
-                        "failed to compile rule pattern; skipping"
-                    );
-                    continue;
-                }
+            // Look up the pre-compiled L1 engine from the cache.
+            let l1_engine = match query_cache.get(&rule.id) {
+                Some(e) => e,
+                None => continue, // Not an L1 rule or failed to compile
             };
 
             // Build metadata from the rule.
@@ -484,7 +505,7 @@ impl ScanEngine {
                 cwe_id: rule.cwe_id.clone(),
                 description: rule.description.clone(),
                 remediation: rule.remediation.clone(),
-                confidence: Confidence::Medium,
+                confidence: rule.confidence,
             };
 
             // Evaluate and collect findings.
@@ -596,11 +617,12 @@ mod tests {
             id: "test/rule".to_owned(),
             name: "Test Rule".to_owned(),
             description: "A test rule".to_owned(),
-            severity: atlas_rules::Severity::Medium,
-            category: atlas_rules::Category::Security,
+            severity: crate::Severity::Medium,
+            category: crate::Category::Security,
             language: Language::TypeScript,
             analysis_level: AnalysisLevel::L1,
-            rule_type: atlas_rules::RuleType::Declarative,
+            rule_type: crate::RuleType::Declarative,
+            confidence: crate::Confidence::Medium,
             pattern: Some("(identifier) @id".to_owned()),
             script: None,
             plugin: None,

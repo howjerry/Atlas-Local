@@ -273,26 +273,17 @@ fn e2e_parallel_scan_matches_serial() {
 // Gate evaluation with default policy
 // ---------------------------------------------------------------------------
 
-/// Adapter to bridge atlas_rules types to atlas_core types for gate evaluation.
+/// Thin wrapper for orphan-rule compliance. No conversion needed — types are
+/// unified via re-exports from `atlas-rules`.
 struct FindingAdapter<'a>(&'a atlas_analysis::Finding);
 
 impl GateFinding for FindingAdapter<'_> {
     fn severity(&self) -> Severity {
-        match self.0.severity {
-            atlas_rules::Severity::Critical => Severity::Critical,
-            atlas_rules::Severity::High => Severity::High,
-            atlas_rules::Severity::Medium => Severity::Medium,
-            atlas_rules::Severity::Low => Severity::Low,
-            atlas_rules::Severity::Info => Severity::Info,
-        }
+        self.0.severity
     }
 
     fn category(&self) -> Category {
-        match self.0.category {
-            atlas_rules::Category::Security => Category::Security,
-            atlas_rules::Category::Quality => Category::Quality,
-            atlas_rules::Category::Secrets => Category::Secrets,
-        }
+        self.0.category
     }
 }
 

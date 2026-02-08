@@ -153,4 +153,5 @@ type Reader interface {
         // Should have a non-zero node kind count (basic sanity check).
         assert!(go_lang.node_kind_count() > 0);
     }
+
 }

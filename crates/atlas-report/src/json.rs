@@ -426,6 +426,7 @@ mod tests {
             language: atlas_rules::Language::TypeScript,
             analysis_level: AnalysisLevel::L1,
             rule_type: RuleType::Declarative,
+            confidence: atlas_rules::Confidence::Medium,
             pattern: Some("(identifier) @id".to_string()),
             script: None,
             plugin: None,

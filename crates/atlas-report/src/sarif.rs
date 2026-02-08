@@ -402,6 +402,7 @@ mod tests {
             references: vec![],
             tags: vec![],
             version: version.to_string(),
+            confidence: Confidence::Medium,
         }
     }
 

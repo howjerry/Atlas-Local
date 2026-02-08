@@ -1,0 +1,50 @@
+id: atlas/security/go/path-traversal
+name: Path Traversal via Unsanitized File Operations
+description: >
+  Detects use of os.Open, os.OpenFile, os.ReadFile, and similar file system
+  operations where the path argument may be user-controlled. An attacker
+  can use directory traversal sequences (../) to access files outside the
+  intended directory, leading to information disclosure or file manipulation.
+severity: high
+category: security
+language: Go
+cwe_id: CWE-22
+pattern: |
+  [
+    (call_expression
+      function: (selector_expression
+        operand: (identifier) @pkg
+        field: (field_identifier) @func
+        (#eq? @pkg "os")
+        (#match? @func "^(Open|OpenFile|ReadFile|WriteFile|Stat|Lstat|Remove|RemoveAll|Mkdir|MkdirAll)$"))
+      arguments: (argument_list
+        (_) @path_arg))
+    @match
+
+    (call_expression
+      function: (selector_expression
+        operand: (identifier) @pkg
+        field: (field_identifier) @func
+        (#eq? @pkg "ioutil")
+        (#match? @func "^(ReadFile|WriteFile|ReadDir)$"))
+      arguments: (argument_list
+        (_) @path_arg))
+    @match
+  ]
+remediation: >
+  Never pass user-controlled input directly to file system operations.
+  Use filepath.Clean to normalize paths, then verify the resolved path
+  is within the expected base directory using filepath.Rel or
+  strings.HasPrefix after calling filepath.Abs on both paths. Consider
+  using a chroot or dedicated file-serving library that enforces path
+  boundaries.
+references:
+  - https://cwe.mitre.org/data/definitions/22.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Path_Traversal_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Path_Traversal
+tags:
+  - path-traversal
+  - file-access
+  - owasp-top-10
+  - a01-broken-access-control
+version: 1.0.0
