@@ -568,4 +568,39 @@ mod tests {
         let result = extract_snippet(source, 0, 1000);
         assert_eq!(result, "short");
     }
+
+    // -- #match? predicate filtering test ------------------------------------
+
+    #[test]
+    fn match_predicate_filters_comments() {
+        let lang = ts_language();
+        // NOTE: the outer parens around the entire pattern+predicate are REQUIRED.
+        // Without them, the #match? is not associated with the (comment) node pattern.
+        let pattern = r#"((comment) @match (#match? @match "(TODO|FIXME|HACK|XXX)"))"#;
+        let engine = L1PatternEngine::new(&lang, pattern).expect("compile");
+
+        let source = b"// TODO: fix this\n// just a comment\n// FIXME: broken\n// normal comment";
+        let tree = parse_ts(source);
+        let metadata = RuleMatchMetadata {
+            rule_id: "test/todo-comment".to_string(),
+            severity: Severity::Info,
+            category: Category::Quality,
+            cwe_id: None,
+            description: "Test".to_string(),
+            remediation: "Test".to_string(),
+            confidence: Confidence::High,
+            metadata: BTreeMap::new(),
+        };
+
+        let findings = engine.evaluate(&tree, source, "test.ts", &metadata);
+
+        // Should only match the 2 comments containing TODO and FIXME
+        assert_eq!(
+            findings.len(),
+            2,
+            "should only match TODO and FIXME comments, got {} findings: {:?}",
+            findings.len(),
+            findings.iter().map(|f| &f.snippet).collect::<Vec<_>>()
+        );
+    }
 }

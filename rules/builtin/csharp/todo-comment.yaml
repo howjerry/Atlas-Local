@@ -9,8 +9,8 @@ category: quality
 language: CSharp
 confidence: high
 pattern: |
-  (comment) @match
-  (#match? @match "(TODO|FIXME|HACK|XXX)")
+  ((comment) @match
+   (#match? @match "(TODO|FIXME|HACK|XXX)"))
 remediation: >
   Address the TODO/FIXME item or create a tracked issue for it.
   Remove the comment once the issue is resolved or properly tracked.

@@ -9,8 +9,8 @@ category: quality
 language: Go
 confidence: high
 pattern: |
-  (comment) @match
-  (#match? @match "(TODO|FIXME|HACK|XXX)")
+  ((comment) @match
+   (#match? @match "(TODO|FIXME|HACK|XXX)"))
 remediation: >
   Create an issue in the project tracker for the outstanding work described
   in the comment, then either resolve the issue or replace the comment with

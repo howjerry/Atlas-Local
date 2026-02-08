@@ -9,8 +9,8 @@ category: quality
 language: Python
 confidence: high
 pattern: |
-  (comment) @match
-  (#match? @match "(TODO|FIXME|HACK|XXX)")
+  ((comment) @match
+   (#match? @match "(TODO|FIXME|HACK|XXX)"))
 remediation: >
   Address the TODO/FIXME/HACK/XXX item or create a tracked issue for it, then
   remove the comment. Use an issue tracker to manage outstanding work items

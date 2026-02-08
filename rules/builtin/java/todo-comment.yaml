@@ -9,8 +9,8 @@ category: quality
 language: Java
 confidence: high
 pattern: |
-  (comment) @match
-  (#match? @match "(TODO|FIXME|HACK|XXX)")
+  ([(line_comment) (block_comment)] @match
+   (#match? @match "(TODO|FIXME|HACK|XXX)"))
 remediation: >
   Resolve the underlying issue described in the comment and remove it,
   or create a ticket in your issue tracker and reference it in the comment

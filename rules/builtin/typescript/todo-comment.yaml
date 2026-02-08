@@ -9,8 +9,8 @@ category: quality
 language: TypeScript
 confidence: high
 pattern: |
-  (comment) @match
-  (#match? @match "(TODO|FIXME|HACK|XXX)")
+  ((comment) @match
+   (#match? @match "(TODO|FIXME|HACK|XXX)"))
 remediation: >
   Create an issue in your project tracker for the outstanding work described
   in the comment, then remove the TODO/FIXME comment. If the task is no longer
