@@ -21,3 +21,8 @@ serde_yml = { workspace = true }
 
 [dev-dependencies]
 tree-sitter-typescript = "0.23"
+criterion = { workspace = true }
+
+[[bench]]
+name = "l2_benchmark"
+harness = false
