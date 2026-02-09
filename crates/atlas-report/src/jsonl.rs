@@ -199,19 +199,25 @@ pub fn format_jsonl(
 
 /// Builds a `finding_detected` event from a single `Finding`.
 fn make_finding_event(finding: &Finding, timestamp: &str, correlation_id: &str) -> Event {
+    let mut data = serde_json::json!({
+        "fingerprint": finding.fingerprint,
+        "rule_id": finding.rule_id,
+        "severity": finding.severity.to_string(),
+        "category": finding.category.to_string(),
+        "file_path": finding.file_path,
+        "line": finding.line_range.start_line,
+    });
+
+    if let Some(ref ds) = finding.diff_status {
+        data["diff_status"] = serde_json::json!(ds.to_string());
+    }
+
     Event {
         schema_version: JSONL_SCHEMA_VERSION.to_string(),
         event_type: EventType::FindingDetected,
         timestamp: timestamp.to_string(),
         correlation_id: correlation_id.to_string(),
-        data: serde_json::json!({
-            "fingerprint": finding.fingerprint,
-            "rule_id": finding.rule_id,
-            "severity": finding.severity.to_string(),
-            "category": finding.category.to_string(),
-            "file_path": finding.file_path,
-            "line": finding.line_range.start_line,
-        }),
+        data,
     }
 }
 
@@ -591,5 +597,51 @@ mod tests {
                 "JSONL lines must not contain embedded newlines"
             );
         }
+    }
+
+    #[test]
+    fn jsonl_finding_includes_diff_status_when_present() {
+        use atlas_analysis::DiffStatus;
+
+        let mut finding = make_finding(Severity::High, "atlas/security/ts/sqli");
+        finding.diff_status = Some(DiffStatus::New);
+
+        let scan_result = make_scan_result(vec![finding]);
+
+        let output = format_jsonl(&scan_result, "/project", "0.1.0", None, true);
+        let events = parse_events(&output);
+
+        let finding_event = events
+            .iter()
+            .find(|e| e["event_type"].as_str().unwrap() == "finding_detected")
+            .expect("must have a finding_detected event");
+
+        assert_eq!(
+            finding_event["data"]["diff_status"].as_str().unwrap(),
+            "new",
+            "diff_status should be included in JSONL finding data"
+        );
+    }
+
+    #[test]
+    fn jsonl_finding_omits_diff_status_when_none() {
+        let finding = make_finding(Severity::High, "atlas/security/ts/sqli");
+        assert!(finding.diff_status.is_none());
+
+        let scan_result = make_scan_result(vec![finding]);
+
+        let output = format_jsonl(&scan_result, "/project", "0.1.0", None, true);
+        let events = parse_events(&output);
+
+        let finding_event = events
+            .iter()
+            .find(|e| e["event_type"].as_str().unwrap() == "finding_detected")
+            .expect("must have a finding_detected event");
+
+        assert!(
+            finding_event["data"].get("diff_status").is_none()
+                || finding_event["data"]["diff_status"].is_null(),
+            "diff_status should be omitted when None"
+        );
     }
 }

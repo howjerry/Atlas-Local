@@ -84,6 +84,7 @@ fn execute_bundle(args: BundleArgs) -> Result<ExitCode, anyhow::Error> {
         max_file_size_kb: config.scan.max_file_size_kb,
         jobs: None,
         no_cache: false,
+        diff_context: None,
     };
 
     let result = engine

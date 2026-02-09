@@ -32,7 +32,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use rayon::prelude::*;
 use tracing::{debug, info, warn};
 
-use atlas_analysis::{Finding, L1PatternEngine, RuleMatchMetadata};
+use atlas_analysis::{DiffStatus, Finding, L1PatternEngine, RuleMatchMetadata};
 use atlas_lang::{
     AdapterRegistry, register_csharp_adapter, register_go_adapter, register_java_adapter,
     register_js_ts_adapters, register_python_adapter,
@@ -42,6 +42,7 @@ use atlas_rules::Rule;
 
 use crate::AnalysisLevel;
 
+use crate::diff::DiffContext;
 use crate::scanner::discover_files;
 use crate::{CoreError, Language};
 
@@ -133,6 +134,9 @@ pub struct ScanOptions {
     pub jobs: Option<usize>,
     /// If `true`, skip the result cache entirely.
     pub no_cache: bool,
+    /// Git diff context for diff-aware scanning.
+    /// When set (and not fallback), only changed files are scanned.
+    pub diff_context: Option<DiffContext>,
 }
 
 impl Default for ScanOptions {
@@ -141,6 +145,7 @@ impl Default for ScanOptions {
             max_file_size_kb: 1024,
             jobs: None,
             no_cache: false,
+            diff_context: None,
         }
     }
 }
@@ -264,12 +269,54 @@ impl ScanEngine {
         let scan_start = std::time::Instant::now();
 
         // Step 1: Discover files.
-        let discovery = discover_files(target, language_filter)?;
+        let mut discovery = discover_files(target, language_filter)?;
         info!(
             files = discovery.files.len(),
             languages = ?discovery.languages_detected,
             "file discovery complete"
         );
+
+        // Step 1b: Filter to changed files if diff context is active.
+        let diff_ctx = options.diff_context.as_ref();
+        if let Some(dc) = diff_ctx {
+            if !dc.is_fallback {
+                let total_files = discovery.files.len();
+                let changed_paths = dc.changed_paths();
+                discovery
+                    .files
+                    .retain(|f| changed_paths.contains(f.relative_path.as_str()));
+
+                let changed_count = discovery.files.len();
+                info!(
+                    changed = changed_count,
+                    total = total_files,
+                    "diff-aware file filtering applied"
+                );
+
+                if changed_count == 0 {
+                    info!("No changed files to scan");
+                    return Ok(ScanResult {
+                        findings: Vec::new(),
+                        files_scanned: 0,
+                        files_skipped: 0,
+                        languages_detected: Vec::new(),
+                        summary: FindingsSummary::default(),
+                        stats: ScanStats {
+                            duration_ms: scan_start.elapsed().as_millis() as u64,
+                            parse_failures: 0,
+                            cache_hit_rate: None,
+                        },
+                    });
+                }
+
+                // Log suggestion if diff covers >80% of files.
+                if total_files > 0
+                    && (changed_count as f64 / total_files as f64) > 0.8
+                {
+                    warn!("Consider running a full scan for comprehensive coverage");
+                }
+            }
+        }
 
         let max_file_bytes = options.max_file_size_kb * 1024;
 
@@ -308,6 +355,7 @@ impl ScanEngine {
                         &query_cache,
                         &files_scanned,
                         &files_skipped,
+                        diff_ctx,
                     )
                 })
                 .collect()
@@ -396,6 +444,7 @@ impl ScanEngine {
         query_cache: &HashMap<String, L1PatternEngine>,
         files_scanned: &AtomicU32,
         files_skipped: &AtomicU32,
+        diff_context: Option<&DiffContext>,
     ) -> Vec<Finding> {
         // 2a. Look up adapter by language.
         let adapter = match self.adapter_registry.get_by_language(discovered.language) {
@@ -523,6 +572,29 @@ impl ScanEngine {
             }
 
             findings.extend(rule_findings);
+        }
+
+        // Attribute diff status to each finding.
+        if let Some(dc) = diff_context {
+            if !dc.is_fallback {
+                let changed_file = dc.get_file(&discovered.relative_path);
+                for finding in &mut findings {
+                    finding.diff_status = Some(
+                        if changed_file
+                            .is_some_and(|cf| {
+                                cf.overlaps_any_hunk(
+                                    finding.line_range.start_line,
+                                    finding.line_range.end_line,
+                                )
+                            })
+                        {
+                            DiffStatus::New
+                        } else {
+                            DiffStatus::Context
+                        },
+                    );
+                }
+            }
         }
 
         files_scanned.fetch_add(1, Ordering::Relaxed);

@@ -138,6 +138,7 @@ fn execute_create(args: CreateArgs) -> Result<ExitCode, anyhow::Error> {
         max_file_size_kb: config.scan.max_file_size_kb,
         jobs: None,
         no_cache: false,
+        diff_context: None,
     };
 
     let result = engine
@@ -217,6 +218,7 @@ fn execute_diff(args: DiffArgs) -> Result<ExitCode, anyhow::Error> {
         max_file_size_kb: config.scan.max_file_size_kb,
         jobs: None,
         no_cache: false,
+        diff_context: None,
     };
 
     let result = engine

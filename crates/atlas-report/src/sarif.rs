@@ -221,6 +221,10 @@ pub struct SarifResultProperties {
     /// CWE identifier, if applicable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cwe: Option<String>,
+
+    /// Diff status for diff-aware scans ("new" or "context").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diff_status: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -300,6 +304,7 @@ fn finding_to_result(finding: &Finding) -> SarifResult {
             atlas_confidence: finding.confidence.to_string(),
             atlas_analysis_level: finding.analysis_level.to_string(),
             cwe: finding.cwe_id.clone(),
+            diff_status: finding.diff_status.as_ref().map(|s| s.to_string()),
         },
     }
 }
@@ -747,6 +752,44 @@ mod tests {
         assert_eq!(
             parsed["runs"][0]["tool"]["driver"]["version"],
             ENGINE_VERSION
+        );
+    }
+
+    #[test]
+    fn sarif_diff_status_included_when_present() {
+        use atlas_analysis::DiffStatus;
+
+        let mut finding = make_finding(Severity::High, "atlas/security/ts/sqli");
+        finding.diff_status = Some(DiffStatus::New);
+
+        let scan_result = make_scan_result(vec![finding]);
+        let rules = vec![make_rule("atlas/security/ts/sqli", "1.0.0")];
+
+        let json = format_sarif(&scan_result, &rules);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let properties = &parsed["runs"][0]["results"][0]["properties"];
+        assert_eq!(
+            properties["diffStatus"], "new",
+            "diff_status should be present as 'new' in SARIF properties"
+        );
+    }
+
+    #[test]
+    fn sarif_diff_status_omitted_when_none() {
+        let finding = make_finding(Severity::High, "atlas/security/ts/sqli");
+        assert!(finding.diff_status.is_none());
+
+        let scan_result = make_scan_result(vec![finding]);
+        let rules = vec![make_rule("atlas/security/ts/sqli", "1.0.0")];
+
+        let json = format_sarif(&scan_result, &rules);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let properties = &parsed["runs"][0]["results"][0]["properties"];
+        assert!(
+            properties.get("diffStatus").is_none() || properties["diffStatus"].is_null(),
+            "diffStatus should be omitted when diff_status is None"
         );
     }
 }

@@ -63,6 +63,10 @@ pub struct AtlasReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub baseline_diff: Option<BaselineDiff>,
 
+    /// Diff context summary for diff-aware scans.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diff_context: Option<DiffContextReport>,
+
     /// Scan performance statistics (reserved for future use).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stats: Option<ScanStats>,
@@ -167,6 +171,19 @@ pub struct BaselineDiff {
     pub baselined_count: u32,
     /// Number of resolved findings (in baseline but no longer detected).
     pub resolved_count: u32,
+}
+
+/// Diff context summary for diff-aware scans.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiffContextReport {
+    /// The git reference used for the diff (e.g. "HEAD", "origin/main").
+    pub git_ref: String,
+    /// Number of files changed since the git reference.
+    pub changed_files_count: u32,
+    /// Number of findings on changed lines (diff_status == New).
+    pub total_new_findings: u32,
+    /// Number of findings on unchanged lines (diff_status == Context).
+    pub total_context_findings: u32,
 }
 
 /// Placeholder for future scan performance statistics.
@@ -290,6 +307,8 @@ pub struct ReportOptions<'a> {
     pub baseline_applied: Option<&'a str>,
     /// Baseline diff results, if a baseline was used.
     pub baseline_diff: Option<BaselineDiff>,
+    /// Diff context report, if diff-aware scanning was used.
+    pub diff_context: Option<DiffContextReport>,
 }
 
 /// Formats a complete Atlas Findings JSON v1.0.0 report.
@@ -393,6 +412,7 @@ pub fn format_report_with_options(
         gate_result,
         gate_details: options.gate_details.clone(),
         baseline_diff: options.baseline_diff.clone(),
+        diff_context: options.diff_context.clone(),
         stats: None,
     };
 
@@ -813,5 +833,88 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
 
         assert_eq!(parsed["scan"]["id"].as_str().unwrap(), expected_id);
+    }
+
+    // -- Diff context report tests -------------------------------------------
+
+    #[test]
+    fn report_diff_context_included_when_present() {
+        let scan_result = make_scan_result(vec![]);
+        let rules: Vec<Rule> = vec![];
+        let config = AtlasConfig::default();
+
+        let options = ReportOptions {
+            diff_context: Some(DiffContextReport {
+                git_ref: "HEAD".to_string(),
+                changed_files_count: 3,
+                total_new_findings: 2,
+                total_context_findings: 1,
+            }),
+            ..Default::default()
+        };
+
+        let json =
+            format_report_with_options(&scan_result, "/project/src", &rules, &config, &options);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let dc = &parsed["diff_context"];
+        assert!(!dc.is_null(), "diff_context should be present");
+        assert_eq!(dc["git_ref"], "HEAD");
+        assert_eq!(dc["changed_files_count"], 3);
+        assert_eq!(dc["total_new_findings"], 2);
+        assert_eq!(dc["total_context_findings"], 1);
+    }
+
+    #[test]
+    fn report_diff_context_omitted_when_none() {
+        let scan_result = make_scan_result(vec![]);
+        let rules: Vec<Rule> = vec![];
+        let config = AtlasConfig::default();
+
+        let json = format_report(&scan_result, "/project/src", &rules, &config, false);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert!(
+            parsed["diff_context"].is_null(),
+            "diff_context should be omitted when not provided"
+        );
+    }
+
+    #[test]
+    fn report_finding_diff_status_serialised() {
+        use atlas_analysis::DiffStatus;
+
+        let mut finding = make_finding(Severity::High, "atlas/a");
+        finding.diff_status = Some(DiffStatus::New);
+
+        let scan_result = make_scan_result(vec![finding]);
+        let rules = vec![make_rule("atlas/a", "1.0.0")];
+        let config = AtlasConfig::default();
+
+        let json = format_report(&scan_result, "/project/src", &rules, &config, false);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(
+            parsed["findings"][0]["diff_status"], "new",
+            "diff_status should be serialised as 'new'"
+        );
+    }
+
+    #[test]
+    fn report_finding_diff_status_omitted_when_none() {
+        let finding = make_finding(Severity::High, "atlas/a");
+        assert!(finding.diff_status.is_none());
+
+        let scan_result = make_scan_result(vec![finding]);
+        let rules = vec![make_rule("atlas/a", "1.0.0")];
+        let config = AtlasConfig::default();
+
+        let json = format_report(&scan_result, "/project/src", &rules, &config, false);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert!(
+            parsed["findings"][0]["diff_status"].is_null(),
+            "diff_status should be omitted when None"
+        );
     }
 }

@@ -11,8 +11,8 @@ pub mod sarif;
 
 // Re-export key types for convenience.
 pub use json::{
-    AtlasReport, BaselineDiff, FindingsSummary, GateBreachedThreshold, GateDetails,
-    GateResultReport, ReportOptions, ScanMetadata, ScanStats,
+    AtlasReport, BaselineDiff, DiffContextReport, FindingsSummary, GateBreachedThreshold,
+    GateDetails, GateResultReport, ReportOptions, ScanMetadata, ScanStats,
 };
 pub use json::{ENGINE_VERSION, SCHEMA_VERSION};
 pub use json::{

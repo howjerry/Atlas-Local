@@ -6,13 +6,15 @@ use anyhow::Context;
 use indicatif::{ProgressBar, ProgressStyle};
 use tracing::info;
 
+use atlas_analysis::DiffStatus;
+use atlas_core::diff;
 use atlas_core::engine::{ScanEngine, ScanOptions};
 use atlas_core::{Category, GateResult, Language, Severity};
 use atlas_policy::baseline;
 use atlas_policy::gate::{self, GateFinding};
 use atlas_report::{
-    BaselineDiff, GateBreachedThreshold, GateDetails, ReportOptions, generate_reports,
-    parse_formats,
+    BaselineDiff, DiffContextReport, GateBreachedThreshold, GateDetails, ReportOptions,
+    generate_reports, parse_formats,
 };
 
 use crate::ExitCode;
@@ -66,6 +68,27 @@ pub struct ScanArgs {
     /// Include timestamps in output.
     #[arg(long)]
     pub timestamp: bool,
+
+    /// Git reference for diff-aware scanning (e.g. HEAD, origin/main, v1.0.0).
+    /// Only files changed since this reference will be scanned.
+    #[arg(long = "diff")]
+    pub diff_ref: Option<String>,
+
+    /// Gate evaluation mode for diff-aware scans.
+    /// "all" (default): count all findings in changed files.
+    /// "new-only": count only findings on changed lines.
+    #[arg(long = "diff-gate-mode", default_value = "all")]
+    pub diff_gate_mode: DiffGateMode,
+}
+
+/// Gate evaluation mode for diff-aware scans.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum DiffGateMode {
+    /// Count all findings in changed files against the gate.
+    All,
+    /// Count only findings on changed lines (diff_status == new).
+    #[value(name = "new-only")]
+    NewOnly,
 }
 
 // ---------------------------------------------------------------------------
@@ -216,11 +239,29 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
     let language_filter: Option<Vec<Language>> = args.lang.as_deref().map(parse_language_filter);
     let language_filter_ref = language_filter.as_deref();
 
-    // 6. Build scan options from CLI args and config.
+    // 6. Compute diff context if --diff was specified.
+    let diff_context = if let Some(ref git_ref) = args.diff_ref {
+        match diff::compute_diff(&args.target, git_ref) {
+            Ok(dc) => {
+                if dc.is_fallback {
+                    info!("Not a git repository; falling back to full scan");
+                }
+                Some(dc)
+            }
+            Err(e) => {
+                return Err(anyhow::anyhow!("{e}"));
+            }
+        }
+    } else {
+        None
+    };
+
+    // 6b. Build scan options from CLI args and config.
     let scan_options = ScanOptions {
         max_file_size_kb: config.scan.max_file_size_kb,
         jobs: args.jobs,
         no_cache: args.no_cache,
+        diff_context,
     };
 
     // 7. Show progress spinner (unless --quiet).
@@ -332,7 +373,8 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         resolved_count: d.resolved_count,
     });
 
-    // Filter findings for gate evaluation: only new findings count against thresholds.
+    // Filter findings for gate evaluation.
+    // Baseline filtering: only new findings (vs baseline) count.
     let findings_for_gate: Vec<&atlas_analysis::Finding> =
         if let Some(ref diff) = baseline_diff_result {
             let new_set: std::collections::HashSet<&str> =
@@ -344,6 +386,17 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
                 .collect()
         } else {
             result.findings.iter().collect()
+        };
+
+    // Diff-gate-mode filtering: in new-only mode, only count findings on changed lines.
+    let findings_for_gate: Vec<&atlas_analysis::Finding> =
+        if args.diff_gate_mode == DiffGateMode::NewOnly && args.diff_ref.is_some() {
+            findings_for_gate
+                .into_iter()
+                .filter(|f| f.diff_status == Some(DiffStatus::New))
+                .collect()
+        } else {
+            findings_for_gate
         };
 
     let adapted: Vec<FindingAdapter<'_>> = findings_for_gate
@@ -389,6 +442,25 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         .unwrap_or_else(|_| args.target.clone())
         .display()
         .to_string();
+    let report_diff_context = scan_options.diff_context.as_ref().map(|dc| {
+        let total_new = result
+            .findings
+            .iter()
+            .filter(|f| f.diff_status == Some(DiffStatus::New))
+            .count() as u32;
+        let total_context = result
+            .findings
+            .iter()
+            .filter(|f| f.diff_status == Some(DiffStatus::Context))
+            .count() as u32;
+        DiffContextReport {
+            git_ref: dc.git_ref.clone(),
+            changed_files_count: dc.changed_files.len() as u32,
+            total_new_findings: total_new,
+            total_context_findings: total_context,
+        }
+    });
+
     let report_options = ReportOptions {
         include_timestamp: args.timestamp,
         gate_status: Some(&gate_status),
@@ -396,6 +468,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         policy_name: Some(&policy.name),
         baseline_applied: baseline_path_str.as_deref(),
         baseline_diff: report_baseline_diff,
+        diff_context: report_diff_context,
     };
 
     let reports = generate_reports(
@@ -540,6 +613,8 @@ mod tests {
             verbose: false,
             quiet: true,
             timestamp: false,
+            diff_ref: None,
+            diff_gate_mode: DiffGateMode::All,
         };
         let result = execute(args);
         assert!(result.is_err());
@@ -561,6 +636,8 @@ mod tests {
             verbose: false,
             quiet: true,
             timestamp: false,
+            diff_ref: None,
+            diff_gate_mode: DiffGateMode::All,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -610,6 +687,8 @@ fail_on:
             verbose: false,
             quiet: true,
             timestamp: false,
+            diff_ref: None,
+            diff_gate_mode: DiffGateMode::All,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -638,6 +717,8 @@ fail_on:
             verbose: false,
             quiet: true,
             timestamp: false,
+            diff_ref: None,
+            diff_gate_mode: DiffGateMode::All,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -726,6 +807,8 @@ fail_on:
             verbose: false,
             quiet: true,
             timestamp: false,
+            diff_ref: None,
+            diff_gate_mode: DiffGateMode::All,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -747,6 +830,8 @@ fail_on:
             verbose: false,
             quiet: true,
             timestamp: false,
+            diff_ref: None,
+            diff_gate_mode: DiffGateMode::All,
         };
         let result = execute(args);
         assert!(result.is_err());

@@ -139,6 +139,29 @@ impl fmt::Display for LineRange {
 }
 
 // ---------------------------------------------------------------------------
+// DiffStatus
+// ---------------------------------------------------------------------------
+
+/// Relationship of a finding to the diff context.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DiffStatus {
+    /// Finding is on a changed line (within a hunk).
+    New,
+    /// Finding is on an unchanged line in a changed file.
+    Context,
+}
+
+impl fmt::Display for DiffStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::New => f.write_str("new"),
+            Self::Context => f.write_str("context"),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Finding
 // ---------------------------------------------------------------------------
 
@@ -190,6 +213,12 @@ pub struct Finding {
 
     /// Extensible metadata (deterministic ordering via `BTreeMap`).
     pub metadata: BTreeMap<String, serde_json::Value>,
+
+    /// Diff status relative to a git diff context.
+    /// `None` for non-diff scans, `Some(New)` for findings on changed lines,
+    /// `Some(Context)` for findings on unchanged lines in changed files.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diff_status: Option<DiffStatus>,
 }
 
 impl Finding {
@@ -297,6 +326,7 @@ pub struct FindingBuilder {
     analysis_level: Option<AnalysisLevel>,
     confidence: Option<Confidence>,
     metadata: BTreeMap<String, serde_json::Value>,
+    diff_status: Option<DiffStatus>,
 }
 
 impl FindingBuilder {
@@ -397,6 +427,13 @@ impl FindingBuilder {
         self
     }
 
+    /// Sets the diff status for diff-aware scanning.
+    #[must_use]
+    pub fn diff_status(mut self, diff_status: DiffStatus) -> Self {
+        self.diff_status = Some(diff_status);
+        self
+    }
+
     /// Builds the [`Finding`], computing the fingerprint and validating all fields.
     ///
     /// # Errors
@@ -458,6 +495,7 @@ impl FindingBuilder {
             analysis_level,
             confidence,
             metadata: self.metadata,
+            diff_status: self.diff_status,
         })
     }
 }
@@ -1032,5 +1070,72 @@ mod tests {
             .unwrap();
 
         assert_eq!(finding.fingerprint, expected);
+    }
+
+    // -- DiffStatus tests ----------------------------------------------------
+
+    #[test]
+    fn diff_status_default_none() {
+        let finding = sample_finding();
+        assert_eq!(finding.diff_status, None);
+    }
+
+    #[test]
+    fn diff_status_serde_roundtrip() {
+        let json = serde_json::to_string(&DiffStatus::New).unwrap();
+        assert_eq!(json, "\"new\"");
+        let back: DiffStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, DiffStatus::New);
+
+        let json = serde_json::to_string(&DiffStatus::Context).unwrap();
+        assert_eq!(json, "\"context\"");
+    }
+
+    #[test]
+    fn diff_status_omitted_when_none() {
+        let finding = sample_finding();
+        let value: serde_json::Value = serde_json::to_value(&finding).unwrap();
+        assert!(value.get("diff_status").is_none());
+    }
+
+    #[test]
+    fn diff_status_present_when_some() {
+        let mut finding = sample_finding();
+        finding.diff_status = Some(DiffStatus::New);
+        let value: serde_json::Value = serde_json::to_value(&finding).unwrap();
+        assert_eq!(value["diff_status"], "new");
+    }
+
+    #[test]
+    fn diff_status_does_not_affect_fingerprint() {
+        let f1 = sample_finding();
+        let mut f2 = sample_finding();
+        f2.diff_status = Some(DiffStatus::New);
+        assert_eq!(f1.fingerprint, f2.fingerprint);
+    }
+
+    #[test]
+    fn builder_diff_status() {
+        let finding = FindingBuilder::new()
+            .rule_id("atlas/security/js/test")
+            .severity(Severity::High)
+            .category(Category::Security)
+            .file_path("src/main.js")
+            .line_range(LineRange::new(1, 1, 1, 10).unwrap())
+            .snippet("code")
+            .description("desc")
+            .remediation("fix")
+            .analysis_level(AnalysisLevel::L1)
+            .confidence(Confidence::High)
+            .diff_status(DiffStatus::Context)
+            .build()
+            .unwrap();
+        assert_eq!(finding.diff_status, Some(DiffStatus::Context));
+    }
+
+    #[test]
+    fn diff_status_display() {
+        assert_eq!(DiffStatus::New.to_string(), "new");
+        assert_eq!(DiffStatus::Context.to_string(), "context");
     }
 }

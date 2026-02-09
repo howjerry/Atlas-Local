@@ -9,6 +9,7 @@ use std::fmt;
 
 // Future modules -- uncomment as they are implemented.
 pub mod config;
+pub mod diff;
 pub mod engine;
 pub mod scanner;
 
