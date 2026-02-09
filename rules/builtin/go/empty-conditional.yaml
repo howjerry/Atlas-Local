@@ -1,0 +1,29 @@
+id: atlas/quality/go/empty-conditional
+name: Empty Conditional Block
+description: >
+  Detects if statements with empty bodies. An empty conditional block suggests
+  either incomplete implementation or dead code. If the condition has side
+  effects, the intent should be made explicit; otherwise, the block should be
+  filled with logic or removed entirely.
+severity: low
+category: quality
+language: Go
+confidence: high
+pattern: |
+  (if_statement
+    consequence: (block
+      .
+      "}"))
+  @match
+remediation: >
+  Add the missing logic to the if block, or remove the empty conditional
+  entirely if it serves no purpose. If the empty body is intentional, add
+  a comment explaining why.
+references:
+  - https://go.dev/doc/effective_go
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

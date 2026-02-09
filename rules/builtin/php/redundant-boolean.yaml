@@ -1,0 +1,30 @@
+id: atlas/quality/php/redundant-boolean
+name: Redundant Boolean Return in Conditional
+description: >
+  Detects if-else blocks that return true in one branch and false in
+  the other. This pattern can be simplified by directly returning the
+  boolean condition expression itself.
+severity: info
+category: quality
+language: Php
+confidence: high
+pattern: |
+  (if_statement
+    body: (compound_statement
+      (return_statement (boolean)))
+    (else_clause
+      body: (compound_statement
+        (return_statement (boolean)))))
+  @match
+remediation: >
+  Simplify by returning the condition directly. For example, replace
+  `if ($x > 0) { return true; } else { return false; }` with
+  `return $x > 0;`. If negation is needed, use `return !($condition);`.
+references:
+  - https://refactoring.guru/simplify-conditional-expressions
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

@@ -1,0 +1,31 @@
+id: atlas/quality/ruby/empty-rescue-block
+name: Empty Rescue Block
+description: >
+  Detects rescue clauses with empty bodies. Silently swallowing exceptions
+  hides errors and makes debugging extremely difficult. At minimum, the
+  exception should be logged or the rescue block should contain a comment
+  explaining why the exception is intentionally ignored.
+severity: low
+category: quality
+language: Ruby
+confidence: high
+pattern: |
+  (rescue
+    body: (then
+      .
+      .))
+  @match
+remediation: >
+  Add error handling logic to the rescue block. At minimum, log the
+  exception using `Rails.logger.error(e.message)` or `warn(e.message)`.
+  If the exception is intentionally ignored, add a comment explaining
+  why, such as `# 預期可能發生的錯誤，安全忽略`.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_lint/#lintsuppressedexception
+  - https://rubystyle.guide/#dont-hide-exceptions
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

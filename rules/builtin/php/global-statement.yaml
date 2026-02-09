@@ -1,0 +1,26 @@
+id: atlas/quality/php/global-statement
+name: Use of global Keyword
+description: >
+  Detects use of the global keyword which imports variables from the
+  global scope into a function. Global state makes code harder to test,
+  reason about, and maintain. It creates hidden dependencies between
+  functions and the global scope.
+severity: low
+category: quality
+language: Php
+confidence: high
+pattern: |
+  (global_declaration) @match
+remediation: >
+  Pass required values as function parameters instead of using global
+  variables. Use dependency injection to provide dependencies. If shared
+  state is needed, consider using a class with instance properties or
+  a configuration object.
+references:
+  - https://www.php.net/manual/en/language.variables.scope.php
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: "best-practices"
+version: 1.0.0

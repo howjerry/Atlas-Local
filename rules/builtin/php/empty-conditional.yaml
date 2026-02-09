@@ -1,0 +1,32 @@
+id: atlas/quality/php/empty-conditional
+name: Empty Conditional Block
+description: >
+  Detects if or else blocks with empty bodies. Empty conditional blocks
+  may indicate incomplete logic, forgotten implementations, or dead code
+  that should be cleaned up.
+severity: low
+category: quality
+language: Php
+confidence: high
+pattern: |
+  [
+    (if_statement
+      body: (compound_statement . "}"))
+    @match
+
+    (else_clause
+      body: (compound_statement . "}"))
+    @match
+  ]
+remediation: >
+  Implement the conditional block body, remove the empty block, or add
+  a comment explaining why it is intentionally empty. If the condition
+  has side effects, extract them into a separate statement.
+references:
+  - https://www.php.net/manual/en/control-structures.if.php
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: "error-handling"
+version: 1.0.0

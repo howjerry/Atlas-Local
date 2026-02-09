@@ -1,0 +1,54 @@
+id: atlas/security/ruby/command-injection
+name: OS Command Injection via Shell Execution
+description: >
+  Detects potential command injection vulnerabilities where user-controllable
+  data may be passed to OS command execution functions such as `system`,
+  `exec`, or backtick-style execution. An attacker can inject arbitrary
+  shell commands, leading to full system compromise.
+severity: critical
+category: security
+language: Ruby
+cwe_id: CWE-78
+pattern: |
+  [
+    (call
+      method: (identifier) @method
+      (#match? @method "^(system|exec|spawn)$")
+      arguments: (argument_list
+        (string
+          (interpolation)) @cmd_arg))
+    (command
+      name: (identifier) @cmd_name
+      (#match? @cmd_name "^(system|exec|spawn)$")
+      arguments: (argument_list
+        (string
+          (interpolation)) @cmd_arg2))
+  ]
+  @match
+remediation: >
+  Avoid passing user input directly to shell commands. Use array-based
+  invocation to prevent shell interpretation. For example, replace
+  `system("ls #{user_input}")` with `system("ls", user_input)`. For more
+  complex scenarios, use `Shellwords.shellescape` to sanitize arguments
+  or consider using `Open3.capture3` with array arguments.
+references:
+  - https://cwe.mitre.org/data/definitions/78.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Command_Injection
+tags:
+  - command-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

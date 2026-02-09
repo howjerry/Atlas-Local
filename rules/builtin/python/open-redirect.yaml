@@ -1,0 +1,45 @@
+id: atlas/security/python/open-redirect
+name: Open Redirect via User Input
+description: >
+  Detects potential open redirect vulnerabilities where user-controlled input
+  from request objects is passed to redirect functions. An attacker can craft a
+  URL that redirects users to a malicious site, enabling phishing attacks or
+  credential theft. Common vulnerable patterns include Django's `redirect()` and
+  `HttpResponseRedirect()` with request parameters.
+severity: medium
+category: security
+language: Python
+cwe_id: CWE-601
+pattern: |
+  (call
+    function: (identifier) @func
+    (#match? @func "^(redirect|HttpResponseRedirect)$")
+    arguments: (argument_list
+      (attribute
+        object: (_) @obj)))
+  @match
+remediation: >
+  Validate redirect URLs against an allowlist of trusted domains before
+  redirecting. Use Django's `url_has_allowed_host_and_scheme()` function to
+  verify the URL is safe. Alternatively, use relative URLs only and avoid passing
+  user input directly to redirect functions.
+references:
+  - https://cwe.mitre.org/data/definitions/601.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/04-Testing_for_Client-side_URL_Redirect
+tags:
+  - open-redirect
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

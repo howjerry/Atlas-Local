@@ -1,0 +1,56 @@
+id: atlas/security/php/sql-injection
+name: SQL Injection via String Interpolation or Concatenation
+description: >
+  Detects potential SQL injection vulnerabilities where SQL queries are
+  constructed using string interpolation or concatenation and passed to
+  database query functions such as mysql_query, mysqli_query, pg_query,
+  or PDO::query. An attacker can manipulate interpolated input to alter
+  the SQL query logic, leading to unauthorized data access or modification.
+severity: critical
+category: security
+language: Php
+cwe_id: CWE-89
+pattern: |
+  [
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          [(encapsed_string) (binary_expression) (string) (heredoc)] @sql_arg)))
+      (#match? @func_name "^(mysql_query|mysqli_query|pg_query)$"))
+    @match
+
+    (member_call_expression
+      name: (name) @method
+      arguments: (arguments
+        (argument
+          [(encapsed_string) (binary_expression) (heredoc)] @sql_arg))
+      (#match? @method "^(query|prepare|exec)$"))
+    @match
+  ]
+remediation: >
+  Use parameterized queries or prepared statements instead of string
+  interpolation or concatenation. For PDO, use
+  `$pdo->prepare("SELECT * FROM users WHERE id = ?")` and bind parameters.
+  For MySQLi, use `$stmt = $mysqli->prepare(...)` with `bind_param()`.
+references:
+  - https://cwe.mitre.org/data/definitions/89.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+  - https://www.php.net/manual/en/pdo.prepared-statements.php
+tags:
+  - sql-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

@@ -1,0 +1,45 @@
+id: atlas/security/ruby/yaml-load
+name: Unsafe YAML Deserialization via YAML.load
+description: >
+  Detects usage of `YAML.load` which can deserialize arbitrary Ruby objects,
+  leading to remote code execution if the YAML input is attacker-controlled.
+  Unlike `YAML.safe_load`, `YAML.load` does not restrict the types of
+  objects that can be instantiated during deserialization.
+severity: high
+category: security
+language: Ruby
+cwe_id: CWE-502
+pattern: |
+  (call
+    receiver: (constant) @receiver
+    (#eq? @receiver "YAML")
+    method: (identifier) @method
+    (#eq? @method "load")
+    arguments: (argument_list))
+  @match
+remediation: >
+  Replace `YAML.load` with `YAML.safe_load` which only allows basic Ruby
+  types (strings, numbers, arrays, hashes). If you need to deserialize
+  specific custom types, use `YAML.safe_load` with an explicit
+  `permitted_classes` list. For example, replace `YAML.load(input)` with
+  `YAML.safe_load(input)` or `YAML.safe_load(input, permitted_classes: [Date, Time])`.
+references:
+  - https://cwe.mitre.org/data/definitions/502.html
+  - https://ruby-doc.org/stdlib/libdoc/yaml/rdoc/YAML.html
+  - https://blog.rubygems.org/2013/01/31/data-verification.html
+tags:
+  - deserialization
+  - owasp-top-10
+  - a08-software-data-integrity
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A08:2021"
+      description: Software and Data Integrity Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

@@ -1,0 +1,30 @@
+id: atlas/quality/ruby/empty-conditional
+name: Empty Conditional Block
+description: >
+  Detects if/elsif/else blocks with empty bodies. Empty conditional
+  blocks are typically leftover scaffolding, incomplete implementations,
+  or dead code that should be completed or removed.
+severity: low
+category: quality
+language: Ruby
+confidence: high
+pattern: |
+  (if
+    consequence: (then
+      .
+      .))
+  @match
+remediation: >
+  Implement the conditional block body or remove the empty conditional
+  entirely. If the block is intentionally empty, add a comment explaining
+  why. Consider whether the condition can be simplified or inverted to
+  remove the empty branch.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_lint/#lintemptyconditionalblock
+  - https://rubystyle.guide/
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

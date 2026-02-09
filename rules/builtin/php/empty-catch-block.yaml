@@ -1,0 +1,25 @@
+id: atlas/quality/php/empty-catch-block
+name: Empty Catch Block
+description: >
+  Detects try-catch blocks where the catch clause has an empty body.
+  Empty catch blocks silently swallow exceptions, hiding errors and
+  making debugging extremely difficult. Errors should be logged,
+  re-thrown, or handled explicitly.
+severity: low
+category: quality
+language: Php
+confidence: high
+pattern: |
+  (catch_clause body: (compound_statement . "}")) @match
+remediation: >
+  Handle the caught exception explicitly. Log the error, re-throw it,
+  or wrap it in a more specific exception. If intentionally ignoring,
+  add a comment explaining why.
+references:
+  - https://www.php.net/manual/en/language.exceptions.php
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: "error-handling"
+version: 1.0.0

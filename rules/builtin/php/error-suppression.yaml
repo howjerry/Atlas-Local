@@ -1,0 +1,27 @@
+id: atlas/quality/php/error-suppression
+name: Error Suppression Operator
+description: >
+  Detects use of the @ error suppression operator which silences error
+  messages. This hides potential problems and makes debugging difficult.
+  Errors should be handled properly rather than suppressed.
+severity: low
+category: quality
+language: Php
+confidence: high
+pattern: |
+  (unary_op_expression
+    operator: "@")
+  @match
+remediation: >
+  Remove the @ operator and handle errors explicitly. Use try-catch
+  blocks for operations that may throw exceptions. Use error_reporting()
+  and set_error_handler() to manage error levels appropriately.
+  Check return values instead of suppressing errors.
+references:
+  - https://www.php.net/manual/en/language.operators.errorcontrol.php
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: "error-handling"
+version: 1.0.0

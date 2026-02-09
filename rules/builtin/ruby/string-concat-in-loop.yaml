@@ -1,0 +1,42 @@
+id: atlas/quality/ruby/string-concat-in-loop
+name: String Concatenation in Loop
+description: >
+  Detects string concatenation using `+=` inside loops. In Ruby, strings
+  are mutable but `+=` creates a new string object on each iteration,
+  leading to O(n^2) memory allocation and poor performance. Use
+  `String#<<` or an array with `join` instead.
+severity: low
+category: quality
+language: Ruby
+confidence: medium
+pattern: |
+  [
+    (while
+      body: (do
+        (operator_assignment
+          left: (identifier)
+          operator: "+="
+          right: (string)) @concat))
+    (for
+      body: (do
+        (operator_assignment
+          left: (identifier)
+          operator: "+="
+          right: (string)) @concat))
+  ]
+  @match
+remediation: >
+  Replace string concatenation with `String#<<` (shovel operator) or
+  collect parts in an array and join at the end. For example, replace
+  `result += item` with `result << item`, or use `parts = []; parts << item`
+  followed by `parts.join`. The shovel operator mutates the string in place,
+  avoiding unnecessary object allocation.
+references:
+  - https://rubystyle.guide/#concat-strings
+  - https://ruby-doc.org/core/String.html
+tags:
+  - code-quality
+  - performance
+metadata:
+  quality_domain: performance
+version: 1.0.0

@@ -1,0 +1,34 @@
+id: atlas/quality/java/excessive-parameters
+name: Excessive Method Parameters
+description: >
+  Detects methods with six or more parameters. Methods with too many
+  parameters are hard to understand, test, and maintain. They often
+  indicate that the method is doing too much or that the parameters
+  should be grouped into a dedicated object (Parameter Object pattern).
+severity: low
+category: quality
+language: Java
+confidence: high
+pattern: |
+  (formal_parameters
+    (formal_parameter)
+    (formal_parameter)
+    (formal_parameter)
+    (formal_parameter)
+    (formal_parameter)
+    (formal_parameter))
+  @match
+remediation: >
+  Reduce the number of parameters by introducing a Parameter Object or
+  Builder pattern. Group related parameters into a class and pass an
+  instance of that class instead. For example, replace
+  `void create(String name, String email, String phone, String addr, String city, String zip)`
+  with `void create(UserInfo info)` where UserInfo encapsulates all fields.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-107/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

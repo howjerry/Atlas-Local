@@ -1,0 +1,29 @@
+id: atlas/quality/php/loose-comparison
+name: Loose Comparison Operator
+description: >
+  Detects use of loose comparison operators (== and !=) instead of strict
+  comparison (=== and !==). PHP's loose comparisons perform type juggling
+  which can lead to unexpected results, such as "0" == false evaluating
+  to true, or "0e1" == "0e2" evaluating to true.
+severity: low
+category: quality
+language: Php
+confidence: high
+pattern: |
+  (binary_expression
+    operator: ["==" "!="])
+  @match
+remediation: >
+  Use strict comparison operators === and !== instead of == and !=.
+  Strict comparisons check both value and type, preventing unexpected
+  type juggling behavior. For example, use `$a === $b` instead of
+  `$a == $b`.
+references:
+  - https://www.php.net/manual/en/types.comparisons.php
+  - https://www.php.net/manual/en/language.operators.comparison.php
+tags:
+  - code-quality
+  - type-safety
+metadata:
+  quality_domain: "type-safety"
+version: 1.0.0

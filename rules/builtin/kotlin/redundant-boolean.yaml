@@ -1,0 +1,29 @@
+id: atlas/quality/kotlin/redundant-boolean
+name: Redundant Boolean Return in Conditional
+description: >
+  Detects if expressions that return boolean literals (true/false) in
+  both branches. This is redundant and can be simplified by returning
+  the condition directly or its negation.
+severity: low
+category: quality
+language: Kotlin
+confidence: high
+pattern: |
+  (if_expression
+    (block
+      (return_expression
+        (boolean_literal))))
+  @match
+remediation: >
+  Simplify the conditional by returning the boolean expression directly.
+  Replace `if (cond) { return true } else { return false }` with
+  `return cond`. Replace `if (cond) { return false } else { return true }`
+  with `return !cond`.
+references:
+  - https://rules.sonarsource.com/kotlin/RSPEC-1125/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

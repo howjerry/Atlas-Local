@@ -1,0 +1,32 @@
+id: atlas/quality/go/panic-usage
+name: Panic Usage in Application Code
+description: >
+  Detects calls to the built-in panic function. In Go, panic should be
+  reserved for truly unrecoverable situations. Library code should return
+  errors instead of panicking, as panics propagate up the call stack and
+  crash the entire program unless explicitly recovered. Using panic for
+  routine error handling is unidiomatic and fragile.
+severity: medium
+category: quality
+language: Go
+confidence: medium
+pattern: |
+  (call_expression
+    function: (identifier) @fn
+    (#eq? @fn "panic"))
+  @match
+remediation: >
+  Replace panic calls with error returns. Define custom error types or use
+  fmt.Errorf to provide context. Reserve panic only for programmer errors
+  or situations during initialization where the program genuinely cannot
+  continue. If panic is truly necessary, document the reason clearly.
+references:
+  - https://go.dev/doc/effective_go#errors
+  - https://go.dev/blog/error-handling-and-go
+  - https://go.dev/wiki/CodeReviewComments#dont-panic
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

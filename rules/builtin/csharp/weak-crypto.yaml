@@ -1,0 +1,48 @@
+id: atlas/security/csharp/weak-crypto
+name: Weak Cryptographic Algorithm
+description: >
+  Detects use of weak or broken cryptographic algorithms such as MD5,
+  SHA1, and DES. These algorithms have known vulnerabilities and should
+  not be used for security-sensitive operations. MD5 and SHA1 are
+  vulnerable to collision attacks, and DES has an insufficient key length.
+severity: medium
+category: security
+language: CSharp
+cwe_id: CWE-327
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+pattern: |
+  (invocation_expression
+    function: (member_access_expression
+      expression: (identifier) @algo
+      name: (identifier) @method
+      (#match? @algo "^(MD5|SHA1|DES)$")
+      (#eq? @method "Create")))
+  @match
+remediation: >
+  Replace weak algorithms with stronger alternatives. Use SHA-256 or
+  SHA-512 instead of MD5/SHA1, and AES instead of DES. For example:
+  `using var sha256 = SHA256.Create();` or
+  `using var aes = Aes.Create();`.
+references:
+  - https://cwe.mitre.org/data/definitions/327.html
+  - https://learn.microsoft.com/en-us/dotnet/standard/security/cryptographic-services
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html
+tags:
+  - weak-crypto
+  - cryptography
+  - md5
+  - sha1
+  - des
+  - owasp-top-10
+  - a02-cryptographic-failures
+version: 1.0.0

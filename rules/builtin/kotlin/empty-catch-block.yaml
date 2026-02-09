@@ -1,0 +1,24 @@
+id: atlas/quality/kotlin/empty-catch-block
+name: Empty Catch Block
+description: >
+  Detects try-catch blocks where the catch clause has an empty body.
+  Empty catch blocks silently swallow exceptions, hiding errors and
+  making debugging difficult.
+severity: medium
+category: quality
+language: Kotlin
+confidence: high
+pattern: |
+  (catch_block (block . "}")) @match
+remediation: >
+  Handle the caught exception explicitly. Log the error, re-throw it,
+  or wrap it in a more specific exception. If intentionally ignoring,
+  add a comment explaining why.
+references:
+  - https://rules.sonarsource.com/kotlin/RSPEC-2486/
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: "error-handling"
+version: 1.0.0

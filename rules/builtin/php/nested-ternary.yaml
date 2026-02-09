@@ -1,0 +1,28 @@
+id: atlas/quality/php/nested-ternary
+name: Nested Ternary Expression
+description: >
+  Detects nested conditional (ternary) expressions. Nested ternary
+  operators significantly reduce code readability and make logic harder
+  to understand and debug. In PHP 8.0+, nested ternary without explicit
+  parentheses is deprecated.
+severity: low
+category: quality
+language: Php
+confidence: high
+pattern: |
+  (conditional_expression
+    (conditional_expression))
+  @match
+remediation: >
+  Refactor nested ternary expressions into if-else statements or use
+  a match expression (PHP 8.0+) for clarity. For example, replace
+  `$a ? ($b ? $x : $y) : $z` with an explicit if-else chain.
+references:
+  - https://www.php.net/manual/en/language.operators.comparison.php#language.operators.comparison.ternary
+  - https://wiki.php.net/rfc/ternary_associativity
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

@@ -1,0 +1,34 @@
+id: atlas/quality/python/excessive-parameters
+name: Excessive Function Parameters
+description: >
+  Detects functions with six or more parameters. Functions with many parameters
+  are hard to understand, test, and maintain. They often indicate that the
+  function is doing too much or that the parameters should be grouped into a
+  data class or configuration object.
+severity: low
+category: quality
+language: Python
+confidence: medium
+pattern: |
+  (function_definition
+    parameters: (parameters
+      (_) @p1 .
+      (_) @p2 .
+      (_) @p3 .
+      (_) @p4 .
+      (_) @p5 .
+      (_) @p6))
+  @match
+remediation: >
+  Reduce the number of parameters by grouping related parameters into a data
+  class, named tuple, or dictionary. Consider using the Builder pattern or
+  breaking the function into smaller, focused functions. For keyword-only
+  arguments, consider using `**kwargs` with explicit documentation.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/too-many-arguments.html
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

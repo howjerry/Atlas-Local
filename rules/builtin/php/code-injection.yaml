@@ -1,0 +1,46 @@
+id: atlas/security/php/code-injection
+name: Code Injection via Dynamic Code Execution
+description: >
+  Detects use of PHP's dynamic code execution function which executes
+  arbitrary PHP code from a string. If the input is derived from
+  user-controllable data, an attacker can execute arbitrary code on the
+  server, leading to full system compromise including data theft,
+  backdoors, and lateral movement.
+severity: critical
+category: security
+language: Php
+cwe_id: CWE-94
+pattern: |
+  ((function_call_expression
+    function: (name) @func_name
+    arguments: (arguments
+      (argument
+        (_) @code_arg)))
+    (#eq? @func_name "eval"))
+  @match
+remediation: >
+  Avoid using dynamic code execution entirely. For configuration, use
+  structured formats like JSON or YAML. For dynamic dispatch, use arrays
+  mapping strings to callables. For mathematical expressions, use a safe
+  expression parser library. Strictly validate and sanitize all input.
+references:
+  - https://cwe.mitre.org/data/definitions/94.html
+  - https://owasp.org/www-community/attacks/Code_Injection
+  - https://www.php.net/manual/en/function.eval.php
+tags:
+  - code-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

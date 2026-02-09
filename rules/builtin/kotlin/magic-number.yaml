@@ -1,0 +1,31 @@
+id: atlas/quality/kotlin/magic-number
+name: Magic Number in Code
+description: >
+  Detects magic numbers (unexplained numeric literals) used as arguments
+  in function calls. Magic numbers reduce code readability and make
+  maintenance difficult because the intent behind the value is unclear.
+  Extract these values into named constants with descriptive names.
+severity: low
+category: quality
+language: Kotlin
+confidence: medium
+pattern: |
+  (value_arguments
+    (value_argument
+      (number_literal) @num
+      (#match? @num "^[2-9][0-9]*$")))
+  @match
+remediation: >
+  Extract magic numbers into named constants (val with descriptive names
+  in a companion object or top-level) that explain the purpose of the
+  value. For example, replace `Thread.sleep(3600000)` with
+  `private const val ONE_HOUR_MS = 3600000L` and
+  `Thread.sleep(ONE_HOUR_MS)`.
+references:
+  - https://rules.sonarsource.com/kotlin/RSPEC-109/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

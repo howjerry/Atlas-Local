@@ -1,0 +1,24 @@
+id: atlas/quality/php/todo-comment
+name: TODO/FIXME Comment
+description: >
+  Detects TODO, FIXME, HACK, and XXX comments left in source code.
+  These indicate incomplete work or known issues that should be tracked
+  in a proper issue tracker and resolved before release.
+severity: info
+category: quality
+language: Php
+confidence: high
+pattern: |
+  ((comment) @match
+   (#match? @match "(TODO|FIXME|HACK|XXX)"))
+remediation: >
+  Address the TODO/FIXME item or create a tracked issue for it.
+  Remove the comment once the issue is resolved or properly tracked.
+references:
+  - https://www.php.net/manual/en/language.basic-syntax.comments.php
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

@@ -1,0 +1,49 @@
+id: atlas/security/ruby/path-traversal
+name: Path Traversal via File Operations
+description: >
+  Detects potential path traversal vulnerabilities where file system
+  operations such as `File.open`, `File.read`, `File.write`, or `IO.read`
+  are called with string interpolation arguments that may contain user
+  input. An attacker can manipulate the file path to access arbitrary
+  files on the system using sequences like `../`.
+severity: high
+category: security
+language: Ruby
+cwe_id: CWE-22
+pattern: |
+  (call
+    receiver: (constant) @receiver
+    (#match? @receiver "^(File|IO|Dir)$")
+    method: (identifier) @method
+    (#match? @method "^(open|read|write|readlines|delete|rename|new|foreach|binread|binwrite)$")
+    arguments: (argument_list
+      (string
+        (interpolation)) @path_arg))
+  @match
+remediation: >
+  Validate and sanitize all file paths before use. Use `File.expand_path`
+  combined with a base directory check to ensure the resolved path stays
+  within the intended directory. For example:
+  `resolved = File.expand_path(user_input, base_dir)` followed by
+  `raise unless resolved.start_with?(base_dir)`. Consider using
+  `Pathname` for safer path manipulation.
+references:
+  - https://cwe.mitre.org/data/definitions/22.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Path_Traversal
+tags:
+  - path-traversal
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: AC-3
+      description: Access Enforcement
+version: 1.0.0

@@ -1,0 +1,47 @@
+id: atlas/security/go/open-redirect
+name: Open Redirect via http.Redirect
+description: >
+  Detects usage of http.Redirect where the redirect URL may be controlled
+  by user input. An attacker can craft a URL that redirects users to a
+  malicious site, enabling phishing attacks where victims believe they
+  are visiting a trusted domain.
+severity: medium
+category: security
+language: Go
+cwe_id: CWE-601
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+pattern: |
+  (call_expression
+    function: (selector_expression
+      operand: (identifier) @pkg
+      field: (field_identifier) @fn
+      (#eq? @pkg "http")
+      (#eq? @fn "Redirect"))
+    arguments: (argument_list
+      (_) @writer
+      (_) @request
+      (_) @url
+      (_) @code))
+  @match
+remediation: >
+  Validate redirect URLs against an allowlist of permitted domains or paths
+  before passing them to http.Redirect. Use url.Parse to verify the scheme
+  and host. Prefer relative URLs for internal redirects. Never pass
+  user-supplied query parameters directly as the redirect target.
+references:
+  - https://cwe.mitre.org/data/definitions/601.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/04-Testing_for_Client-side_URL_Redirect
+tags:
+  - open-redirect
+  - broken-access-control
+  - owasp-top-10
+  - a01-broken-access-control
+version: 1.0.0

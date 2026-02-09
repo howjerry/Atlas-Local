@@ -1,0 +1,31 @@
+id: atlas/quality/java/boolean-method-naming
+name: Boolean Method Without Proper Naming
+description: >
+  Detects methods returning boolean that do not follow the conventional
+  naming pattern (is/has/can/should/will/was/are/contains/exists prefix).
+  Boolean methods with non-standard names reduce readability and violate
+  the JavaBeans naming convention. Properly named boolean methods make
+  the code self-documenting.
+severity: low
+category: quality
+language: Java
+confidence: medium
+pattern: |
+  (method_declaration
+    type: (boolean_type)
+    name: (identifier) @method_name
+    (#match? @method_name "^(?!(is|has|can|should|will|was|are|contains|exists|matches|equals|needs|requires|supports|allows|enables|includes|accepts))[a-z]"))
+  @match
+remediation: >
+  Rename the method to follow the boolean naming convention by adding
+  an appropriate prefix. For example, rename `boolean valid()` to
+  `boolean isValid()`, `boolean permission()` to `boolean hasPermission()`,
+  or `boolean delete()` to `boolean canDelete()`.
+references:
+  - https://www.oracle.com/java/technologies/javase/codeconventions-namingconventions.html
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

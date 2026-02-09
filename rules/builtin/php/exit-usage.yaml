@@ -1,0 +1,26 @@
+id: atlas/quality/php/exit-usage
+name: Use of exit() or die()
+description: >
+  Detects use of exit() and die() which immediately terminate script
+  execution. These functions prevent proper cleanup, skip finally blocks,
+  and make code difficult to test. They should be avoided in library
+  and application code in favor of exceptions.
+severity: low
+category: quality
+language: Php
+confidence: high
+pattern: |
+  (exit_expression) @match
+remediation: >
+  Replace exit()/die() with exceptions that can be caught and handled
+  by the calling code. Use proper HTTP response codes and return
+  statements. In CLI scripts, throw exceptions and let the top-level
+  error handler set the exit code.
+references:
+  - https://www.php.net/manual/en/function.exit.php
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: "best-practices"
+version: 1.0.0

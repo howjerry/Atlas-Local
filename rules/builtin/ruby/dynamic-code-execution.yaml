@@ -1,0 +1,50 @@
+id: atlas/security/ruby/dynamic-code-execution
+name: Dynamic Code Execution via eval
+description: >
+  Detects usage of `eval`, `instance_eval`, `class_eval`, or `module_eval`
+  which execute arbitrary Ruby code at runtime. If the evaluated string
+  contains user input, an attacker can execute arbitrary code on the server,
+  leading to complete system compromise.
+severity: critical
+category: security
+language: Ruby
+cwe_id: CWE-95
+pattern: |
+  [
+    ((call
+      method: (identifier) @method
+      (#match? @method "^(eval|instance_eval|class_eval|module_eval)$")
+      arguments: (argument_list))
+    @match)
+    ((command
+      name: (identifier) @cmd_name
+      (#match? @cmd_name "^(eval|instance_eval|class_eval|module_eval)$"))
+    @match)
+  ]
+remediation: >
+  Avoid using `eval` and related methods with dynamic input. Consider
+  safer alternatives such as `send` with a whitelist of allowed methods,
+  or use a DSL or configuration approach instead of dynamic code execution.
+  If dynamic dispatch is needed, use `public_send` with strict input
+  validation against an allowlist of permitted method names.
+references:
+  - https://cwe.mitre.org/data/definitions/95.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html
+  - https://ruby-doc.org/core/Kernel.html#method-i-eval
+tags:
+  - code-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

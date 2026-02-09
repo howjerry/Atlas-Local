@@ -1,0 +1,47 @@
+id: atlas/security/python/weak-crypto
+name: Weak Cryptographic Hash Algorithm
+description: >
+  Detects usage of weak hash algorithms such as MD5 and SHA1 via the `hashlib`
+  module. These algorithms are considered cryptographically broken and should not
+  be used for security-sensitive operations such as password hashing, digital
+  signatures, or integrity verification. MD5 is vulnerable to collision attacks
+  and SHA1 has known practical collision vulnerabilities.
+severity: medium
+category: security
+language: Python
+cwe_id: CWE-327
+pattern: |
+  (call
+    function: (attribute
+      object: (identifier) @module
+      attribute: (identifier) @method
+      (#eq? @module "hashlib")
+      (#match? @method "^(md5|sha1)$"))
+    arguments: (argument_list))
+  @match
+remediation: >
+  Replace MD5 and SHA1 with stronger hash algorithms. Use `hashlib.sha256()` or
+  `hashlib.sha3_256()` for general hashing. For password hashing, use dedicated
+  libraries like `bcrypt`, `argon2-cffi`, or `hashlib.pbkdf2_hmac()` with a
+  strong hash function like SHA-256.
+references:
+  - https://cwe.mitre.org/data/definitions/327.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+  - https://docs.python.org/3/library/hashlib.html
+tags:
+  - weak-crypto
+  - cryptography
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+version: 1.0.0

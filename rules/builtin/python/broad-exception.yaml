@@ -1,0 +1,31 @@
+id: atlas/quality/python/broad-exception
+name: Broad Exception Catching
+description: >
+  Detects except clauses that catch the broad `Exception` class. Catching
+  `Exception` is overly broad and can mask bugs by silently catching unexpected
+  errors such as TypeError, AttributeError, or other programming errors that
+  should be fixed rather than handled. It makes debugging difficult because the
+  actual error type is hidden.
+severity: medium
+category: quality
+language: Python
+confidence: high
+pattern: |
+  (except_clause
+    ((identifier) @name
+      (#eq? @name "Exception")))
+  @match
+remediation: >
+  Catch specific exception types instead of the broad `Exception` class. For
+  example, use `except ValueError:` or `except (KeyError, TypeError):` to handle
+  only the expected error conditions. If you must catch a broad exception for
+  logging purposes, re-raise it after logging with `raise`.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/broad-except.html
+  - https://docs.python.org/3/library/exceptions.html#exception-hierarchy
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

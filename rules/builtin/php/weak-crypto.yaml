@@ -1,0 +1,46 @@
+id: atlas/security/php/weak-crypto
+name: Weak Cryptographic Hash Algorithm
+description: >
+  Detects use of weak hash functions md5() and sha1() which have known
+  collision vulnerabilities. These should not be used for password hashing,
+  digital signatures, or any security-sensitive operations.
+severity: medium
+category: security
+language: Php
+cwe_id: CWE-327
+pattern: |
+  ((function_call_expression
+    function: (name) @func_name
+    arguments: (arguments
+      (argument
+        (_) @data_arg)))
+    (#match? @func_name "^(md5|sha1)$"))
+  @match
+remediation: >
+  Use password_hash() with PASSWORD_BCRYPT or PASSWORD_ARGON2ID for
+  password hashing. For general-purpose hashing, use hash() with SHA-256
+  or SHA-512: `hash('sha256', $data)`. For message authentication, use
+  hash_hmac() with a strong algorithm.
+references:
+  - https://cwe.mitre.org/data/definitions/327.html
+  - https://www.php.net/manual/en/function.password-hash.php
+  - https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+tags:
+  - weak-crypto
+  - cryptography
+  - md5
+  - sha1
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+version: 1.0.0

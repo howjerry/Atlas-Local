@@ -1,0 +1,44 @@
+id: atlas/security/java/insecure-random
+name: Insecure Random Number Generator
+description: >
+  Detects usage of java.util.Random which produces predictable pseudo-random
+  numbers. In security-sensitive contexts such as token generation,
+  cryptographic key creation, or session ID generation, using Random instead
+  of SecureRandom allows attackers to predict generated values and compromise
+  security.
+severity: medium
+category: security
+language: Java
+cwe_id: CWE-330
+pattern: |
+  (object_creation_expression
+    type: (type_identifier) @type
+    (#eq? @type "Random"))
+  @match
+remediation: >
+  Replace java.util.Random with java.security.SecureRandom for any
+  security-sensitive random number generation. For example, replace
+  `new Random()` with `new SecureRandom()`. SecureRandom uses a
+  cryptographically strong random number generator (CSPRNG) that is
+  suitable for security-sensitive operations.
+references:
+  - https://cwe.mitre.org/data/definitions/330.html
+  - https://owasp.org/www-community/vulnerabilities/Insecure_Randomness
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html
+tags:
+  - insecure-random
+  - cryptography
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+version: 1.0.0

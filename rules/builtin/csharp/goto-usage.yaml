@@ -1,0 +1,25 @@
+id: atlas/quality/csharp/goto-usage
+name: Goto Statement Usage
+description: >
+  Detects use of goto statements. Goto statements create unstructured
+  control flow that makes code harder to read, understand, and maintain.
+  They can lead to spaghetti code and complicate refactoring.
+severity: low
+category: quality
+language: CSharp
+confidence: high
+pattern: |
+  (goto_statement) @match
+remediation: >
+  Replace goto statements with structured control flow constructs such
+  as loops, if-else chains, switch statements, or extracted methods.
+  If using goto for breaking out of nested loops, extract the loop
+  into a separate method and use return instead.
+references:
+  - https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/jump-statements
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

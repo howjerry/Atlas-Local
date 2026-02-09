@@ -1,0 +1,36 @@
+id: atlas/quality/php/empty-function-body
+name: Empty Function or Method Body
+description: >
+  Detects functions and methods with empty bodies. Empty function stubs
+  are often leftover scaffolding or incomplete implementations that
+  should be completed or removed.
+severity: info
+category: quality
+language: Php
+confidence: medium
+pattern: |
+  [
+    (function_definition
+      body: (compound_statement
+        .
+        "}"))
+    @match
+
+    (method_declaration
+      body: (compound_statement
+        .
+        "}"))
+    @match
+  ]
+remediation: >
+  Implement the function body or remove the function if it is no longer
+  needed. If the function is intentionally a no-op, add a comment
+  explaining why, or throw a NotImplementedException for abstract stubs.
+references:
+  - https://www.php.net/manual/en/functions.user-defined.php
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

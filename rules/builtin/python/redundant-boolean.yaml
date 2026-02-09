@@ -1,0 +1,33 @@
+id: atlas/quality/python/redundant-boolean
+name: Redundant Boolean Return in Conditional
+description: >
+  Detects if/else blocks that return True in one branch and False in the other.
+  This pattern is redundant because the condition itself is already a boolean
+  expression that can be returned directly. The redundant if/else adds
+  unnecessary complexity and reduces readability.
+severity: info
+category: quality
+language: Python
+confidence: high
+pattern: |
+  (if_statement
+    consequence: (block
+      (return_statement
+        (true)))
+    alternative: (else_clause
+      body: (block
+        (return_statement
+          (false)))))
+  @match
+remediation: >
+  Return the condition directly instead of wrapping it in an if/else. Replace
+  `if condition: return True else: return False` with `return condition`. If the
+  condition is not already a boolean, use `return bool(condition)`.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/no-else-return.html
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

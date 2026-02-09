@@ -1,0 +1,47 @@
+id: atlas/security/java/ssrf
+name: Server-Side Request Forgery (SSRF)
+description: >
+  Detects potential server-side request forgery (SSRF) vulnerabilities where
+  user-controlled input is used to construct URL objects or open connections.
+  An attacker can manipulate the URL to make the server send requests to
+  internal services, cloud metadata endpoints, or other unintended
+  destinations, potentially exposing sensitive data or enabling further
+  attacks.
+severity: high
+category: security
+language: Java
+cwe_id: CWE-918
+pattern: |
+  (object_creation_expression
+    type: (type_identifier) @type
+    arguments: (argument_list
+      (identifier) @url_arg)
+    (#eq? @type "URL"))
+  @match
+remediation: >
+  Validate and sanitize all URLs before making requests. Implement a
+  whitelist of allowed domains and protocols. Block requests to private
+  IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x, 127.x.x.x) and
+  cloud metadata endpoints (169.254.169.254). Use a URL parser to
+  validate the scheme, host, and port before making requests. Consider
+  using a dedicated HTTP client library with built-in SSRF protections.
+references:
+  - https://cwe.mitre.org/data/definitions/918.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+tags:
+  - ssrf
+  - owasp-top-10
+  - a10-ssrf
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A10:2021"
+      description: Server-Side Request Forgery (SSRF)
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

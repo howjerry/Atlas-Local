@@ -1,0 +1,49 @@
+id: atlas/security/java/xxe
+name: XML External Entity (XXE) Injection
+description: >
+  Detects XML parser factory instantiation that may be vulnerable to XXE
+  attacks. By default, Java XML parsers like DocumentBuilderFactory,
+  SAXParserFactory, and XMLInputFactory process external entities, allowing
+  attackers to read local files, perform SSRF, or cause denial of service
+  via entity expansion (Billion Laughs attack).
+severity: high
+category: security
+language: Java
+cwe_id: CWE-611
+pattern: |
+  (method_invocation
+    object: (identifier) @factory
+    name: (identifier) @method
+    (#match? @factory "^(DocumentBuilderFactory|SAXParserFactory|XMLInputFactory|TransformerFactory|SchemaFactory)$")
+    (#eq? @method "newInstance"))
+  @match
+remediation: >
+  Disable external entity processing on the XML parser factory. For
+  DocumentBuilderFactory, set:
+  `factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`.
+  For SAXParserFactory, set:
+  `factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`.
+  For XMLInputFactory, set:
+  `factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false)` and
+  `factory.setProperty(XMLInputFactory.SUPPORT_DTD, false)`.
+references:
+  - https://cwe.mitre.org/data/definitions/611.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
+tags:
+  - xxe
+  - xml
+  - owasp-top-10
+  - a05-security-misconfiguration
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A05:2021"
+      description: Security Misconfiguration
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

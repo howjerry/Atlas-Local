@@ -1,0 +1,56 @@
+id: atlas/security/go/weak-crypto
+name: Weak Cryptographic Hash Algorithm
+description: >
+  Detects usage of MD5 or SHA1 hash functions which are cryptographically
+  broken. Both algorithms are vulnerable to collision attacks and should not
+  be used for digital signatures, certificate validation, password hashing,
+  or any security-sensitive purpose. MD5 collisions can be generated in
+  seconds, and SHA1 collision attacks are practically feasible.
+severity: medium
+category: security
+language: Go
+cwe_id: CWE-327
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+pattern: |
+  [
+    (call_expression
+      function: (selector_expression
+        operand: (identifier) @pkg
+        field: (field_identifier) @fn
+        (#eq? @pkg "md5")
+        (#match? @fn "^(New|Sum)$")))
+    @match
+
+    (call_expression
+      function: (selector_expression
+        operand: (identifier) @pkg
+        field: (field_identifier) @fn
+        (#eq? @pkg "sha1")
+        (#match? @fn "^(New|Sum)$")))
+    @match
+  ]
+remediation: >
+  Replace MD5 and SHA1 with SHA-256 or SHA-512 from the crypto/sha256 or
+  crypto/sha512 packages. For password hashing, use bcrypt (golang.org/x/crypto/bcrypt)
+  or argon2 (golang.org/x/crypto/argon2). For HMAC operations, use
+  crypto/hmac with a strong hash function.
+references:
+  - https://cwe.mitre.org/data/definitions/327.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html
+  - https://pkg.go.dev/crypto/sha256
+tags:
+  - weak-crypto
+  - cryptographic-failures
+  - owasp-top-10
+  - a02-cryptographic-failures
+version: 1.0.0

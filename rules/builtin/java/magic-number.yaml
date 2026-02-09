@@ -1,0 +1,30 @@
+id: atlas/quality/java/magic-number
+name: Magic Number in Code
+description: >
+  Detects magic numbers (unexplained numeric literals) used as arguments
+  in method calls. Magic numbers reduce code readability and make
+  maintenance difficult because the intent behind the value is unclear.
+  Extract these values into named constants with descriptive names.
+severity: low
+category: quality
+language: Java
+confidence: medium
+pattern: |
+  (argument_list
+    (decimal_integer_literal) @num
+    (#match? @num "^[2-9][0-9]*$"))
+  @match
+remediation: >
+  Extract magic numbers into named constants (static final fields) with
+  descriptive names that explain the purpose of the value. For example,
+  replace `Thread.sleep(3600000)` with
+  `private static final long ONE_HOUR_MS = 3600000;` and
+  `Thread.sleep(ONE_HOUR_MS)`.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-109/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

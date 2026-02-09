@@ -1,0 +1,39 @@
+id: atlas/security/ruby/mass-assignment
+name: Mass Assignment via permit!
+description: >
+  Detects usage of `permit!` on Rails params which allows all parameters
+  to be mass-assigned without filtering. This bypasses Strong Parameters
+  protection and allows an attacker to set any model attribute, potentially
+  including admin flags, user roles, or other sensitive fields.
+severity: high
+category: security
+language: Ruby
+cwe_id: CWE-915
+pattern: |
+  ((call
+    method: (identifier) @method
+    (#eq? @method "permit!"))
+  @match)
+remediation: >
+  Use `permit` with an explicit whitelist of allowed attributes instead
+  of `permit!`. For example, replace `params.permit!` with
+  `params.require(:user).permit(:name, :email)`. Always explicitly list
+  the attributes that users are allowed to set and never use `permit!`
+  in production code.
+references:
+  - https://cwe.mitre.org/data/definitions/915.html
+  - https://guides.rubyonrails.org/action_controller_overview.html#strong-parameters
+  - https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html
+tags:
+  - mass-assignment
+  - owasp-top-10
+  - a04-insecure-design
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A04:2021"
+      description: Insecure Design
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+version: 1.0.0

@@ -1,0 +1,54 @@
+id: atlas/security/ruby/xss
+name: Cross-Site Scripting via html_safe or raw
+description: >
+  Detects potential cross-site scripting (XSS) vulnerabilities where user
+  input may be rendered unescaped in Rails views using `html_safe` or `raw`
+  helper. These methods bypass Rails' automatic HTML escaping, allowing an
+  attacker to inject malicious JavaScript into the rendered page.
+severity: high
+category: security
+language: Ruby
+cwe_id: CWE-79
+pattern: |
+  [
+    ((call
+      method: (identifier) @method
+      (#eq? @method "html_safe"))
+    @match)
+    ((call
+      method: (identifier) @method2
+      (#eq? @method2 "raw")
+      arguments: (argument_list))
+    @match)
+    ((command
+      name: (identifier) @cmd_name
+      (#eq? @cmd_name "raw"))
+    @match)
+  ]
+remediation: >
+  Avoid using `html_safe` or `raw` on user-provided content. Use Rails'
+  built-in `sanitize` helper to allow only safe HTML tags and attributes.
+  For example, replace `user_input.html_safe` with `sanitize(user_input)`.
+  If you must include raw HTML, ensure the content is from a trusted source
+  and has been thoroughly sanitized.
+references:
+  - https://cwe.mitre.org/data/definitions/79.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+  - https://guides.rubyonrails.org/security.html#cross-site-scripting-xss
+tags:
+  - xss
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

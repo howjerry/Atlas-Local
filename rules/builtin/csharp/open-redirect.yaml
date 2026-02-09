@@ -1,0 +1,46 @@
+id: atlas/security/csharp/open-redirect
+name: Open Redirect via Redirect Methods
+description: >
+  Detects calls to Redirect(), RedirectToAction(), and RedirectPermanent()
+  where the URL argument may come from user input. An attacker can craft
+  a malicious URL to redirect users to a phishing site or other malicious
+  destination after authentication.
+severity: medium
+category: security
+language: CSharp
+cwe_id: CWE-601
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: CM-7
+      description: Least Functionality
+pattern: |
+  (invocation_expression
+    function: (identifier) @method
+    arguments: (argument_list
+      (argument
+        [(identifier) (member_access_expression) (invocation_expression) (element_access_expression)] @url_arg))
+    (#match? @method "^(Redirect|RedirectToAction|RedirectPermanent)$"))
+  @match
+remediation: >
+  Validate redirect URLs against an allowlist of trusted domains or
+  use only relative paths. For ASP.NET, use LocalRedirect() or
+  Url.IsLocalUrl() to ensure the redirect stays within the application.
+  For example:
+  `if (Url.IsLocalUrl(returnUrl)) return Redirect(returnUrl);`.
+references:
+  - https://cwe.mitre.org/data/definitions/601.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+  - https://learn.microsoft.com/en-us/aspnet/core/security/preventing-open-redirects
+tags:
+  - open-redirect
+  - redirect
+  - owasp-top-10
+  - a01-broken-access-control
+version: 1.0.0

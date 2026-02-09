@@ -1,0 +1,28 @@
+id: atlas/quality/java/empty-conditional
+name: Empty Conditional Block
+description: >
+  Detects if statements with empty consequence or alternative blocks. An
+  empty conditional body usually indicates incomplete implementation,
+  accidentally deleted code, or a forgotten placeholder. It makes the
+  code confusing to read and may hide logic errors.
+severity: low
+category: quality
+language: Java
+confidence: high
+pattern: |
+  (if_statement
+    consequence: (block . "}"))
+  @match
+remediation: >
+  Add the intended logic to the empty conditional block. If the condition
+  is intentionally empty (e.g. future placeholder), add a comment
+  explaining why. Consider removing the entire if statement if the
+  condition and its body are no longer needed.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-108/
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: "error-handling"
+version: 1.0.0

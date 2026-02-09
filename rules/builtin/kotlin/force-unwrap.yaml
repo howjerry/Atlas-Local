@@ -1,0 +1,27 @@
+id: atlas/quality/kotlin/force-unwrap
+name: Non-null Assertion Operator (!!)
+description: >
+  Detects usage of the non-null assertion operator (!!). This operator
+  throws a KotlinNullPointerException if the value is null, defeating
+  Kotlin's null-safety guarantees. Prefer safe alternatives like safe
+  calls (?.), elvis operator (?:), or explicit null checks.
+severity: medium
+category: quality
+language: Kotlin
+confidence: high
+pattern: |
+  (unary_expression
+    operator: "!!") @match
+remediation: >
+  Replace the !! operator with a safe alternative. Use the safe call
+  operator (?.) with a default value via the elvis operator (?:), or
+  perform an explicit null check. For example, replace `val len = str!!.length`
+  with `val len = str?.length ?: 0` or use `if (str != null) { ... }`.
+references:
+  - https://kotlinlang.org/docs/null-safety.html#the-operator
+tags:
+  - code-quality
+  - type-safety
+metadata:
+  quality_domain: "type-safety"
+version: 1.0.0

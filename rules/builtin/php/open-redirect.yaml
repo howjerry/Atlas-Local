@@ -1,0 +1,46 @@
+id: atlas/security/php/open-redirect
+name: Open Redirect via header() Function
+description: >
+  Detects use of PHP's header() function with a Location redirect where
+  the URL may include user-controlled input. An attacker can craft a
+  malicious URL to redirect users to a phishing site or other malicious
+  destination after authentication.
+severity: medium
+category: security
+language: Php
+cwe_id: CWE-601
+pattern: |
+  ((function_call_expression
+    function: (name) @func_name
+    arguments: (arguments
+      (argument
+        [(encapsed_string) (binary_expression) (variable_name)] @url_arg)))
+    (#eq? @func_name "header"))
+  @match
+remediation: >
+  Validate redirect URLs against an allowlist of trusted domains or use
+  only relative paths. Never pass user input directly to header() for
+  Location redirects. Use a mapping of allowed redirect targets.
+  For example, validate with parse_url() and check the host against
+  a whitelist before redirecting.
+references:
+  - https://cwe.mitre.org/data/definitions/601.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+  - https://www.php.net/manual/en/function.header.php
+tags:
+  - open-redirect
+  - redirect
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: CM-7
+      description: Least Functionality
+version: 1.0.0

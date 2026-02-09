@@ -1,0 +1,57 @@
+id: atlas/security/php/file-inclusion
+name: Dynamic File Inclusion
+description: >
+  Detects dynamic file inclusion using include, require, include_once,
+  or require_once with variable paths. An attacker who controls the file
+  path can include arbitrary local or remote files, leading to code
+  execution, information disclosure, or denial of service.
+severity: critical
+category: security
+language: Php
+cwe_id: CWE-98
+pattern: |
+  [
+    (include_expression
+      [(variable_name) (encapsed_string) (binary_expression)] @path_arg)
+    @match
+
+    (include_once_expression
+      [(variable_name) (encapsed_string) (binary_expression)] @path_arg)
+    @match
+
+    (require_expression
+      [(variable_name) (encapsed_string) (binary_expression)] @path_arg)
+    @match
+
+    (require_once_expression
+      [(variable_name) (encapsed_string) (binary_expression)] @path_arg)
+    @match
+  ]
+remediation: >
+  Never use user input directly in include or require statements. Use a
+  whitelist of allowed file names and map user input to specific files.
+  Disable allow_url_include in php.ini to prevent remote file inclusion.
+  Use realpath() to validate the resolved path stays within the expected
+  directory.
+references:
+  - https://cwe.mitre.org/data/definitions/98.html
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/11.1-Testing_for_Local_File_Inclusion
+  - https://www.php.net/manual/en/function.include.php
+tags:
+  - file-inclusion
+  - lfi
+  - rfi
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

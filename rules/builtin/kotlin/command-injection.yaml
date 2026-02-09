@@ -1,0 +1,58 @@
+id: atlas/security/kotlin/command-injection
+name: Command Injection via Runtime.exec or ProcessBuilder
+description: >
+  Detects usage of Runtime.getRuntime().exec() or ProcessBuilder to
+  execute system commands. If user-controlled input is passed to these
+  methods without proper sanitization, an attacker can inject arbitrary
+  OS commands, leading to remote code execution and full system compromise.
+severity: critical
+category: security
+language: Kotlin
+cwe_id: CWE-78
+pattern: |
+  [
+    (call_expression
+      (navigation_expression
+        (call_expression
+          (navigation_expression
+            (_)
+            (identifier) @runtime_method)
+          (#eq? @runtime_method "getRuntime"))
+        (identifier) @exec_method)
+      (value_arguments)
+      (#eq? @exec_method "exec"))
+    @match
+
+    (call_expression
+      (identifier) @pb
+      (value_arguments)
+      (#eq? @pb "ProcessBuilder"))
+    @match
+  ]
+remediation: >
+  Avoid using Runtime.exec() or ProcessBuilder with user-controlled input.
+  If system command execution is required, use a whitelist of allowed
+  commands, validate and sanitize all arguments, and avoid constructing
+  command strings from user input. Consider using safer library alternatives
+  for specific tasks (e.g., file operations, network requests).
+references:
+  - https://cwe.mitre.org/data/definitions/78.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Command_Injection
+tags:
+  - command-injection
+  - rce
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

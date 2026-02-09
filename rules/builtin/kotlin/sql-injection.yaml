@@ -1,0 +1,51 @@
+id: atlas/security/kotlin/sql-injection
+name: SQL Injection via String Template in Query
+description: >
+  Detects potential SQL injection vulnerabilities where SQL queries are
+  constructed using string templates (interpolation) and passed to JDBC
+  or Android SQLite methods such as executeQuery, rawQuery, execute, or
+  execSQL. An attacker can manipulate the interpolated input to alter
+  the SQL query logic, leading to unauthorized data access or modification.
+severity: critical
+category: security
+language: Kotlin
+cwe_id: CWE-89
+pattern: |
+  (call_expression
+    (navigation_expression
+      (_)
+      (identifier) @method)
+    (value_arguments
+      (value_argument
+        (string_literal
+          (interpolation)) @sql_arg))
+    (#match? @method "^(executeQuery|rawQuery|execute|execSQL|executeUpdate|addBatch)$"))
+  @match
+remediation: >
+  Use parameterized queries or PreparedStatement instead of string
+  templates to build SQL queries. Replace string interpolation with
+  bind parameters (?) that safely escape user input. For example,
+  replace `db.rawQuery("SELECT * FROM users WHERE id=$id", null)` with
+  `db.rawQuery("SELECT * FROM users WHERE id=?", arrayOf(id))`.
+references:
+  - https://cwe.mitre.org/data/definitions/89.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/SQL_Injection
+tags:
+  - sql-injection
+  - injection
+  - jdbc
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

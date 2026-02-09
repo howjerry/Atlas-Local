@@ -1,0 +1,27 @@
+id: atlas/quality/ruby/todo-comment
+name: TODO Comment Detected
+description: >
+  Detects TODO, FIXME, HACK, and XXX comments left in code. These comments
+  indicate unfinished work, known issues, or temporary workarounds that
+  should be tracked in an issue tracker and resolved before shipping to
+  production.
+severity: info
+category: quality
+language: Ruby
+confidence: high
+pattern: |
+  ((comment) @match
+   (#match? @match "(TODO|FIXME|HACK|XXX)"))
+remediation: >
+  Address the TODO/FIXME/HACK/XXX item or create a tracked issue for it,
+  then remove the comment. Use an issue tracker to manage outstanding work
+  items instead of leaving inline reminders in the source code.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_layout/
+  - https://rubystyle.guide/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

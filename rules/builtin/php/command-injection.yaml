@@ -1,0 +1,45 @@
+id: atlas/security/php/command-injection
+name: OS Command Injection via Shell Execution Functions
+description: >
+  Detects use of shell execution functions such as exec, system, shell_exec,
+  passthru, popen, and proc_open. These functions execute OS commands and if
+  the arguments include user-controllable input, an attacker can inject
+  arbitrary commands leading to full system compromise.
+severity: critical
+category: security
+language: Php
+cwe_id: CWE-78
+pattern: |
+  ((function_call_expression
+    function: (name) @func_name
+    arguments: (arguments
+      (argument
+        (_) @cmd_arg)))
+    (#match? @func_name "^(exec|system|shell_exec|passthru|popen|proc_open)$"))
+  @match
+remediation: >
+  Avoid using shell execution functions with user input. If external command
+  execution is necessary, use escapeshellarg() and escapeshellcmd() to
+  sanitize arguments, or better yet, use language-native alternatives.
+  For example, use PHP built-in functions instead of calling shell commands.
+references:
+  - https://cwe.mitre.org/data/definitions/78.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
+  - https://www.php.net/manual/en/function.escapeshellarg.php
+tags:
+  - command-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

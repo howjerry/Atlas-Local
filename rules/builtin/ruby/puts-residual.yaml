@@ -1,0 +1,28 @@
+id: atlas/quality/ruby/puts-residual
+name: Debug Output via puts
+description: >
+  Detects `puts` calls that are likely debug output left in production
+  code. Debug print statements should be removed before deployment or
+  replaced with proper logging using a structured logging framework.
+severity: low
+category: quality
+language: Ruby
+confidence: medium
+pattern: |
+  ((command
+    name: (identifier) @method
+    (#eq? @method "puts"))
+  @match)
+remediation: >
+  Remove `puts` calls or replace them with a proper logging framework.
+  Use `Rails.logger.info`, `Rails.logger.debug`, or the `Logger` stdlib
+  class for structured logging that can be configured per environment.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_lint/
+  - https://ruby-doc.org/stdlib/libdoc/logger/rdoc/Logger.html
+tags:
+  - code-quality
+  - debug-residual
+metadata:
+  quality_domain: debug-residual
+version: 1.0.0

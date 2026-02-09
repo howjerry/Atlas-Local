@@ -1,0 +1,32 @@
+id: atlas/quality/php/var-dump-residual
+name: var_dump() Left in Code
+description: >
+  Detects calls to var_dump() which is a debugging function that should
+  not be left in production code. It outputs unformatted variable
+  information directly and can expose sensitive data or break output
+  formatting.
+severity: low
+category: quality
+language: Php
+confidence: high
+pattern: |
+  ((function_call_expression
+    function: (name) @func_name
+    arguments: (arguments
+      (argument
+        (_) @arg)))
+    (#eq? @func_name "var_dump"))
+  @match
+remediation: >
+  Remove var_dump() calls before committing code. Use a proper logging
+  framework such as Monolog for debugging in production. For development,
+  consider using Xdebug or Symfony VarDumper with dump() which provides
+  better output formatting.
+references:
+  - https://www.php.net/manual/en/function.var-dump.php
+tags:
+  - code-quality
+  - debug-residual
+metadata:
+  quality_domain: "debug-residual"
+version: 1.0.0

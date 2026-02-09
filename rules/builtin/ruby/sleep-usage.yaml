@@ -1,0 +1,38 @@
+id: atlas/quality/ruby/sleep-usage
+name: Sleep Call in Production Code
+description: >
+  Detects `sleep` calls which block the current thread for a specified
+  duration. Using `sleep` in production code can cause performance issues,
+  request timeouts, and thread starvation. It is typically a sign of
+  polling or retry logic that should use proper asynchronous patterns.
+severity: low
+category: quality
+language: Ruby
+confidence: medium
+pattern: |
+  [
+    ((call
+      method: (identifier) @method
+      (#eq? @method "sleep")
+      arguments: (argument_list))
+    @match)
+    ((command
+      name: (identifier) @cmd_name
+      (#eq? @cmd_name "sleep"))
+    @match)
+  ]
+remediation: >
+  Replace `sleep` with proper asynchronous patterns. For retry logic, use
+  exponential backoff libraries like `retryable` or `retriable`. For
+  background processing, use job queues like Sidekiq or DelayedJob. For
+  polling, use event-driven approaches or WebSockets. If a delay is truly
+  needed, document the reason clearly.
+references:
+  - https://ruby-doc.org/core/Kernel.html#method-i-sleep
+  - https://github.com/kamui/retriable
+tags:
+  - code-quality
+  - performance
+metadata:
+  quality_domain: performance
+version: 1.0.0

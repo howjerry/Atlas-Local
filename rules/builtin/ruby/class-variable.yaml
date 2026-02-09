@@ -1,0 +1,28 @@
+id: atlas/quality/ruby/class-variable
+name: Class Variable Usage
+description: >
+  Detects usage of class variables (prefixed with `@@`). Class variables
+  are shared across the entire class hierarchy including subclasses, which
+  leads to surprising behavior and tight coupling. They should be replaced
+  with class instance variables or class-level accessors.
+severity: low
+category: quality
+language: Ruby
+confidence: medium
+pattern: |
+  (assignment
+    left: (class_variable) @match)
+remediation: >
+  Replace class variables with class instance variables. For example,
+  replace `@@count = 0` with `@count = 0` at the class level and use
+  `class << self; attr_accessor :count; end` for access. Class instance
+  variables are not shared with subclasses, making behavior more predictable.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_style/#styleclassvars
+  - https://rubystyle.guide/#no-class-vars
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: best-practices
+version: 1.0.0

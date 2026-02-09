@@ -1,0 +1,39 @@
+id: atlas/quality/python/string-concat-in-loop
+name: String Concatenation in Loop
+description: >
+  Detects string concatenation using the `+=` operator inside for or while loops.
+  In Python, strings are immutable, so each `+=` operation creates a new string
+  object and copies the contents, resulting in O(n^2) time complexity for building
+  strings in a loop. This can cause significant performance degradation for large
+  inputs.
+severity: low
+category: quality
+language: Python
+confidence: medium
+pattern: |
+  [
+    (for_statement
+      body: (block
+        (augmented_assignment
+          operator: "+="
+          right: (_) @rhs)))
+    (while_statement
+      body: (block
+        (augmented_assignment
+          operator: "+="
+          right: (_) @rhs)))
+  ]
+  @match
+remediation: >
+  Use a list to collect string parts and join them at the end. Replace
+  `result += item` in a loop with `parts.append(item)` followed by
+  `result = "".join(parts)` after the loop. Alternatively, use `str.join()`
+  directly with a generator expression or list comprehension.
+references:
+  - https://docs.python.org/3/faq/programming.html#what-is-the-most-efficient-way-to-concatenate-many-strings-together
+tags:
+  - code-quality
+  - performance
+metadata:
+  quality_domain: performance
+version: 1.0.0

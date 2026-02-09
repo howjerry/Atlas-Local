@@ -1,0 +1,29 @@
+id: atlas/quality/kotlin/println-residual
+name: println Debug Output Residual
+description: >
+  Detects usage of println() calls which are typically debug artifacts
+  left in production code. These should be replaced with a proper logging
+  framework such as SLF4J, Timber (Android), or kotlin-logging.
+severity: low
+category: quality
+language: Kotlin
+confidence: high
+pattern: |
+  (call_expression
+    (identifier) @fn
+    (value_arguments)
+    (#match? @fn "^(println|print)$"))
+  @match
+remediation: >
+  Replace println/print calls with a logging framework that supports
+  log levels and structured output. For example, use SLF4J:
+  `logger.debug("message")` or Timber on Android:
+  `Timber.d("message")`.
+references:
+  - https://rules.sonarsource.com/kotlin/RSPEC-106/
+tags:
+  - code-quality
+  - debug-residual
+metadata:
+  quality_domain: "debug-residual"
+version: 1.0.0

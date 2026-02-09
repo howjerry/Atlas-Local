@@ -1,0 +1,26 @@
+id: atlas/quality/php/magic-number
+name: Magic Number in Code
+description: >
+  Detects numeric literals (magic numbers) used directly in expressions.
+  Magic numbers reduce code readability because their purpose is unclear
+  without context. Common exceptions like 0, 1, and -1 are not flagged.
+severity: info
+category: quality
+language: Php
+confidence: low
+pattern: |
+  (binary_expression
+    (integer) @match)
+remediation: >
+  Extract magic numbers into named constants using const or define().
+  For example, replace `if ($retries > 3)` with
+  `const MAX_RETRIES = 3; if ($retries > MAX_RETRIES)`. This makes
+  the code self-documenting and easier to maintain.
+references:
+  - https://refactoring.guru/replace-magic-number-with-symbolic-constant
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

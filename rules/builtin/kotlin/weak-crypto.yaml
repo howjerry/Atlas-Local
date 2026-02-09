@@ -1,0 +1,64 @@
+id: atlas/security/kotlin/weak-crypto
+name: Weak Cryptographic Algorithm
+description: >
+  Detects usage of weak or deprecated cryptographic algorithms such as MD5
+  or SHA-1. These algorithms have known collision vulnerabilities that can
+  lead to data integrity compromise. MD5 and SHA-1 should not be used for
+  security-sensitive hashing such as password storage or digital signatures.
+severity: medium
+category: security
+language: Kotlin
+cwe_id: CWE-327
+pattern: |
+  [
+    (call_expression
+      (navigation_expression
+        (identifier) @cls
+        (identifier) @method)
+      (value_arguments
+        (value_argument
+          (string_literal) @algo))
+      (#match? @cls "^(MessageDigest|Cipher)$")
+      (#eq? @method "getInstance")
+      (#match? @algo "(MD5|SHA-1|DES|DESede|RC4|RC2|Blowfish)"))
+    @match
+
+    (call_expression
+      (navigation_expression
+        (identifier) @cls2
+        (identifier) @method2)
+      (value_arguments
+        (value_argument
+          (string_literal) @algo2))
+      (#eq? @cls2 "KeyGenerator")
+      (#eq? @method2 "getInstance")
+      (#match? @algo2 "(DES|DESede|RC4|RC2|Blowfish)"))
+    @match
+  ]
+remediation: >
+  Replace weak algorithms with strong alternatives. Use SHA-256 or SHA-3
+  instead of MD5 or SHA-1 for hashing. Use AES-256-GCM instead of DES,
+  DESede, or RC4 for encryption. For example, replace
+  `MessageDigest.getInstance("MD5")` with
+  `MessageDigest.getInstance("SHA-256")`.
+references:
+  - https://cwe.mitre.org/data/definitions/327.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/09-Testing_for_Weak_Cryptography/
+tags:
+  - weak-crypto
+  - cryptography
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+version: 1.0.0

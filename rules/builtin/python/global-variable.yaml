@@ -1,0 +1,28 @@
+id: atlas/quality/python/global-variable
+name: Global Statement Usage
+description: >
+  Detects usage of the `global` statement which modifies module-level variables
+  from within a function. Global variables create implicit dependencies between
+  functions, make code harder to test and reason about, and can lead to subtle
+  bugs in concurrent environments. They violate encapsulation principles and
+  make the data flow difficult to trace.
+severity: low
+category: quality
+language: Python
+confidence: high
+pattern: |
+  (global_statement) @match
+remediation: >
+  Refactor the code to avoid using global state. Pass values as function
+  parameters and return results instead. For shared state, use a class with
+  instance attributes, or use a module-level configuration object. If mutable
+  global state is genuinely needed, consider using a singleton pattern or
+  dependency injection.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/global-statement.html
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: best-practices
+version: 1.0.0

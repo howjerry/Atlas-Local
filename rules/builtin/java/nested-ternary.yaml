@@ -1,0 +1,33 @@
+id: atlas/quality/java/nested-ternary
+name: Nested Ternary Expression
+description: >
+  Detects ternary expressions nested inside other ternary expressions.
+  Nested ternary operators are hard to read and understand, making code
+  maintenance difficult and increasing the risk of logic errors. They
+  should be refactored into if-else statements or extracted into
+  separate methods.
+severity: low
+category: quality
+language: Java
+confidence: high
+pattern: |
+  [
+    (ternary_expression
+      consequence: (ternary_expression))
+    (ternary_expression
+      alternative: (ternary_expression))
+  ]
+  @match
+remediation: >
+  Replace nested ternary expressions with if-else statements or extract
+  the logic into a separate method with a descriptive name. For example,
+  replace `a ? (b ? x : y) : z` with an if-else block that clearly
+  expresses each branch.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-3358/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

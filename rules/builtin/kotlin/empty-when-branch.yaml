@@ -1,0 +1,25 @@
+id: atlas/quality/kotlin/empty-when-branch
+name: Empty When Branch
+description: >
+  Detects when expression branches with empty bodies. Empty when branches
+  silently ignore matched conditions, which can lead to subtle bugs and
+  makes intent unclear.
+severity: medium
+category: quality
+language: Kotlin
+confidence: high
+pattern: |
+  (when_entry
+    (block . "}")) @match
+remediation: >
+  Add logic to handle the matched condition, or add a comment explaining
+  why the branch is intentionally empty. If the branch should explicitly
+  do nothing, use a Unit expression or add a descriptive comment.
+references:
+  - https://rules.sonarsource.com/kotlin/RSPEC-108/
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: "error-handling"
+version: 1.0.0

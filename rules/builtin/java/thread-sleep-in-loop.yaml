@@ -1,0 +1,62 @@
+id: atlas/quality/java/thread-sleep-in-loop
+name: Thread.sleep() in Loop
+description: >
+  Detects Thread.sleep() calls inside loops. Using Thread.sleep() in a
+  loop for polling or retry logic wastes resources, introduces imprecise
+  timing, and can cause the application to become unresponsive. Use
+  proper concurrency utilities like ScheduledExecutorService, CountDownLatch,
+  or CompletableFuture instead.
+severity: medium
+category: quality
+language: Java
+confidence: high
+pattern: |
+  [
+    (for_statement
+      body: (_
+        (expression_statement
+          (method_invocation
+            object: (identifier) @obj
+            name: (identifier) @method
+            (#eq? @obj "Thread")
+            (#eq? @method "sleep")))))
+    (while_statement
+      body: (_
+        (expression_statement
+          (method_invocation
+            object: (identifier) @obj2
+            name: (identifier) @method2
+            (#eq? @obj2 "Thread")
+            (#eq? @method2 "sleep")))))
+    (do_statement
+      body: (_
+        (expression_statement
+          (method_invocation
+            object: (identifier) @obj3
+            name: (identifier) @method3
+            (#eq? @obj3 "Thread")
+            (#eq? @method3 "sleep")))))
+    (enhanced_for_statement
+      body: (_
+        (expression_statement
+          (method_invocation
+            object: (identifier) @obj4
+            name: (identifier) @method4
+            (#eq? @obj4 "Thread")
+            (#eq? @method4 "sleep")))))
+  ]
+  @match
+remediation: >
+  Replace Thread.sleep() in loops with proper concurrency utilities.
+  Use ScheduledExecutorService for periodic tasks, CountDownLatch or
+  CyclicBarrier for synchronization, or CompletableFuture for async
+  operations. For retry logic, use a library like Resilience4j or
+  Spring Retry with exponential backoff.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-2276/
+tags:
+  - code-quality
+  - performance
+metadata:
+  quality_domain: "performance"
+version: 1.0.0

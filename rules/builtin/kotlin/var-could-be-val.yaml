@@ -1,0 +1,26 @@
+id: atlas/quality/kotlin/var-could-be-val
+name: Mutable Variable Could Be Immutable
+description: >
+  Detects usage of 'var' for property declarations. In Kotlin, immutability
+  is preferred. Using 'val' where possible makes code easier to reason about
+  and helps prevent accidental mutation bugs. Review whether the variable
+  truly needs to be mutable.
+severity: info
+category: quality
+language: Kotlin
+confidence: low
+pattern: |
+  (property_declaration
+    "var") @match
+remediation: >
+  If the variable is never reassigned, change 'var' to 'val' to make it
+  immutable. Prefer 'val' by default and only use 'var' when reassignment
+  is truly needed.
+references:
+  - https://kotlinlang.org/docs/basic-syntax.html#variables
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: "best-practices"
+version: 1.0.0

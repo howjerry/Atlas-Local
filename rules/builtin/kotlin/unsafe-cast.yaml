@@ -1,0 +1,25 @@
+id: atlas/quality/kotlin/unsafe-cast
+name: Unsafe Cast Using 'as' Instead of 'as?'
+description: >
+  Detects usage of the unsafe cast operator 'as' which throws a
+  ClassCastException at runtime if the cast fails. Using 'as?' (safe cast)
+  returns null on failure instead, allowing for safer null-checked handling.
+severity: medium
+category: quality
+language: Kotlin
+confidence: high
+pattern: |
+  (as_expression
+    "as") @match
+remediation: >
+  Replace the unsafe cast 'as' with the safe cast operator 'as?', and
+  handle the nullable result. For example, replace `val x = obj as String`
+  with `val x = obj as? String ?: defaultValue` or use a null check.
+references:
+  - https://kotlinlang.org/docs/typecasts.html#safe-nullable-cast-operator
+tags:
+  - code-quality
+  - type-safety
+metadata:
+  quality_domain: "type-safety"
+version: 1.0.0

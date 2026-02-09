@@ -1,0 +1,48 @@
+id: atlas/security/kotlin/path-traversal
+name: Path Traversal via File System Access
+description: >
+  Detects creation of File objects where the path argument may come from
+  user input. If user-controlled input is included in the file path without
+  proper validation, an attacker can use path traversal sequences (../) to
+  access files outside the intended directory, leading to unauthorized
+  file reads, writes, or deletion.
+severity: high
+category: security
+language: Kotlin
+cwe_id: CWE-22
+pattern: |
+  (call_expression
+    (identifier) @type
+    (value_arguments
+      (value_argument
+        (_) @path_arg))
+    (#match? @type "^(File|FileInputStream|FileOutputStream|FileReader|FileWriter)$"))
+  @match
+remediation: >
+  Validate and sanitize all file paths before passing them to File
+  constructors. Use canonicalPath or toRealPath() to resolve path
+  traversal sequences, then verify the resolved path starts with the
+  expected base directory. Reject paths containing '..' sequences.
+  For example: `val resolved = baseDir.resolve(userInput).canonicalFile;
+  require(resolved.startsWith(baseDir)) { "Path traversal detected" }`.
+references:
+  - https://cwe.mitre.org/data/definitions/22.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Path_Traversal
+tags:
+  - path-traversal
+  - file-access
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: AC-3
+      description: Access Enforcement
+version: 1.0.0

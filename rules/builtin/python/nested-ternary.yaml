@@ -1,0 +1,27 @@
+id: atlas/quality/python/nested-ternary
+name: Nested Conditional Expression (Ternary)
+description: >
+  Detects nested conditional expressions (ternary operators) in Python. Nested
+  ternary expressions like `a if x else (b if y else c)` are difficult to read
+  and understand. They should be refactored into explicit if/elif/else blocks
+  or separated into multiple statements for clarity.
+severity: low
+category: quality
+language: Python
+confidence: high
+pattern: |
+  (conditional_expression
+    (conditional_expression))
+  @match
+remediation: >
+  Refactor nested conditional expressions into explicit if/elif/else statements.
+  For example, replace `result = a if x else b if y else c` with a multi-line
+  if/elif/else block that clearly expresses the branching logic.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/refactor/no-else-return.html
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

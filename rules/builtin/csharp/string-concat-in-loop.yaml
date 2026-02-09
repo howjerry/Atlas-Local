@@ -1,0 +1,59 @@
+id: atlas/quality/csharp/string-concat-in-loop
+name: String Concatenation in Loop
+description: >
+  Detects string concatenation using += inside loop bodies (for, while,
+  foreach, do-while). Each concatenation creates a new string object,
+  leading to O(n^2) time complexity and excessive memory allocation.
+  Use StringBuilder for efficient string building in loops.
+severity: low
+category: quality
+language: CSharp
+confidence: medium
+pattern: |
+  [
+    (for_statement
+      body: (block
+        (expression_statement
+          (assignment_expression
+            operator: "+="
+            right: (_) @value))))
+    @match
+
+    (while_statement
+      body: (block
+        (expression_statement
+          (assignment_expression
+            operator: "+="
+            right: (_) @value))))
+    @match
+
+    (for_each_statement
+      body: (block
+        (expression_statement
+          (assignment_expression
+            operator: "+="
+            right: (_) @value))))
+    @match
+
+    (do_statement
+      body: (block
+        (expression_statement
+          (assignment_expression
+            operator: "+="
+            right: (_) @value))))
+    @match
+  ]
+remediation: >
+  Use StringBuilder instead of string concatenation in loops. For example:
+  `var sb = new StringBuilder();
+  foreach (var item in items) { sb.Append(item); }
+  string result = sb.ToString();`.
+references:
+  - https://learn.microsoft.com/en-us/dotnet/api/system.text.stringbuilder
+  - https://learn.microsoft.com/en-us/dotnet/csharp/how-to/concatenate-multiple-strings
+tags:
+  - code-quality
+  - performance
+metadata:
+  quality_domain: "performance"
+version: 1.0.0

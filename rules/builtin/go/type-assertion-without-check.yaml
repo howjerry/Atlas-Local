@@ -1,0 +1,31 @@
+id: atlas/quality/go/type-assertion-without-check
+name: Type Assertion Without Check
+description: >
+  Detects type assertions used in expression statements without the
+  comma-ok form. A failing type assertion without the second boolean
+  return value causes a runtime panic. Always use the two-value form
+  `v, ok := x.(T)` to safely handle type mismatches.
+severity: medium
+category: quality
+language: Go
+confidence: high
+pattern: |
+  (expression_statement
+    (type_assertion_expression
+      operand: (_) @operand
+      type: (_) @type))
+  @match
+remediation: >
+  Use the two-value type assertion form: `v, ok := x.(Type)`. Check the
+  boolean `ok` before using `v`. Alternatively, use a type switch for
+  handling multiple possible types. Never rely on single-value type
+  assertions in code that might encounter unexpected types.
+references:
+  - https://go.dev/doc/effective_go#interface_conversions
+  - https://go.dev/tour/methods/15
+tags:
+  - code-quality
+  - type-safety
+metadata:
+  quality_domain: type-safety
+version: 1.0.0

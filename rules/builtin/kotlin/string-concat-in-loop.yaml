@@ -1,0 +1,43 @@
+id: atlas/quality/kotlin/string-concat-in-loop
+name: String Concatenation in Loop
+description: >
+  Detects string concatenation using += inside loops. Since Kotlin/JVM
+  strings are immutable, each += creates a new String object, leading to
+  O(n^2) time complexity and excessive garbage collection pressure. Use
+  StringBuilder or buildString instead.
+severity: medium
+category: quality
+language: Kotlin
+confidence: high
+pattern: |
+  [
+    (for_statement
+      (block
+        (assignment
+          operator: "+=")))
+    @match
+
+    (while_statement
+      (block
+        (assignment
+          operator: "+=")))
+    @match
+
+    (do_while_statement
+      (block
+        (assignment
+          operator: "+=")))
+    @match
+  ]
+remediation: >
+  Replace string concatenation with StringBuilder or Kotlin's buildString.
+  For example, replace `for (item in list) { result += item }` with
+  `val result = buildString { for (item in list) { append(item) } }`.
+references:
+  - https://rules.sonarsource.com/kotlin/RSPEC-1643/
+tags:
+  - code-quality
+  - performance
+metadata:
+  quality_domain: "performance"
+version: 1.0.0

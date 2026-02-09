@@ -1,0 +1,30 @@
+id: atlas/quality/ruby/global-variable
+name: Global Variable Usage
+description: >
+  Detects usage of global variables (prefixed with `$`). Global variables
+  create hidden dependencies between different parts of the code, make
+  testing difficult, and can lead to unexpected side effects. They should
+  be replaced with class-level constants, module methods, or dependency
+  injection.
+severity: low
+category: quality
+language: Ruby
+confidence: medium
+pattern: |
+  (assignment
+    left: (global_variable) @match)
+remediation: >
+  Replace global variables with module constants, class attributes, or
+  configuration objects. For example, replace `$config = { ... }` with a
+  module like `module AppConfig; SETTINGS = { ... }; end` or use Rails
+  configuration via `Rails.application.config`. For shared mutable state,
+  consider using thread-safe alternatives like `Concurrent::Atom`.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_style/#styleglobalvars
+  - https://rubystyle.guide/#instance-vars
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: best-practices
+version: 1.0.0

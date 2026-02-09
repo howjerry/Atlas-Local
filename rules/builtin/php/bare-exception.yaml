@@ -1,0 +1,31 @@
+id: atlas/quality/php/bare-exception
+name: Catching Generic Exception
+description: >
+  Detects catch clauses that catch the generic Exception or \Exception
+  class instead of more specific exception types. Catching broad
+  exceptions can mask unexpected errors and make it harder to handle
+  different error conditions appropriately.
+severity: low
+category: quality
+language: Php
+confidence: high
+pattern: |
+  ((catch_clause
+    type: (type_list
+      (named_type (name) @exception_type)))
+    (#match? @exception_type "^(Exception|\\\\Exception)$"))
+  @match
+remediation: >
+  Catch specific exception types instead of the generic Exception class.
+  For example, catch InvalidArgumentException, RuntimeException, or
+  custom exception types that correspond to specific error conditions.
+  If a broad catch is needed, log the exception and consider re-throwing.
+references:
+  - https://www.php.net/manual/en/language.exceptions.php
+  - https://www.php.net/manual/en/spl.exceptions.php
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: "error-handling"
+version: 1.0.0

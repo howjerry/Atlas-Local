@@ -1,0 +1,32 @@
+id: atlas/quality/ruby/redundant-boolean
+name: Redundant Boolean Return in Conditional
+description: >
+  Detects if/else blocks that return `true` in one branch and `false` in
+  the other. This pattern is redundant because the condition itself is
+  already a boolean expression. The entire if/else can be replaced with
+  the condition directly or its negation.
+severity: info
+category: quality
+language: Ruby
+confidence: high
+pattern: |
+  (if
+    consequence: (then
+      (true))
+    alternative: (else
+      (false)))
+  @match
+remediation: >
+  Replace the if/else with the condition directly. For example, replace
+  `if condition then true else false end` with just `condition`. If the
+  branches are reversed, use `!condition` or add a double negation `!!expr`
+  to coerce to boolean.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_style/#styleredundantreturn
+  - https://rubystyle.guide/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

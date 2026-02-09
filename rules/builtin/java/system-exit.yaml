@@ -1,0 +1,43 @@
+id: atlas/quality/java/system-exit
+name: System.exit() Call
+description: >
+  Detects calls to System.exit() or Runtime.getRuntime().halt(). These
+  methods abruptly terminate the entire JVM, bypassing finally blocks,
+  shutdown hooks, and proper resource cleanup. In web applications and
+  libraries, this can cause data loss and denial of service. Use
+  exceptions for flow control instead.
+severity: medium
+category: quality
+language: Java
+confidence: high
+pattern: |
+  [
+    (method_invocation
+      object: (identifier) @obj
+      name: (identifier) @method
+      (#eq? @obj "System")
+      (#eq? @method "exit"))
+    (method_invocation
+      object: (method_invocation
+        object: (identifier) @rt
+        name: (identifier) @getrt
+        (#eq? @rt "Runtime")
+        (#eq? @getrt "getRuntime"))
+      name: (identifier) @halt
+      (#eq? @halt "halt"))
+  ]
+  @match
+remediation: >
+  Replace System.exit() with proper exception handling. Throw a custom
+  exception that can be caught by the calling code. In web applications,
+  return an appropriate HTTP error response instead. If a non-zero exit
+  code is needed for CLI tools, propagate it through the main method's
+  return path.
+references:
+  - https://rules.sonarsource.com/java/RSPEC-1147/
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: "best-practices"
+version: 1.0.0

@@ -1,0 +1,48 @@
+id: atlas/security/python/unsafe-yaml-load
+name: Unsafe YAML Load Without Safe Loader
+description: >
+  Detects usage of `yaml.load()` which defaults to the unsafe FullLoader that
+  can execute arbitrary Python objects during deserialization. The `yaml.load()`
+  function without an explicit safe Loader parameter can lead to remote code
+  execution if an attacker controls the YAML input. This rule specifically
+  targets `yaml.load` calls; `yaml.safe_load` is not flagged.
+severity: high
+category: security
+language: Python
+cwe_id: CWE-502
+pattern: |
+  (call
+    function: (attribute
+      object: (identifier) @module
+      attribute: (identifier) @method
+      (#eq? @module "yaml")
+      (#eq? @method "load"))
+    arguments: (argument_list
+      (_) @data_arg))
+  @match
+remediation: >
+  Replace `yaml.load(data)` with `yaml.safe_load(data)` which only allows
+  basic Python types and is safe for untrusted input. If you need to load
+  custom Python objects, explicitly specify `Loader=yaml.SafeLoader` or use
+  `yaml.load(data, Loader=yaml.SafeLoader)`.
+references:
+  - https://cwe.mitre.org/data/definitions/502.html
+  - https://pyyaml.org/wiki/PyYAMLDocumentation
+  - https://msg.pyyaml.org/load
+tags:
+  - unsafe-yaml
+  - deserialization
+  - owasp-top-10
+  - a08-integrity
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A08:2021"
+      description: Software and Data Integrity Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: CM-7
+      description: Least Functionality
+version: 1.0.0

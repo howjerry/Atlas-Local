@@ -1,0 +1,59 @@
+id: atlas/security/go/ssrf
+name: Server-Side Request Forgery (SSRF)
+description: >
+  Detects usage of http.Get, http.Post, http.Head, and http.NewRequest
+  where the URL argument may be user-controlled. An attacker can manipulate
+  the URL to make the server send requests to internal services, cloud
+  metadata endpoints, or other unintended targets, potentially exposing
+  sensitive data or enabling further attacks.
+severity: high
+category: security
+language: Go
+cwe_id: CWE-918
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A10:2021"
+      description: Server-Side Request Forgery
+    - framework: nist-800-53
+      requirement: SC-7
+      description: Boundary Protection
+pattern: |
+  [
+    (call_expression
+      function: (selector_expression
+        operand: (identifier) @pkg
+        field: (field_identifier) @fn
+        (#eq? @pkg "http")
+        (#match? @fn "^(Get|Post|Head|PostForm)$"))
+      arguments: (argument_list
+        (_) @url_arg))
+    @match
+
+    (call_expression
+      function: (selector_expression
+        operand: (identifier) @pkg
+        field: (field_identifier) @fn
+        (#eq? @pkg "http")
+        (#eq? @fn "NewRequest"))
+      arguments: (argument_list
+        (_) @method
+        (_) @url_arg
+        (_) @body))
+    @match
+  ]
+remediation: >
+  Validate and sanitize all URLs before making outbound HTTP requests.
+  Use an allowlist of permitted hosts or URL patterns. Block requests to
+  private IP ranges (10.x, 172.16-31.x, 192.168.x, 169.254.169.254).
+  Consider using a dedicated HTTP client with URL validation middleware.
+references:
+  - https://cwe.mitre.org/data/definitions/918.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
+  - https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/
+tags:
+  - ssrf
+  - owasp-top-10
+  - a10-ssrf
+  - server-side-request-forgery
+version: 1.0.0

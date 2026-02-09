@@ -1,0 +1,28 @@
+id: atlas/quality/ruby/nested-ternary
+name: Nested Ternary Expression
+description: >
+  Detects ternary expressions nested inside other ternary expressions.
+  Nested ternaries are difficult to read and understand. They should be
+  refactored into if/elsif/else blocks or separate methods for clarity.
+severity: low
+category: quality
+language: Ruby
+confidence: high
+pattern: |
+  (conditional
+    consequence: (conditional) @inner)
+  @match
+remediation: >
+  Replace nested ternary expressions with if/elsif/else blocks or extract
+  the logic into a separate method. For example, replace
+  `a ? (b ? x : y) : z` with an explicit if/elsif/else structure that
+  clearly communicates the branching logic.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_style/#stylenestedternaryoperator
+  - https://rubystyle.guide/#no-nested-ternary
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

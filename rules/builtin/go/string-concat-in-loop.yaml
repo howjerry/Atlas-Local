@@ -1,0 +1,36 @@
+id: atlas/quality/go/string-concat-in-loop
+name: String Concatenation in Loop
+description: >
+  Detects string concatenation using the += operator inside for loops.
+  In Go, strings are immutable, so each concatenation allocates a new string
+  and copies the previous contents. This results in O(n^2) time complexity
+  for building strings in a loop. Use strings.Builder for efficient string
+  construction.
+severity: low
+category: quality
+language: Go
+confidence: high
+pattern: |
+  (for_statement
+    body: (block
+      (assignment_statement
+        left: (expression_list
+          (identifier) @var)
+        right: (expression_list
+          (binary_expression
+            operator: "+")))))
+  @match
+remediation: >
+  Replace string concatenation in loops with strings.Builder. Create a
+  builder before the loop, use builder.WriteString inside the loop, and
+  call builder.String() after the loop completes. This reduces the
+  complexity from O(n^2) to O(n).
+references:
+  - https://pkg.go.dev/strings#Builder
+  - https://go.dev/doc/effective_go#printing
+tags:
+  - code-quality
+  - performance
+metadata:
+  quality_domain: performance
+version: 1.0.0

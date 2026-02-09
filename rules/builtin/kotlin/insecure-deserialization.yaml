@@ -1,0 +1,46 @@
+id: atlas/security/kotlin/insecure-deserialization
+name: Insecure Deserialization via ObjectInputStream
+description: >
+  Detects use of ObjectInputStream.readObject() or readUnshared() which
+  deserializes arbitrary Java/Kotlin objects from untrusted input. An attacker
+  can craft malicious serialized objects that exploit gadget chains present
+  in the application's classpath, leading to remote code execution, denial
+  of service, or other attacks.
+severity: high
+category: security
+language: Kotlin
+cwe_id: CWE-502
+pattern: |
+  (call_expression
+    (navigation_expression
+      (_) @obj
+      (identifier) @method)
+    (value_arguments)
+    (#match? @method "^(readObject|readUnshared)$"))
+  @match
+remediation: >
+  Avoid using Java native serialization (ObjectInputStream) for untrusted
+  data. Use safer serialization formats such as JSON (kotlinx.serialization,
+  Gson, Jackson) or Protocol Buffers instead. If ObjectInputStream must be
+  used, implement an ObjectInputFilter (Java 9+) to whitelist allowed classes.
+references:
+  - https://cwe.mitre.org/data/definitions/502.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html
+  - https://owasp.org/www-project-top-ten/2017/A8_2017-Insecure_Deserialization
+tags:
+  - deserialization
+  - rce
+  - owasp-top-10
+  - a08-insecure-deserialization
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A08:2021"
+      description: Software and Data Integrity Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: CM-7
+      description: Least Functionality
+version: 1.0.0

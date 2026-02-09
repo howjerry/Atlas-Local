@@ -1,0 +1,31 @@
+id: atlas/quality/ruby/bare-rescue
+name: Bare Rescue Without Exception Class
+description: >
+  Detects rescue clauses that do not specify an exception class. A bare
+  `rescue` catches `StandardError` by default, but the intent is unclear
+  and may accidentally catch exceptions that should propagate. Always
+  specify the exception class to make error handling explicit.
+severity: low
+category: quality
+language: Ruby
+confidence: high
+pattern: |
+  (rescue
+    !exceptions
+    !variable)
+  @match
+remediation: >
+  Specify the exception class in the rescue clause. For example, replace
+  `rescue` with `rescue StandardError => e` or a more specific exception
+  class like `rescue ActiveRecord::RecordNotFound => e`. This makes the
+  error handling intent explicit and prevents accidentally swallowing
+  unexpected exceptions.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_style/#stylerescuestandarderror
+  - https://rubystyle.guide/#no-blind-rescues
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

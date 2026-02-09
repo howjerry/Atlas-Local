@@ -1,0 +1,29 @@
+id: atlas/quality/ruby/magic-number
+name: Magic Number in Code
+description: >
+  Detects numeric literals used directly in expressions and method
+  arguments. Magic numbers reduce code readability because their purpose
+  is unclear. Extract them into named constants to document their meaning
+  and enable easy modification.
+severity: info
+category: quality
+language: Ruby
+confidence: low
+pattern: |
+  (argument_list
+    ((integer) @match
+     (#match? @match "^[2-9]|[1-9][0-9]+")))
+remediation: >
+  Extract magic numbers into named constants. For example, replace
+  `sleep(3600)` with `SECONDS_PER_HOUR = 3600` followed by
+  `sleep(SECONDS_PER_HOUR)`. This makes the code self-documenting and
+  makes it easy to update values used in multiple places.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_lint/
+  - https://refactoring.guru/replace-magic-number-with-symbolic-constant
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

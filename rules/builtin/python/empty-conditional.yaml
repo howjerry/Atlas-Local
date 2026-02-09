@@ -1,0 +1,30 @@
+id: atlas/quality/python/empty-conditional
+name: Empty Conditional Block
+description: >
+  Detects if, elif, or else blocks whose body contains only a `pass` statement.
+  Empty conditional blocks are typically leftover scaffolding, dead code, or
+  incomplete implementations. They obscure the intended control flow and should
+  be completed or removed.
+severity: low
+category: quality
+language: Python
+confidence: medium
+pattern: |
+  (if_statement
+    consequence: (block
+      .
+      (pass_statement)
+      .))
+  @match
+remediation: >
+  Implement the conditional block body or remove the entire if statement if the
+  condition is no longer relevant. If the empty block is intentional (e.g.,
+  deliberately ignoring a case), add a comment explaining the rationale.
+references:
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/unnecessary-pass.html
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: error-handling
+version: 1.0.0

@@ -1,0 +1,44 @@
+id: atlas/security/ruby/weak-crypto
+name: Weak Cryptographic Hash Algorithm
+description: >
+  Detects usage of weak hash algorithms MD5 and SHA1 via the `Digest`
+  module. These algorithms are considered cryptographically broken and
+  should not be used for security-sensitive operations such as password
+  hashing, digital signatures, or integrity verification.
+severity: medium
+category: security
+language: Ruby
+cwe_id: CWE-327
+pattern: |
+  ((scope_resolution
+    scope: (constant) @module
+    name: (constant) @algo
+    (#eq? @module "Digest")
+    (#match? @algo "^(MD5|SHA1)$"))
+  @match)
+remediation: >
+  Replace MD5 and SHA1 with stronger hash algorithms. Use
+  `Digest::SHA256` or `Digest::SHA512` for general hashing. For password
+  hashing, use `BCrypt::Password` from the `bcrypt` gem or `Argon2::Password`
+  from the `argon2` gem, which include salting and work factors.
+references:
+  - https://cwe.mitre.org/data/definitions/327.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+  - https://ruby-doc.org/stdlib/libdoc/digest/rdoc/Digest.html
+tags:
+  - weak-crypto
+  - cryptography
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+version: 1.0.0

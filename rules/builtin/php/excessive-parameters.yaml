@@ -1,0 +1,33 @@
+id: atlas/quality/php/excessive-parameters
+name: Excessive Function Parameters
+description: >
+  Detects functions and methods with six or more parameters. Functions
+  with too many parameters are difficult to call correctly, hard to test,
+  and often indicate that the function is doing too much or that related
+  parameters should be grouped into an object.
+severity: low
+category: quality
+language: Php
+confidence: high
+pattern: |
+  (formal_parameters
+    (simple_parameter)
+    (simple_parameter)
+    (simple_parameter)
+    (simple_parameter)
+    (simple_parameter)
+    (simple_parameter))
+  @match
+remediation: >
+  Reduce the number of parameters by grouping related values into a
+  class or associative array. Use the Parameter Object pattern, a builder
+  pattern, or split the function into smaller focused functions.
+references:
+  - https://refactoring.guru/introduce-parameter-object
+  - https://www.php.net/manual/en/functions.arguments.php
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

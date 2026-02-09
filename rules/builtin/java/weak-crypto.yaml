@@ -1,0 +1,60 @@
+id: atlas/security/java/weak-crypto
+name: Weak Cryptographic Algorithm
+description: >
+  Detects usage of weak or deprecated cryptographic algorithms such as MD5,
+  SHA-1, DES, DESede, or RC4. These algorithms have known vulnerabilities:
+  MD5 and SHA-1 are susceptible to collision attacks, DES has a 56-bit key
+  that can be brute-forced, and RC4 has biases in its keystream. Using these
+  algorithms can lead to data exposure or integrity compromise.
+severity: medium
+category: security
+language: Java
+cwe_id: CWE-327
+pattern: |
+  [
+    (method_invocation
+      object: (identifier) @cls
+      name: (identifier) @method
+      arguments: (argument_list
+        (string_literal) @algo)
+      (#match? @cls "^(MessageDigest|Cipher)$")
+      (#eq? @method "getInstance")
+      (#match? @algo "\"(MD5|SHA-1|DES|DESede|RC4|RC2|Blowfish)\""))
+    (method_invocation
+      object: (identifier) @cls2
+      name: (identifier) @method2
+      arguments: (argument_list
+        (string_literal) @algo2)
+      (#eq? @cls2 "KeyGenerator")
+      (#eq? @method2 "getInstance")
+      (#match? @algo2 "\"(DES|DESede|RC4|RC2|Blowfish)\""))
+  ]
+  @match
+remediation: >
+  Replace weak algorithms with strong alternatives. Use SHA-256 or SHA-3
+  instead of MD5 or SHA-1 for hashing. Use AES-256-GCM instead of DES,
+  DESede, or RC4 for encryption. For example, replace
+  `MessageDigest.getInstance("MD5")` with
+  `MessageDigest.getInstance("SHA-256")` and
+  `Cipher.getInstance("DES")` with `Cipher.getInstance("AES/GCM/NoPadding")`.
+references:
+  - https://cwe.mitre.org/data/definitions/327.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/09-Testing_for_Weak_Cryptography/
+tags:
+  - weak-crypto
+  - cryptography
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+version: 1.0.0

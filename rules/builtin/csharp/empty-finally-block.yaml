@@ -1,0 +1,25 @@
+id: atlas/quality/csharp/empty-finally-block
+name: Empty Finally Block
+description: >
+  Detects try-finally blocks where the finally clause has an empty body.
+  An empty finally block serves no purpose and may indicate forgotten
+  cleanup logic such as resource disposal or state restoration.
+severity: low
+category: quality
+language: CSharp
+confidence: high
+pattern: |
+  (finally_clause (block . "}")) @match
+remediation: >
+  Implement the finally block with necessary cleanup logic (e.g. disposing
+  resources, releasing locks, restoring state), or remove the finally
+  clause entirely if no cleanup is needed. Consider using a `using`
+  statement for automatic resource disposal.
+references:
+  - https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/statements/exception-handling-statements
+tags:
+  - code-quality
+  - error-handling
+metadata:
+  quality_domain: "error-handling"
+version: 1.0.0

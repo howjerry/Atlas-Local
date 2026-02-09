@@ -1,0 +1,32 @@
+id: atlas/quality/ruby/empty-method-body
+name: Empty Method Body
+description: >
+  Detects method definitions with empty bodies. Empty methods are often
+  leftover scaffolding or incomplete implementations that should be
+  completed or removed. If the method is intentionally a no-op, add a
+  comment explaining the reason.
+severity: info
+category: quality
+language: Ruby
+confidence: medium
+pattern: |
+  (method
+    name: (identifier)
+    !parameters
+    body: (body_statement
+      .
+      .))
+  @match
+remediation: >
+  Implement the method body or remove the method if it is no longer needed.
+  If the method is intentionally empty (e.g., a hook or callback placeholder),
+  add a comment explaining why, such as `# 空實作：作為子類覆寫的預設行為`.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_lint/#lintemptymethodwithoutcomment
+  - https://rubystyle.guide/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

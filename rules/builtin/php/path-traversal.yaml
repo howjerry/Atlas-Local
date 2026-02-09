@@ -1,0 +1,55 @@
+id: atlas/security/php/path-traversal
+name: Path Traversal via File Operation Functions
+description: >
+  Detects calls to file operation functions such as file_get_contents,
+  fopen, readfile, and file_put_contents where the path argument may
+  include user-controlled input. An attacker can use directory traversal
+  sequences (../) to access files outside the intended directory.
+severity: high
+category: security
+language: Php
+cwe_id: CWE-22
+pattern: |
+  [
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          [(encapsed_string) (binary_expression) (variable_name)] @path_arg)))
+      (#match? @func_name "^(file_get_contents|fopen|readfile|file_put_contents|include|require)$"))
+    @match
+
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          (variable_name) @path_arg)))
+      (#match? @func_name "^(file_get_contents|fopen|readfile|file_put_contents)$"))
+    @match
+  ]
+remediation: >
+  Validate and sanitize file paths before use. Use realpath() to resolve
+  the canonical path and verify it falls within the expected directory.
+  Use basename() to strip directory components from user input. Never
+  pass raw user input directly to file functions.
+references:
+  - https://cwe.mitre.org/data/definitions/22.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Path_Traversal_Prevention_Cheat_Sheet.html
+  - https://www.php.net/manual/en/function.realpath.php
+tags:
+  - path-traversal
+  - file-access
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: AC-3
+      description: Access Enforcement
+version: 1.0.0

@@ -1,0 +1,44 @@
+id: atlas/security/go/insecure-random
+name: Insecure Random Number Generator
+description: >
+  Detects usage of math/rand for generating random values. The math/rand
+  package produces deterministic, predictable output unsuitable for security
+  contexts such as token generation, password creation, or cryptographic
+  operations. An attacker who knows the seed can reproduce the entire
+  sequence of generated values.
+severity: medium
+category: security
+language: Go
+cwe_id: CWE-330
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+pattern: |
+  (call_expression
+    function: (selector_expression
+      operand: (identifier) @pkg
+      field: (field_identifier) @fn
+      (#eq? @pkg "rand")
+      (#match? @fn "^(Intn|Int|Int31|Int31n|Int63|Int63n|Float32|Float64|Uint32|Uint64|Read|Perm|Shuffle|NormFloat64|ExpFloat64|New|NewSource|Seed)$")))
+  @match
+remediation: >
+  Replace math/rand with crypto/rand for security-sensitive random number
+  generation. Use crypto/rand.Read to fill a byte slice with cryptographically
+  secure random data, or use crypto/rand.Int for generating random integers
+  within a range. For non-security contexts where performance matters,
+  math/rand is acceptable if clearly documented.
+references:
+  - https://cwe.mitre.org/data/definitions/330.html
+  - https://pkg.go.dev/crypto/rand
+  - https://owasp.org/www-community/vulnerabilities/Insecure_Randomness
+tags:
+  - insecure-random
+  - cryptographic-failures
+  - owasp-top-10
+  - a02-cryptographic-failures
+version: 1.0.0

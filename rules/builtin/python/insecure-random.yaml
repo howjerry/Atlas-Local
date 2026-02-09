@@ -1,0 +1,47 @@
+id: atlas/security/python/insecure-random
+name: Insecure Random Number Generator
+description: >
+  Detects usage of the `random` module for generating values that may be used in
+  security-sensitive contexts such as tokens, passwords, or cryptographic keys.
+  The `random` module uses a Mersenne Twister PRNG which is not cryptographically
+  secure and its output can be predicted after observing a sufficient number of
+  values.
+severity: medium
+category: security
+language: Python
+cwe_id: CWE-330
+pattern: |
+  (call
+    function: (attribute
+      object: (identifier) @module
+      attribute: (identifier) @method
+      (#eq? @module "random")
+      (#match? @method "^(random|randint|randrange|choice|choices|sample|uniform|getrandbits|shuffle)$"))
+    arguments: (argument_list))
+  @match
+remediation: >
+  Use the `secrets` module for security-sensitive random values. Replace
+  `random.randint(0, 999999)` with `secrets.randbelow(1000000)`, and
+  `random.choice(alphabet)` with `secrets.choice(alphabet)`. For generating
+  tokens, use `secrets.token_hex()` or `secrets.token_urlsafe()`.
+references:
+  - https://cwe.mitre.org/data/definitions/330.html
+  - https://docs.python.org/3/library/secrets.html
+  - https://owasp.org/www-community/vulnerabilities/Insecure_Randomness
+tags:
+  - insecure-random
+  - cryptography
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+version: 1.0.0

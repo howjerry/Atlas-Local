@@ -1,0 +1,29 @@
+id: atlas/quality/kotlin/empty-function-body
+name: Empty Function Body
+description: >
+  Detects functions with empty bodies. An empty function body often indicates
+  stub code that was never implemented, or a callback/event handler that
+  silently ignores events. This can lead to subtle bugs and makes intent
+  unclear.
+severity: low
+category: quality
+language: Kotlin
+confidence: medium
+pattern: |
+  (function_declaration
+    (function_body
+      (block . "}")))
+  @match
+remediation: >
+  Implement the function body with appropriate logic. If the function is
+  intentionally empty (e.g., a no-op override), add a comment explaining
+  why. Consider using an abstract function if subclasses should provide
+  the implementation.
+references:
+  - https://rules.sonarsource.com/kotlin/RSPEC-1186/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

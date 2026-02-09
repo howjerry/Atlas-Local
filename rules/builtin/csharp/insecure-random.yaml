@@ -1,0 +1,43 @@
+id: atlas/security/csharp/insecure-random
+name: Insecure Random Number Generator
+description: >
+  Detects use of System.Random which is not cryptographically secure.
+  System.Random uses a predictable algorithm that can be reverse-engineered
+  by an attacker, making it unsuitable for generating security-sensitive
+  values such as tokens, passwords, or session identifiers.
+severity: medium
+category: security
+language: CSharp
+cwe_id: CWE-330
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+pattern: |
+  (object_creation_expression
+    type: (identifier) @type
+    (#eq? @type "Random"))
+  @match
+remediation: >
+  Use System.Security.Cryptography.RandomNumberGenerator instead of
+  System.Random for security-sensitive operations. For example:
+  `var bytes = RandomNumberGenerator.GetBytes(32);` or
+  `int value = RandomNumberGenerator.GetInt32(100);`.
+references:
+  - https://cwe.mitre.org/data/definitions/330.html
+  - https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.randomnumbergenerator
+  - https://owasp.org/www-community/vulnerabilities/Insecure_Randomness
+tags:
+  - insecure-random
+  - cryptography
+  - owasp-top-10
+  - a02-cryptographic-failures
+  - a07-identification-authentication
+version: 1.0.0

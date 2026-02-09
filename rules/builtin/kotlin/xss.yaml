@@ -1,0 +1,49 @@
+id: atlas/security/kotlin/xss
+name: XSS via Unescaped Output in Web Context
+description: >
+  Detects potential cross-site scripting (XSS) vulnerabilities where
+  data is written directly to the HTTP response via PrintWriter methods
+  such as print, println, write, or append. If the data written to the
+  response includes unsanitized user input, an attacker can inject
+  malicious scripts that execute in the victim's browser.
+severity: high
+category: security
+language: Kotlin
+cwe_id: CWE-79
+pattern: |
+  (call_expression
+    (navigation_expression
+      (_) @writer
+      (identifier) @method)
+    (value_arguments
+      (value_argument
+        (call_expression) @inner_call))
+    (#match? @method "^(print|println|write|append)$"))
+  @match
+remediation: >
+  Encode all user-controlled data before writing it to the HTTP response.
+  Use OWASP Java Encoder or Kotlin HTML escaping utilities. For example,
+  replace `out.println(request.getParameter("name"))` with
+  `out.println(HtmlUtils.htmlEscape(request.getParameter("name")))`.
+  Consider using templating engines with automatic output encoding.
+references:
+  - https://cwe.mitre.org/data/definitions/79.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/xss/
+tags:
+  - xss
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

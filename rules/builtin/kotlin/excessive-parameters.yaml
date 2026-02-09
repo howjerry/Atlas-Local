@@ -1,0 +1,34 @@
+id: atlas/quality/kotlin/excessive-parameters
+name: Excessive Function Parameters
+description: >
+  Detects functions with six or more parameters. Functions with too many
+  parameters are hard to understand, test, and maintain. They often
+  indicate that the function is doing too much or that the parameters
+  should be grouped into a dedicated data class.
+severity: low
+category: quality
+language: Kotlin
+confidence: high
+pattern: |
+  (function_value_parameters
+    (parameter)
+    (parameter)
+    (parameter)
+    (parameter)
+    (parameter)
+    (parameter))
+  @match
+remediation: >
+  Reduce the number of parameters by introducing a data class to group
+  related parameters. For example, replace
+  `fun create(name: String, email: String, phone: String, addr: String, city: String, zip: String)`
+  with `fun create(info: UserInfo)` where UserInfo is a data class
+  encapsulating all fields.
+references:
+  - https://rules.sonarsource.com/kotlin/RSPEC-107/
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

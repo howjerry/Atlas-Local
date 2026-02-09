@@ -1,0 +1,48 @@
+id: atlas/security/python/ssrf
+name: Server-Side Request Forgery (SSRF)
+description: >
+  Detects potential SSRF vulnerabilities where HTTP request functions from the
+  `requests` library or `urllib` are called with variable arguments that may
+  contain user-controlled URLs. An attacker can manipulate the URL to make the
+  server send requests to internal services, cloud metadata endpoints, or other
+  unintended destinations, potentially exposing sensitive data or enabling
+  further attacks.
+severity: high
+category: security
+language: Python
+cwe_id: CWE-918
+pattern: |
+  (call
+    function: (attribute
+      object: (identifier) @module
+      attribute: (identifier) @method
+      (#eq? @module "requests")
+      (#match? @method "^(get|post|put|delete|patch|head|options|request)$"))
+    arguments: (argument_list
+      (identifier) @url_arg))
+  @match
+remediation: >
+  Validate and sanitize all URLs before making HTTP requests. Implement an
+  allowlist of permitted domains and protocols. Block requests to private IP
+  ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.169.254).
+  Use a URL parser to validate the scheme and host before making the request.
+references:
+  - https://cwe.mitre.org/data/definitions/918.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+tags:
+  - ssrf
+  - owasp-top-10
+  - a10-ssrf
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A10:2021"
+      description: Server-Side Request Forgery (SSRF)
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-7
+      description: Boundary Protection
+version: 1.0.0

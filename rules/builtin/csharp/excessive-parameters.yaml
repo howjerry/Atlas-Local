@@ -1,0 +1,34 @@
+id: atlas/quality/csharp/excessive-parameters
+name: Excessive Method Parameters
+description: >
+  Detects methods with six or more parameters. Methods with too many
+  parameters are difficult to call correctly, hard to test, and often
+  indicate that the method is doing too much or that related parameters
+  should be grouped into an object.
+severity: low
+category: quality
+language: CSharp
+confidence: high
+pattern: |
+  (parameter_list
+    (parameter)
+    (parameter)
+    (parameter)
+    (parameter)
+    (parameter)
+    (parameter))
+  @match
+remediation: >
+  Reduce the number of parameters by grouping related values into a
+  class or struct (Parameter Object pattern), using a builder pattern,
+  or splitting the method into smaller focused methods. For example,
+  create a configuration object to hold related parameters.
+references:
+  - https://learn.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/methods
+  - https://refactoring.guru/introduce-parameter-object
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: "maintainability"
+version: 1.0.0

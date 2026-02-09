@@ -1,0 +1,60 @@
+id: atlas/security/php/ssrf
+name: Server-Side Request Forgery
+description: >
+  Detects potential SSRF vulnerabilities where functions like
+  file_get_contents, curl_setopt, or fopen are called with user-controlled
+  URLs. An attacker can make the server send requests to internal services,
+  cloud metadata endpoints, or other sensitive resources that are not
+  directly accessible from the internet.
+severity: high
+category: security
+language: Php
+cwe_id: CWE-918
+pattern: |
+  [
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          (variable_name) @url_arg)))
+      (#match? @func_name "^(file_get_contents|fopen)$"))
+    @match
+
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          (_) @handle)
+        (argument
+          (_) @opt)
+        (argument
+          (variable_name) @url_arg)))
+      (#eq? @func_name "curl_setopt"))
+    @match
+  ]
+remediation: >
+  Validate and sanitize all URLs before making server-side requests.
+  Use an allowlist of permitted domains and protocols. Block requests
+  to internal/private IP ranges (10.x, 172.16.x, 192.168.x, 127.x,
+  169.254.x). Use a dedicated HTTP client library with SSRF protections.
+  Disable unnecessary URL schemes in allow_url_fopen.
+references:
+  - https://cwe.mitre.org/data/definitions/918.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+tags:
+  - ssrf
+  - owasp-top-10
+  - a10-ssrf
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A10:2021"
+      description: Server-Side Request Forgery (SSRF)
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-7
+      description: Boundary Protection
+version: 1.0.0

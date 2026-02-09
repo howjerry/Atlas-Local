@@ -1,0 +1,47 @@
+id: atlas/security/ruby/open-redirect
+name: Open Redirect via redirect_to
+description: >
+  Detects potential open redirect vulnerabilities where `redirect_to` is
+  called with a dynamic argument that may contain user-controlled input.
+  An attacker can craft a URL that redirects users to a malicious site,
+  enabling phishing attacks or credential theft.
+severity: medium
+category: security
+language: Ruby
+cwe_id: CWE-601
+pattern: |
+  [
+    ((call
+      method: (identifier) @method
+      (#eq? @method "redirect_to")
+      arguments: (argument_list))
+    @match)
+    ((command
+      name: (identifier) @cmd_name
+      (#eq? @cmd_name "redirect_to"))
+    @match)
+  ]
+remediation: >
+  Validate redirect targets against an allowlist of permitted URLs or paths.
+  Use `redirect_to` only with known-safe paths such as named route helpers.
+  For example, replace `redirect_to(params[:url])` with
+  `redirect_to(root_path)` or validate the URL against a whitelist before
+  redirecting. Rails' `url_for` with `only_path: true` can restrict
+  redirects to the same host.
+references:
+  - https://cwe.mitre.org/data/definitions/601.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+  - https://guides.rubyonrails.org/security.html#redirection
+tags:
+  - open-redirect
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+version: 1.0.0

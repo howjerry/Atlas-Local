@@ -1,0 +1,34 @@
+id: atlas/quality/go/excessive-parameters
+name: Excessive Function Parameters
+description: >
+  Detects function declarations with six or more parameters. Functions with
+  too many parameters are hard to understand, test, and call correctly.
+  This often indicates the function is doing too much or that parameters
+  should be grouped into a struct.
+severity: low
+category: quality
+language: Go
+confidence: medium
+pattern: |
+  (function_declaration
+    parameters: (parameter_list
+      (parameter_declaration) @p1
+      (parameter_declaration) @p2
+      (parameter_declaration) @p3
+      (parameter_declaration) @p4
+      (parameter_declaration) @p5
+      (parameter_declaration) @p6))
+  @match
+remediation: >
+  Group related parameters into a struct or options type. Use the functional
+  options pattern for configurable behaviour. Consider whether the function
+  has too many responsibilities and should be split into smaller functions.
+references:
+  - https://go.dev/doc/effective_go#functions
+  - https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

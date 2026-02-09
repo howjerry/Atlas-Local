@@ -1,0 +1,32 @@
+id: atlas/quality/ruby/excessive-parameters
+name: Method With Excessive Parameters
+description: >
+  Detects method definitions with six or more parameters. Methods with
+  too many parameters are difficult to understand, test, and maintain.
+  Consider using an options hash, a parameter object, or restructuring
+  the method to reduce the number of parameters.
+severity: low
+category: quality
+language: Ruby
+confidence: high
+pattern: |
+  (method
+    parameters: (method_parameters
+      (_) (_) (_) (_) (_) (_)))
+  @match
+remediation: >
+  Reduce the number of parameters by grouping related parameters into an
+  options hash or a parameter object. For example, replace
+  `def create(name, email, age, city, state, zip)` with
+  `def create(name, email, address:)` where `address` is a structured
+  object. Ruby's keyword arguments also improve readability for methods
+  with multiple parameters.
+references:
+  - https://rubocop.readthedocs.io/en/latest/cops_metrics/#metricsparameterlistslength
+  - https://refactoring.guru/smells/long-parameter-list
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

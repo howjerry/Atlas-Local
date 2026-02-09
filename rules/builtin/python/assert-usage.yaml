@@ -1,0 +1,28 @@
+id: atlas/quality/python/assert-usage
+name: Assert Statement for Runtime Validation
+description: >
+  Detects usage of `assert` statements which are intended for debugging and are
+  removed when Python runs with the `-O` (optimize) flag. Using assert for
+  runtime validation such as input checking or precondition enforcement means
+  those checks silently disappear in optimized mode, potentially leading to
+  security vulnerabilities or unexpected behavior in production.
+severity: info
+category: quality
+language: Python
+confidence: low
+pattern: |
+  (assert_statement) @match
+remediation: >
+  Replace `assert` with explicit validation using `if` statements and raise
+  appropriate exceptions. For example, replace `assert user_id > 0` with
+  `if user_id <= 0: raise ValueError("user_id must be positive")`. Keep assert
+  only for development-time invariant checks that should never fail.
+references:
+  - https://docs.python.org/3/reference/simple_stmts.html#the-assert-statement
+  - https://pylint.readthedocs.io/en/stable/user_guide/messages/warning/assert-on-tuple.html
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: best-practices
+version: 1.0.0

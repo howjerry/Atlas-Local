@@ -1,0 +1,46 @@
+id: atlas/security/php/unserialize
+name: Unsafe Deserialization via unserialize()
+description: >
+  Detects use of PHP's unserialize() function. Deserializing untrusted
+  data can lead to remote code execution through PHP object injection
+  attacks, where an attacker crafts a serialized payload that triggers
+  dangerous magic methods (__wakeup, __destruct) on instantiation.
+severity: high
+category: security
+language: Php
+cwe_id: CWE-502
+pattern: |
+  ((function_call_expression
+    function: (name) @func_name
+    arguments: (arguments
+      (argument
+        (_) @data_arg)))
+    (#eq? @func_name "unserialize"))
+  @match
+remediation: >
+  Use json_decode() instead of unserialize() for data interchange. If
+  unserialize() is absolutely necessary, use the allowed_classes option
+  (PHP 7.0+) to restrict which classes can be instantiated:
+  `unserialize($data, ['allowed_classes' => false])`. Never deserialize
+  data from untrusted sources without strict validation.
+references:
+  - https://cwe.mitre.org/data/definitions/502.html
+  - https://owasp.org/www-community/vulnerabilities/PHP_Object_Injection
+  - https://www.php.net/manual/en/function.unserialize.php
+tags:
+  - deserialization
+  - object-injection
+  - owasp-top-10
+  - a08-software-integrity
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A08:2021"
+      description: Software and Data Integrity Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

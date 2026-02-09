@@ -1,0 +1,47 @@
+id: atlas/security/java/open-redirect
+name: Open Redirect via Servlet Response
+description: >
+  Detects potential open redirect vulnerabilities where user-controlled input
+  is passed to response.sendRedirect() or RequestDispatcher.forward(). An
+  attacker can craft a URL that redirects users to a malicious site, enabling
+  phishing attacks or credential theft.
+severity: medium
+category: security
+language: Java
+cwe_id: CWE-601
+pattern: |
+  (method_invocation
+    object: (_) @obj
+    name: (identifier) @method
+    arguments: (argument_list
+      (method_invocation) @user_input)
+    (#match? @method "^(sendRedirect|forward)$"))
+  @match
+remediation: >
+  Validate redirect URLs against a whitelist of allowed destinations.
+  Use relative paths instead of absolute URLs when possible. Implement
+  a mapping of allowed redirect targets and use an index or key to
+  reference them instead of passing the URL directly. For example,
+  maintain a Map of allowed URLs and look up by key:
+  `response.sendRedirect(allowedUrls.get(redirectKey))`.
+references:
+  - https://cwe.mitre.org/data/definitions/601.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/04-Testing_for_Client-side_URL_Redirect
+tags:
+  - open-redirect
+  - servlet
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0

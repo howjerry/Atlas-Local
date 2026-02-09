@@ -1,0 +1,46 @@
+id: atlas/security/ruby/sql-injection
+name: SQL Injection via String Interpolation
+description: >
+  Detects potential SQL injection vulnerabilities where SQL queries are
+  constructed using string interpolation and passed to ActiveRecord or
+  database execution methods such as `execute`, `find_by_sql`, `where`,
+  or `select`. An attacker can manipulate the interpolated input to alter
+  the SQL query logic, leading to unauthorized data access or modification.
+severity: high
+category: security
+language: Ruby
+cwe_id: CWE-89
+pattern: |
+  (call
+    method: (identifier) @method
+    (#match? @method "^(execute|find_by_sql|where|select|order|group|having|joins|from|pluck)$")
+    arguments: (argument_list
+      (string
+        (interpolation)) @sql_arg))
+  @match
+remediation: >
+  Use parameterized queries or ActiveRecord's built-in sanitization.
+  Replace string interpolation with placeholder syntax. For example, replace
+  `User.where("name = '#{name}'")` with `User.where("name = ?", name)` or
+  `User.where(name: name)`. For raw SQL, use `ActiveRecord::Base.sanitize_sql`.
+references:
+  - https://cwe.mitre.org/data/definitions/89.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+  - https://rails-sqli.org/
+tags:
+  - sql-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0
