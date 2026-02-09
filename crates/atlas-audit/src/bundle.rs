@@ -18,6 +18,9 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD as BASE64;
+use ed25519_dalek::{Signature, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tracing::{debug, info};
@@ -104,6 +107,8 @@ pub struct AuditBundleBuilder {
     rules_applied: Vec<RuleMetadata>,
     policy: Option<serde_json::Value>,
     config: BTreeMap<String, serde_json::Value>,
+    /// Ed25519 簽署金鑰（可選）。提供時 `build()` 會計算 manifest 簽署。
+    signing_key: Option<SigningKey>,
 }
 
 impl AuditBundleBuilder {
@@ -116,7 +121,14 @@ impl AuditBundleBuilder {
             rules_applied: Vec::new(),
             policy: None,
             config: BTreeMap::new(),
+            signing_key: None,
         }
+    }
+
+    /// 設定 Ed25519 簽署金鑰。`build()` 時會自動計算 manifest 簽署。
+    pub fn signing_key(mut self, key: SigningKey) -> Self {
+        self.signing_key = Some(key);
+        self
     }
 
     /// Sets the scan report (as a JSON value).
@@ -170,11 +182,31 @@ impl AuditBundleBuilder {
             files.insert("policy.json".to_string(), sha256_hex(&policy_json));
         }
 
+        // 計算 manifest 簽署（若有 signing_key）。
+        let signature = if let Some(ref signing_key) = self.signing_key {
+            use ed25519_dalek::Signer;
+
+            // 先建立無簽署的 manifest 來序列化。
+            let unsigned_manifest = AuditManifest {
+                files: files.clone(),
+                created_at: now.clone(),
+                engine_version: self.engine_version.clone(),
+                signature: String::new(),
+            };
+            let manifest_bytes = serde_json::to_vec(&unsigned_manifest)
+                .map_err(|e| AuditError::Serialization(e.to_string()))?;
+            let digest = Sha256::digest(&manifest_bytes);
+            let sig = signing_key.sign(&digest);
+            BASE64.encode(sig.to_bytes())
+        } else {
+            String::new()
+        };
+
         let manifest = AuditManifest {
             files,
             created_at: now.clone(),
             engine_version: self.engine_version.clone(),
-            signature: String::new(), // placeholder -- signing is deferred
+            signature,
         };
 
         debug!(
@@ -256,7 +288,18 @@ pub fn write_bundle_archive(bundle: &AuditBundle, output: &Path) -> Result<(), A
 }
 
 /// Reads an audit bundle archive and verifies manifest checksums.
+///
+/// 若提供 `verify_key`，同時驗證 manifest 的 Ed25519 簽署。
+/// 同時檢查 archive 是否包含 manifest 未列出的額外檔案。
 pub fn verify_bundle_archive(path: &Path) -> Result<AuditBundle, AuditError> {
+    verify_bundle_archive_with_key(path, None)
+}
+
+/// 帶簽署驗證的 bundle 驗證。
+pub fn verify_bundle_archive_with_key(
+    path: &Path,
+    verify_key: Option<&VerifyingKey>,
+) -> Result<AuditBundle, AuditError> {
     let file =
         std::fs::File::open(path).map_err(|e| AuditError::Io(format!("opening bundle: {e}")))?;
     let dec = flate2::read::GzDecoder::new(file);
@@ -286,6 +329,50 @@ pub fn verify_bundle_archive(path: &Path) -> Result<AuditBundle, AuditError> {
     })?;
     let manifest: AuditManifest = serde_json::from_slice(manifest_data)
         .map_err(|e| AuditError::Serialization(format!("parsing manifest: {e}")))?;
+
+    // 驗證 Ed25519 簽署（若提供 verify_key 且 signature 非空）。
+    if let Some(vk) = verify_key {
+        if !manifest.signature.is_empty() {
+            // 重建無簽署的 manifest 以計算可驗證的 bytes。
+            let unsigned = AuditManifest {
+                files: manifest.files.clone(),
+                created_at: manifest.created_at.clone(),
+                engine_version: manifest.engine_version.clone(),
+                signature: String::new(),
+            };
+            let manifest_bytes = serde_json::to_vec(&unsigned)
+                .map_err(|e| AuditError::Serialization(e.to_string()))?;
+            let digest = Sha256::digest(&manifest_bytes);
+
+            let sig_bytes = BASE64.decode(&manifest.signature).map_err(|e| {
+                AuditError::Signature(format!("invalid signature base64: {e}"))
+            })?;
+            let signature = Signature::from_slice(&sig_bytes).map_err(|e| {
+                AuditError::Signature(format!("invalid signature format: {e}"))
+            })?;
+
+            vk.verify(&digest, &signature).map_err(|e| {
+                AuditError::IntegrityViolation(format!("manifest signature verification failed: {e}"))
+            })?;
+
+            info!("audit bundle signature verified");
+        }
+    }
+
+    // 檢查 archive 是否包含 manifest 未列出的額外檔案。
+    let known_files: std::collections::BTreeSet<&str> = manifest
+        .files
+        .keys()
+        .map(String::as_str)
+        .chain(std::iter::once("manifest.json"))
+        .collect();
+    for archive_file in files.keys() {
+        if !known_files.contains(archive_file.as_str()) {
+            return Err(AuditError::IntegrityViolation(format!(
+                "unexpected file in archive not listed in manifest: '{archive_file}'"
+            )));
+        }
+    }
 
     // Verify checksums
     for (filename, expected_hash) in &manifest.files {
@@ -485,5 +572,177 @@ mod tests {
         let back: RuleMetadata = serde_json::from_str(&json).unwrap();
         assert_eq!(back.rule_id, meta.rule_id);
         assert_eq!(back.name, meta.name);
+    }
+
+    // -- 1C: Audit Bundle 簽署測試 -----------------------------------------
+
+    /// 產生測試用 Ed25519 keypair。
+    fn test_keypair() -> (SigningKey, VerifyingKey) {
+        let seed = [42u8; 32];
+        let sk = SigningKey::from_bytes(&seed);
+        let vk = sk.verifying_key();
+        (sk, vk)
+    }
+
+    #[test]
+    fn signed_bundle_roundtrip() {
+        let (sk, vk) = test_keypair();
+
+        let bundle = AuditBundleBuilder::new("scan-signed", "0.1.0")
+            .report(sample_report())
+            .rules_applied(sample_rules())
+            .signing_key(sk)
+            .build()
+            .unwrap();
+
+        // 簽署不應為空。
+        assert!(!bundle.manifest.signature.is_empty());
+
+        let dir = tempfile::tempdir().unwrap();
+        let archive_path = dir.path().join("signed-bundle.tar.gz");
+
+        write_bundle_archive(&bundle, &archive_path).unwrap();
+
+        // 用正確金鑰驗證 → 成功。
+        let verified = verify_bundle_archive_with_key(&archive_path, Some(&vk)).unwrap();
+        assert_eq!(verified.report, bundle.report);
+    }
+
+    #[test]
+    fn tampered_bundle_fails_verification() {
+        let (sk, vk) = test_keypair();
+
+        let bundle = AuditBundleBuilder::new("scan-tamper", "0.1.0")
+            .report(sample_report())
+            .signing_key(sk)
+            .build()
+            .unwrap();
+
+        let dir = tempfile::tempdir().unwrap();
+        let archive_path = dir.path().join("tampered-bundle.tar.gz");
+
+        write_bundle_archive(&bundle, &archive_path).unwrap();
+
+        // 篡改 archive 內容：重寫 scan-report.json 為不同內容。
+        {
+            // 讀取原始 archive
+            let file = std::fs::File::open(&archive_path).unwrap();
+            let dec = flate2::read::GzDecoder::new(file);
+            let mut archive = tar::Archive::new(dec);
+            let mut file_map: BTreeMap<String, Vec<u8>> = BTreeMap::new();
+
+            for entry in archive.entries().unwrap() {
+                let mut entry = entry.unwrap();
+                let name = entry.path().unwrap().to_string_lossy().to_string();
+                let mut data = Vec::new();
+                std::io::Read::read_to_end(&mut entry, &mut data).unwrap();
+                file_map.insert(name, data);
+            }
+
+            // 篡改 report 內容
+            file_map.insert(
+                "scan-report.json".to_string(),
+                b"{\"findings\": [\"INJECTED\"]}".to_vec(),
+            );
+
+            // 重建 archive
+            let out = std::fs::File::create(&archive_path).unwrap();
+            let enc =
+                flate2::write::GzEncoder::new(out, flate2::Compression::default());
+            let mut builder = tar::Builder::new(enc);
+            for (name, data) in &file_map {
+                let mut header = tar::Header::new_gnu();
+                header.set_size(data.len() as u64);
+                header.set_mode(0o644);
+                header.set_cksum();
+                builder.append_data(&mut header, name, data.as_slice()).unwrap();
+            }
+            builder.finish().unwrap();
+        }
+
+        // 驗證應失敗（checksum 不匹配）。
+        let result = verify_bundle_archive_with_key(&archive_path, Some(&vk));
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("expected") || err.contains("integrity"),
+            "got: {err}"
+        );
+    }
+
+    #[test]
+    fn wrong_key_fails_verification() {
+        let (sk, _vk) = test_keypair();
+
+        let bundle = AuditBundleBuilder::new("scan-wrongkey", "0.1.0")
+            .report(sample_report())
+            .signing_key(sk)
+            .build()
+            .unwrap();
+
+        let dir = tempfile::tempdir().unwrap();
+        let archive_path = dir.path().join("wrongkey-bundle.tar.gz");
+        write_bundle_archive(&bundle, &archive_path).unwrap();
+
+        // 用不同金鑰驗證 → 失敗。
+        let wrong_seed = [99u8; 32];
+        let wrong_sk = SigningKey::from_bytes(&wrong_seed);
+        let wrong_vk = wrong_sk.verifying_key();
+
+        let result = verify_bundle_archive_with_key(&archive_path, Some(&wrong_vk));
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("signature verification failed"), "got: {err}");
+    }
+
+    #[test]
+    fn extra_file_in_archive_detected() {
+        let bundle = AuditBundleBuilder::new("scan-extra", "0.1.0")
+            .report(sample_report())
+            .build()
+            .unwrap();
+
+        let dir = tempfile::tempdir().unwrap();
+        let archive_path = dir.path().join("extra-bundle.tar.gz");
+
+        // 手動建立含額外檔案的 archive。
+        {
+            let file = std::fs::File::create(&archive_path).unwrap();
+            let enc =
+                flate2::write::GzEncoder::new(file, flate2::Compression::default());
+            let mut builder = tar::Builder::new(enc);
+
+            let mut add = |name: &str, data: &[u8]| {
+                let mut header = tar::Header::new_gnu();
+                header.set_size(data.len() as u64);
+                header.set_mode(0o644);
+                header.set_cksum();
+                builder
+                    .append_data(&mut header, name, data)
+                    .unwrap();
+            };
+
+            let report_json = serde_json::to_vec_pretty(&bundle.report).unwrap();
+            add("scan-report.json", &report_json);
+
+            let rules_json = serde_json::to_vec_pretty(&bundle.rules_applied).unwrap();
+            add("rules-applied.json", &rules_json);
+
+            let config_json = serde_json::to_vec_pretty(&bundle.config).unwrap();
+            add("config.json", &config_json);
+
+            let manifest_json = serde_json::to_vec_pretty(&bundle.manifest).unwrap();
+            add("manifest.json", &manifest_json);
+
+            // 額外檔案 — manifest 中未列出。
+            add("evil-payload.bin", b"malicious data");
+
+            builder.finish().unwrap();
+        }
+
+        let result = verify_bundle_archive(&archive_path);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("evil-payload.bin"), "got: {err}");
     }
 }
