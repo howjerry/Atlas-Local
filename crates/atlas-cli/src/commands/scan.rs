@@ -276,7 +276,13 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
             match atlas_license::validator::load_license(&license_path) {
                 Ok(license) => {
                     let fp = atlas_license::node_locked::hardware_fingerprint();
-                    let status = atlas_license::validator::license_status(&license, Some(&fp));
+                    // TODO: 嵌入 Atlas 正式公鑰以驗證 license 簽署。
+                    // 目前傳入 None 跳過簽署驗證（待企業版確定公鑰後啟用）。
+                    let status = atlas_license::validator::license_status(
+                        &license,
+                        Some(&fp),
+                        None,
+                    );
                     if !status.valid {
                         eprintln!(
                             "atlas: license validation failed: {}",

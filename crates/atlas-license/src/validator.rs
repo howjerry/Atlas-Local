@@ -178,7 +178,14 @@ pub fn load_license(path: &Path) -> Result<License, LicenseError> {
 }
 
 /// Returns the licence status summary for a loaded licence.
-pub fn license_status(license: &License, machine_fingerprint: Option<&str>) -> LicenseStatus {
+///
+/// 若提供 `verify_key`，同時驗證 license 的 Ed25519 簽署。
+/// 簽署驗證失敗 → `valid = false`，`reason = "invalid signature: ..."`。
+pub fn license_status(
+    license: &License,
+    machine_fingerprint: Option<&str>,
+    verify_key: Option<&VerifyingKey>,
+) -> LicenseStatus {
     let fingerprint_match = match (
         &license.license_type,
         &license.fingerprint,
@@ -193,9 +200,20 @@ pub fn license_status(license: &License, machine_fingerprint: Option<&str>) -> L
 
     let expiry_ok = check_expiry(license).is_ok();
     let fp_ok = fingerprint_match.unwrap_or(true);
-    let valid = expiry_ok && fp_ok;
 
-    let reason = if !expiry_ok {
+    // 簽署驗證（若提供 verify_key）。
+    let sig_result = verify_key.map(|vk| verify_signature(license, vk));
+    let sig_ok = sig_result.as_ref().is_none_or(|r| r.is_ok());
+
+    let valid = expiry_ok && fp_ok && sig_ok;
+
+    let reason = if !sig_ok {
+        let err_msg = sig_result
+            .unwrap()
+            .unwrap_err()
+            .to_string();
+        Some(format!("invalid signature: {err_msg}"))
+    } else if !expiry_ok {
         Some(format!("license expired on {}", license.expiry))
     } else if !fp_ok {
         Some("hardware fingerprint does not match".to_string())
@@ -316,7 +334,7 @@ mod tests {
     #[test]
     fn license_status_valid() {
         let lic = sample_license();
-        let status = license_status(&lic, Some("abc123def456"));
+        let status = license_status(&lic, Some("abc123def456"), None);
         assert!(status.valid);
         assert_eq!(status.fingerprint_match, Some(true));
         assert!(status.reason.is_none());
@@ -325,7 +343,7 @@ mod tests {
     #[test]
     fn license_status_fingerprint_mismatch() {
         let lic = sample_license();
-        let status = license_status(&lic, Some("wrong_fingerprint"));
+        let status = license_status(&lic, Some("wrong_fingerprint"), None);
         assert!(!status.valid);
         assert_eq!(status.fingerprint_match, Some(false));
         assert!(status.reason.as_ref().unwrap().contains("fingerprint"));
@@ -335,7 +353,7 @@ mod tests {
     fn license_status_expired() {
         let mut lic = sample_license();
         lic.expiry = "2020-01-01T00:00:00Z".to_string();
-        let status = license_status(&lic, Some("abc123def456"));
+        let status = license_status(&lic, Some("abc123def456"), None);
         assert!(!status.valid);
         assert!(status.reason.as_ref().unwrap().contains("expired"));
     }
@@ -364,8 +382,56 @@ mod tests {
             signature: "dGVzdA==".to_string(),
             schema_version: "1.0.0".to_string(),
         };
-        let status = license_status(&lic, None);
+        let status = license_status(&lic, None, None);
         assert!(status.valid);
         assert_eq!(status.fingerprint_match, None);
+    }
+
+    // -- 2A: License 簽署驗證測試 -----------------------------------------
+
+    #[test]
+    fn license_status_invalid_signature() {
+        let seed = [42u8; 32];
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed);
+        let verify_key = signing_key.verifying_key();
+
+        let lic = sample_license(); // signature 欄位是 placeholder "dGVzdA=="
+        let status = license_status(&lic, Some("abc123def456"), Some(&verify_key));
+        assert!(!status.valid);
+        assert!(
+            status.reason.as_ref().unwrap().contains("invalid signature"),
+            "got: {:?}",
+            status.reason
+        );
+    }
+
+    #[test]
+    fn license_status_valid_signature() {
+        use ed25519_dalek::Signer;
+
+        let seed = [42u8; 32];
+        let signing_key = ed25519_dalek::SigningKey::from_bytes(&seed);
+        let verify_key = signing_key.verifying_key();
+
+        let mut lic = sample_license();
+        // 用正確金鑰簽署 license。
+        let hash = content_hash(&lic);
+        let sig = signing_key.sign(&hash);
+        lic.signature = base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            sig.to_bytes(),
+        );
+
+        let status = license_status(&lic, Some("abc123def456"), Some(&verify_key));
+        assert!(status.valid, "reason: {:?}", status.reason);
+        assert!(status.reason.is_none());
+    }
+
+    #[test]
+    fn license_status_no_key_skips_signature_check() {
+        let lic = sample_license();
+        // 不提供 verify_key → 不驗證簽署 → 只看 expiry + fingerprint
+        let status = license_status(&lic, Some("abc123def456"), None);
+        assert!(status.valid);
     }
 }

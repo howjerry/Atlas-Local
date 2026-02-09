@@ -244,7 +244,7 @@ pub fn validate_node_locked(
     // Step 4: Entitled features check.
     validator::check_feature(license, "scan")?;
 
-    Ok(validator::license_status(license, Some(&machine_fp)))
+    Ok(validator::license_status(license, Some(&machine_fp), None))
 }
 
 /// Validates a node-locked licence from a file path, skipping signature
