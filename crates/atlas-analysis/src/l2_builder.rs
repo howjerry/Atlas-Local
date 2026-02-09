@@ -430,15 +430,19 @@ impl<'a> ScopeGraphBuilder<'a> {
         if self.config.variable_declaration_kinds().contains(&kind) {
             if let Some(name) = self.config.extract_var_name(node, self.source) {
                 let tainted = self.check_initializer_tainted(node);
+                let sanitized = self.check_initializer_sanitized(node);
+                let taint_state = if tainted {
+                    TaintState::Tainted
+                } else if sanitized {
+                    TaintState::Clean
+                } else {
+                    TaintState::Unknown
+                };
                 sg.add_definition(VarDef {
                     name: name.to_string(),
                     def_line: node.start_position().row as u32 + 1,
                     tainted,
-                    taint_state: if tainted {
-                        TaintState::Tainted
-                    } else {
-                        TaintState::Unknown
-                    },
+                    taint_state,
                     scope_id: current_scope,
                 });
             }
@@ -452,15 +456,19 @@ impl<'a> ScopeGraphBuilder<'a> {
                 if left.kind() == self.config.identifier_kind() {
                     if let Some(name) = node_text(left, self.source) {
                         let tainted = self.check_rhs_tainted(node);
+                        let sanitized = self.check_rhs_sanitized(node);
+                        let taint_state = if tainted {
+                            TaintState::Tainted
+                        } else if sanitized {
+                            TaintState::Clean
+                        } else {
+                            TaintState::Clean
+                        };
                         sg.add_definition(VarDef {
                             name: name.to_string(),
                             def_line: node.start_position().row as u32 + 1,
                             tainted,
-                            taint_state: if tainted {
-                                TaintState::Tainted
-                            } else {
-                                TaintState::Clean
-                            },
+                            taint_state,
                             scope_id: current_scope,
                         });
                     }
@@ -532,6 +540,29 @@ impl<'a> ScopeGraphBuilder<'a> {
             .sources
             .iter()
             .any(|src| text.contains(&src.pattern))
+    }
+
+    /// 檢查變數宣告的初始值是否經過 sanitizer 處理。
+    fn check_initializer_sanitized(&self, decl_node: Node) -> bool {
+        let text = node_text(decl_node, self.source).unwrap_or("");
+        self.text_matches_any_sanitizer(text)
+    }
+
+    /// 檢查賦值右側是否經過 sanitizer 處理。
+    fn check_rhs_sanitized(&self, assign_node: Node) -> bool {
+        if let Some(right) = assign_node.child_by_field_name("right") {
+            let text = node_text(right, self.source).unwrap_or("");
+            return self.text_matches_any_sanitizer(text);
+        }
+        false
+    }
+
+    /// 檢查文字中是否包含任何 sanitizer 函數呼叫。
+    fn text_matches_any_sanitizer(&self, text: &str) -> bool {
+        self.taint_config
+            .sanitizers
+            .iter()
+            .any(|san| text.contains(&san.function))
     }
 
     /// 從呼叫表達式提取引數中的變數使用。

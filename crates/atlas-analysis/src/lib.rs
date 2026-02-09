@@ -3,6 +3,7 @@
 pub mod finding;
 pub mod l1_pattern;
 pub mod l2_builder;
+pub mod l2_engine;
 pub mod l2_intraprocedural;
 pub mod l2_taint_config;
 pub mod l3_interprocedural;
