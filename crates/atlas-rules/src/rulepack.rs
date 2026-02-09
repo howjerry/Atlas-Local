@@ -37,13 +37,14 @@
 
 use std::collections::HashMap;
 use std::io::Read as IoRead;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use flate2::read::GzDecoder;
 use serde::{Deserialize, Serialize};
+use hex;
 use sha2::{Digest, Sha256};
 use tar::Archive;
 use tracing::warn;
@@ -108,6 +109,9 @@ pub struct ManifestRuleEntry {
     pub version: String,
     /// Relative path to the rule file within the pack archive.
     pub file: String,
+    /// SHA-256 hex digest of the rule file content（向後相容，可選欄位）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sha256: Option<String>,
 }
 
 /// The rulepack manifest that is stored as `manifest.json` inside a `.pack`
@@ -306,6 +310,28 @@ fn manifest_bytes_for_signing(manifest: &RulepackManifest) -> Result<Vec<u8>, Ru
 }
 
 // ---------------------------------------------------------------------------
+// Path safety validation
+// ---------------------------------------------------------------------------
+
+/// 驗證相對路徑不含路徑穿越或絕對路徑元件。
+///
+/// 拒絕包含 `..`（ParentDir）、根目錄（RootDir）、前綴（Prefix）的路徑，
+/// 防止 rulepack 安裝時寫入 install_dir 以外的位置。
+fn is_safe_relative_path(p: &str) -> bool {
+    if p.is_empty() {
+        return false;
+    }
+    let path = Path::new(p);
+    for component in path.components() {
+        match component {
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return false,
+            _ => {}
+        }
+    }
+    true
+}
+
+// ---------------------------------------------------------------------------
 // T044: Install pipeline
 // ---------------------------------------------------------------------------
 
@@ -416,17 +442,59 @@ pub fn install_rulepack(
     let manifest_out = serde_json::to_vec_pretty(&manifest)?;
     std::fs::write(install_dir.join("manifest.json"), &manifest_out)?;
 
-    // Extract rule files.
+    // Extract rule files（含路徑穿越防護 + 完整性驗證）。
     let mut rules_installed = 0;
     for entry in &manifest.rules {
-        if let Some(contents) = rule_files.get(&entry.file) {
-            let dest = install_dir.join(&entry.file);
-            if let Some(parent) = dest.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-            std::fs::write(&dest, contents)?;
-            rules_installed += 1;
+        // 1A: 路徑穿越防護 — 拒絕含 `..`、絕對路徑等危險路徑元件。
+        if !is_safe_relative_path(&entry.file) {
+            return Err(RulepackError::InvalidManifest(format!(
+                "unsafe file path in manifest: '{}'",
+                entry.file
+            )));
         }
+
+        let contents = match rule_files.get(&entry.file) {
+            Some(c) => c,
+            None => {
+                // 1B: manifest 列出但 archive 缺失的檔案 → 錯誤。
+                return Err(RulepackError::InvalidManifest(format!(
+                    "rule file '{}' listed in manifest but not found in archive",
+                    entry.file
+                )));
+            }
+        };
+
+        // 1B: SHA-256 完整性驗證 — 若 manifest 提供 sha256，必須匹配。
+        if let Some(ref expected_hash) = entry.sha256 {
+            let actual_hash = hex::encode(Sha256::digest(contents));
+            if actual_hash != *expected_hash {
+                return Err(RulepackError::InvalidManifest(format!(
+                    "SHA-256 mismatch for '{}': expected {}, got {}",
+                    entry.file, expected_hash, actual_hash
+                )));
+            }
+        }
+
+        // 安裝前用 canonicalize 驗證目標路徑仍在 install_dir 之下。
+        let dest = install_dir.join(&entry.file);
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&dest, contents)?;
+
+        // 驗證寫入後的實際路徑仍在 install_dir 內。
+        let canonical_dest = dest.canonicalize()?;
+        let canonical_install = install_dir.canonicalize()?;
+        if !canonical_dest.starts_with(&canonical_install) {
+            // 清理已寫入的檔案
+            let _ = std::fs::remove_file(&dest);
+            return Err(RulepackError::InvalidManifest(format!(
+                "rule file '{}' resolved outside install directory",
+                entry.file
+            )));
+        }
+
+        rules_installed += 1;
     }
 
     // Conflict resolution (T049).
@@ -578,6 +646,8 @@ fn archive_previous_version(pack_dir: &Path, _pack_id: &str) -> Result<bool, Rul
 }
 
 /// Recursively copies all files and subdirectories from `src` to `dst`.
+///
+/// 包含路徑穿越防護：驗證所有相對路徑不含 `..` 等危險元件。
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), RulepackError> {
     for entry in walkdir::WalkDir::new(src) {
         let entry = entry.map_err(|e| std::io::Error::other(e.to_string()))?;
@@ -586,6 +656,14 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), RulepackError> {
             .path()
             .strip_prefix(src)
             .expect("walkdir entry should be under src");
+
+        // 路徑穿越防護
+        let relative_str = relative.to_string_lossy();
+        if !relative_str.is_empty() && !is_safe_relative_path(&relative_str) {
+            return Err(RulepackError::InvalidManifest(format!(
+                "unsafe path during copy: '{relative_str}'"
+            )));
+        }
 
         let dest_path = dst.join(relative);
 
@@ -806,6 +884,7 @@ mod tests {
             rule_type: "Declarative".to_owned(),
             version: version.to_owned(),
             file: format!("rules/{}.yaml", id.replace('/', "_")),
+            sha256: None,
         }
     }
 
@@ -1258,21 +1337,22 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let store = tmp.path().join("store");
 
-        // Install two packs.
-        let m1 = make_manifest("beta-pack", "1.0.0", vec![make_rule_entry("r1", "1.0.0")]);
-        let a1 = build_pack_archive(&m1, &HashMap::new());
+        // Install two packs（提供 rule 檔案內容以通過完整性驗證）。
+        let e1 = make_rule_entry("r1", "1.0.0");
+        let m1 = make_manifest("beta-pack", "1.0.0", vec![e1.clone()]);
+        let mut rc1 = HashMap::new();
+        rc1.insert(e1.file.clone(), b"rule r1".to_vec());
+        let a1 = build_pack_archive(&m1, &rc1);
         let p1 = write_pack_file(tmp.path(), "m1.pack", &a1);
         install_rulepack(&p1, &store, &[]).unwrap();
 
-        let m2 = make_manifest(
-            "alpha-pack",
-            "2.0.0",
-            vec![
-                make_rule_entry("r2", "1.0.0"),
-                make_rule_entry("r3", "1.0.0"),
-            ],
-        );
-        let a2 = build_pack_archive(&m2, &HashMap::new());
+        let e2 = make_rule_entry("r2", "1.0.0");
+        let e3 = make_rule_entry("r3", "1.0.0");
+        let m2 = make_manifest("alpha-pack", "2.0.0", vec![e2.clone(), e3.clone()]);
+        let mut rc2 = HashMap::new();
+        rc2.insert(e2.file.clone(), b"rule r2".to_vec());
+        rc2.insert(e3.file.clone(), b"rule r3".to_vec());
+        let a2 = build_pack_archive(&m2, &rc2);
         let p2 = write_pack_file(tmp.path(), "m2.pack", &a2);
         install_rulepack(&p2, &store, &[]).unwrap();
 
@@ -1356,5 +1436,122 @@ mod tests {
 
         let result = install_rulepack(&pack_path, &store, &[]).unwrap();
         assert!(result.conflicts.is_empty());
+    }
+
+    // -- 1A: 路徑穿越防護測試 ---------------------------------------------
+
+    #[test]
+    fn is_safe_relative_path_rejects_parent_dir() {
+        assert!(!is_safe_relative_path("../../etc/passwd"));
+        assert!(!is_safe_relative_path("../secret"));
+        assert!(!is_safe_relative_path("rules/../../etc/shadow"));
+    }
+
+    #[test]
+    fn is_safe_relative_path_rejects_absolute() {
+        assert!(!is_safe_relative_path("/etc/passwd"));
+        assert!(!is_safe_relative_path("/tmp/evil"));
+    }
+
+    #[test]
+    fn is_safe_relative_path_rejects_empty() {
+        assert!(!is_safe_relative_path(""));
+    }
+
+    #[test]
+    fn is_safe_relative_path_accepts_normal() {
+        assert!(is_safe_relative_path("rules/sql_injection.yaml"));
+        assert!(is_safe_relative_path("a/b/c.yaml"));
+        assert!(is_safe_relative_path("rule.yaml"));
+    }
+
+    #[test]
+    fn install_rejects_path_traversal() {
+        let tmp = TempDir::new().unwrap();
+        let store = tmp.path().join("store");
+
+        // manifest 中引用含 `..` 的路徑，但 archive 中用安全名稱存放。
+        // tar 不允許含 `..` 的路徑名，所以我們用安全名稱存入 archive，
+        // 但 manifest 的 file 欄位指向不安全路徑。
+        let mut entry = make_rule_entry("evil-rule", "1.0.0");
+        entry.file = "../../.ssh/authorized_keys".to_string();
+        let manifest = make_manifest("evil-pack", "1.0.0", vec![entry]);
+
+        // archive 不含對應檔案（manifest 引用的路徑會被路徑驗證攔截）
+        let archive = build_pack_archive(&manifest, &HashMap::new());
+        let pack_path = write_pack_file(tmp.path(), "evil.pack", &archive);
+
+        let result = install_rulepack(&pack_path, &store, &[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("unsafe file path"), "got: {err}");
+    }
+
+    // -- 1B: 規則檔案完整性驗證測試 -----------------------------------------
+
+    #[test]
+    fn install_rejects_missing_rule_file() {
+        let tmp = TempDir::new().unwrap();
+        let store = tmp.path().join("store");
+
+        let entry = make_rule_entry("missing-rule", "1.0.0");
+        let manifest = make_manifest("missing-pack", "1.0.0", vec![entry]);
+
+        // 不放入任何 rule 檔案
+        let archive = build_pack_archive(&manifest, &HashMap::new());
+        let pack_path = write_pack_file(tmp.path(), "missing.pack", &archive);
+
+        let result = install_rulepack(&pack_path, &store, &[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("not found in archive"),
+            "got: {err}"
+        );
+    }
+
+    #[test]
+    fn install_rejects_sha256_mismatch() {
+        let tmp = TempDir::new().unwrap();
+        let store = tmp.path().join("store");
+
+        let mut entry = make_rule_entry("hash-rule", "1.0.0");
+        entry.sha256 = Some("0000000000000000000000000000000000000000000000000000000000000000".to_string());
+
+        let manifest = make_manifest("hash-pack", "1.0.0", vec![entry.clone()]);
+
+        let mut rule_contents = HashMap::new();
+        rule_contents.insert(entry.file.clone(), b"actual content".to_vec());
+
+        let archive = build_pack_archive(&manifest, &rule_contents);
+        let pack_path = write_pack_file(tmp.path(), "hash.pack", &archive);
+
+        let result = install_rulepack(&pack_path, &store, &[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("SHA-256 mismatch"), "got: {err}");
+    }
+
+    #[test]
+    fn install_accepts_correct_sha256() {
+        let tmp = TempDir::new().unwrap();
+        let store = tmp.path().join("store");
+
+        let content = b"id: hash-rule\npattern: (ident)\n";
+        let hash = hex::encode(Sha256::digest(content));
+
+        let mut entry = make_rule_entry("hash-rule", "1.0.0");
+        entry.sha256 = Some(hash);
+
+        let manifest = make_manifest("hash-ok-pack", "1.0.0", vec![entry.clone()]);
+
+        let mut rule_contents = HashMap::new();
+        rule_contents.insert(entry.file.clone(), content.to_vec());
+
+        let archive = build_pack_archive(&manifest, &rule_contents);
+        let pack_path = write_pack_file(tmp.path(), "hash-ok.pack", &archive);
+
+        let result = install_rulepack(&pack_path, &store, &[]).unwrap();
+        assert_eq!(result.rules_installed, 1);
     }
 }
