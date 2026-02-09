@@ -349,6 +349,7 @@ impl ScanEngine {
         // Shared counters for parallel processing.
         let files_scanned = AtomicU32::new(0);
         let files_skipped = AtomicU32::new(0);
+        let parse_failures = AtomicU32::new(0);
 
         // Build a rayon thread pool with the requested number of threads.
         let pool = {
@@ -375,6 +376,7 @@ impl ScanEngine {
                         &query_cache,
                         &files_scanned,
                         &files_skipped,
+                        &parse_failures,
                         diff_ctx,
                         analysis_level,
                     )
@@ -387,6 +389,7 @@ impl ScanEngine {
 
         let scanned = files_scanned.load(Ordering::Relaxed);
         let skipped = files_skipped.load(Ordering::Relaxed);
+        let parse_fail_count = parse_failures.load(Ordering::Relaxed);
 
         let languages_detected: Vec<Language> = discovery.languages_detected.into_iter().collect();
 
@@ -394,6 +397,7 @@ impl ScanEngine {
             findings = all_findings.len(),
             files_scanned = scanned,
             files_skipped = skipped,
+            parse_failures = parse_fail_count,
             "scan complete"
         );
 
@@ -402,7 +406,7 @@ impl ScanEngine {
         let duration_ms = scan_start.elapsed().as_millis() as u64;
         let stats = ScanStats {
             duration_ms,
-            parse_failures: 0,
+            parse_failures: parse_fail_count,
             cache_hit_rate: if options.no_cache { None } else { Some(0.0) },
         };
 
@@ -462,6 +466,7 @@ impl ScanEngine {
         query_cache: &HashMap<String, L1PatternEngine>,
         files_scanned: &AtomicU32,
         files_skipped: &AtomicU32,
+        parse_failures: &AtomicU32,
         diff_context: Option<&DiffContext>,
         analysis_level: AnalysisLevel,
     ) -> Vec<Finding> {
@@ -522,6 +527,7 @@ impl ScanEngine {
                 "file is not valid UTF-8; skipping"
             );
             files_skipped.fetch_add(1, Ordering::Relaxed);
+            parse_failures.fetch_add(1, Ordering::Relaxed);
             return Vec::new();
         }
 
@@ -535,6 +541,7 @@ impl ScanEngine {
                     "failed to parse file; skipping"
                 );
                 files_skipped.fetch_add(1, Ordering::Relaxed);
+                parse_failures.fetch_add(1, Ordering::Relaxed);
                 return Vec::new();
             }
         };
@@ -888,6 +895,8 @@ mod tests {
 
         assert_eq!(result.files_scanned, 1);
         assert_eq!(result.files_skipped, 1);
+        // 非 UTF-8 檔案應被計入 parse_failures。
+        assert_eq!(result.stats.parse_failures, 1);
     }
 
     #[test]
