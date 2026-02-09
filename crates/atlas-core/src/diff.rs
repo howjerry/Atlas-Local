@@ -230,18 +230,29 @@ fn is_valid_git_ref(target: &Path, git_ref: &str) -> bool {
 }
 
 /// Gets the list of changed files using `git diff --name-status --diff-filter=ACMR`.
+///
+/// 加上 `-- <target>` 參數限制 diff 範圍，確保路徑相對於 target 而非 repo root。
+/// 這修正了 target 是 repo 子目錄時路徑不匹配的問題。
 fn get_changed_files(
     target: &Path,
     git_ref: &str,
 ) -> Result<Vec<(String, ChangeType)>, CoreError> {
+    // 取得 target 的絕對路徑作為 pathspec。
+    let target_abs = target.canonicalize().map_err(|e| {
+        CoreError::Config(format!("cannot resolve target path: {e}"))
+    })?;
+
     let output = Command::new("git")
         .args([
             "diff",
             "--name-status",
             "--diff-filter=ACMR",
+            "--relative",
             git_ref,
+            "--",
+            ".",
         ])
-        .current_dir(target)
+        .current_dir(&target_abs)
         .output()
         .map_err(|e| CoreError::Config(format!("failed to run git diff: {e}")))?;
 
@@ -293,13 +304,18 @@ fn get_changed_files(
 /// Parses hunk headers from `git diff -U0` output.
 ///
 /// Returns a map from file path to a list of `HunkRange`s.
+/// 使用 `--relative` 確保路徑相對於 target 而非 repo root。
 fn get_hunks(
     target: &Path,
     git_ref: &str,
 ) -> Result<HashMap<String, Vec<HunkRange>>, CoreError> {
+    let target_abs = target.canonicalize().map_err(|e| {
+        CoreError::Config(format!("cannot resolve target path: {e}"))
+    })?;
+
     let output = Command::new("git")
-        .args(["diff", "-U0", git_ref])
-        .current_dir(target)
+        .args(["diff", "-U0", "--relative", git_ref, "--", "."])
+        .current_dir(&target_abs)
         .output()
         .map_err(|e| CoreError::Config(format!("failed to run git diff -U0: {e}")))?;
 
@@ -622,6 +638,50 @@ index ghi..jkl 100644
         let a_file = result.get_file("a.txt").unwrap();
         assert_eq!(a_file.change_type, ChangeType::Modified);
         assert!(!a_file.hunks.is_empty());
+    }
+
+    #[test]
+    fn compute_diff_subdirectory_relative_paths() {
+        let tmp = tempfile::tempdir().unwrap();
+        Command::new("git")
+            .args(["init"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+
+        // 建立 src/ 子目錄中的檔案。
+        std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("other")).unwrap();
+        std::fs::write(tmp.path().join("src/app.ts"), "const x = 1;\n").unwrap();
+        std::fs::write(tmp.path().join("other/lib.ts"), "const y = 2;\n").unwrap();
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "-m", "init"])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+
+        // 修改兩個檔案。
+        std::fs::write(tmp.path().join("src/app.ts"), "const x = 999;\n").unwrap();
+        std::fs::write(tmp.path().join("other/lib.ts"), "const y = 999;\n").unwrap();
+        Command::new("git")
+            .args(["add", "."])
+            .current_dir(tmp.path())
+            .output()
+            .unwrap();
+
+        // 只掃描 src/ 子目錄 → diff 路徑應相對於 src/
+        let result = compute_diff(&tmp.path().join("src"), "HEAD").unwrap();
+        assert!(!result.is_fallback);
+
+        let paths: Vec<&str> = result.changed_files.iter().map(|f| f.path.as_str()).collect();
+        // 應只包含 app.ts（相對於 src/），不應包含 other/lib.ts
+        assert!(paths.contains(&"app.ts"), "paths: {paths:?}");
+        assert!(!paths.iter().any(|p| p.contains("other")), "paths: {paths:?}");
     }
 
     #[test]
