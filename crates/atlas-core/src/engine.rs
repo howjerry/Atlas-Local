@@ -440,6 +440,7 @@ impl ScanEngine {
 
     /// Process a single discovered file: read, validate, parse, and evaluate
     /// rules. Returns the findings for this file (may be empty).
+    #[allow(clippy::too_many_arguments)]
     fn process_file(
         &self,
         discovered: &crate::scanner::DiscoveredFile,

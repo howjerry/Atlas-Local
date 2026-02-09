@@ -12,20 +12,15 @@ use serde::{Deserialize, Serialize};
 // ---------------------------------------------------------------------------
 
 /// 變數的污染狀態。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TaintState {
     /// 受使用者輸入污染。
     Tainted,
     /// 確認安全（未受污染）。
     Clean,
     /// 尚未確定。
+    #[default]
     Unknown,
-}
-
-impl Default for TaintState {
-    fn default() -> Self {
-        Self::Unknown
-    }
 }
 
 // ---------------------------------------------------------------------------

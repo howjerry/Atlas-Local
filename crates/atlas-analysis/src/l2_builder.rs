@@ -456,11 +456,8 @@ impl<'a> ScopeGraphBuilder<'a> {
                 if left.kind() == self.config.identifier_kind() {
                     if let Some(name) = node_text(left, self.source) {
                         let tainted = self.check_rhs_tainted(node);
-                        let sanitized = self.check_rhs_sanitized(node);
                         let taint_state = if tainted {
                             TaintState::Tainted
-                        } else if sanitized {
-                            TaintState::Clean
                         } else {
                             TaintState::Clean
                         };
@@ -548,15 +545,6 @@ impl<'a> ScopeGraphBuilder<'a> {
         self.text_matches_any_sanitizer(text)
     }
 
-    /// 檢查賦值右側是否經過 sanitizer 處理。
-    fn check_rhs_sanitized(&self, assign_node: Node) -> bool {
-        if let Some(right) = assign_node.child_by_field_name("right") {
-            let text = node_text(right, self.source).unwrap_or("");
-            return self.text_matches_any_sanitizer(text);
-        }
-        false
-    }
-
     /// 檢查文字中是否包含任何 sanitizer 函數呼叫。
     fn text_matches_any_sanitizer(&self, text: &str) -> bool {
         self.taint_config
@@ -584,12 +572,7 @@ fn node_text<'a>(node: Node, source: &'a [u8]) -> Option<&'a str> {
 /// 在子節點中找到第一個符合指定 kind 的節點。
 fn find_child_by_kind<'a>(node: Node<'a>, kind: &str) -> Option<Node<'a>> {
     let mut cursor = node.walk();
-    for child in node.children(&mut cursor) {
-        if child.kind() == kind {
-            return Some(child);
-        }
-    }
-    None
+    node.children(&mut cursor).find(|child| child.kind() == kind)
 }
 
 // ---------------------------------------------------------------------------
