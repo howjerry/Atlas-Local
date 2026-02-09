@@ -1,0 +1,26 @@
+id: atlas/quality/typescript/debugger-statement
+name: Debugger Statement
+description: >
+  Detects usage of the debugger statement. Debugger statements are used
+  during development to trigger breakpoints but should never be present
+  in production code. They can halt execution in browsers, cause
+  performance issues, and expose debugging information to end users.
+severity: medium
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (debugger_statement) @match
+remediation: >
+  Remove all debugger statements before committing code. Use conditional
+  breakpoints in your IDE or browser DevTools instead. For logging,
+  use a structured logging library with configurable log levels.
+references:
+  - https://eslint.org/docs/latest/rules/no-debugger
+  - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger
+tags:
+  - code-quality
+  - debug-residual
+metadata:
+  quality_domain: debug-residual
+version: 1.0.0

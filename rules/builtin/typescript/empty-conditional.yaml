@@ -1,0 +1,30 @@
+id: atlas/quality/typescript/empty-conditional
+name: Empty Conditional Block
+description: >
+  Detects if statements with empty consequence blocks. An empty if block
+  suggests incomplete implementation, dead code, or a logic error where
+  intended behavior was never written. It can mask bugs and confuse
+  maintainers.
+severity: low
+category: quality
+language: TypeScript
+confidence: medium
+pattern: |
+  (if_statement
+    consequence: (statement_block
+      .
+      "}"))
+  @match
+remediation: >
+  Implement the intended logic inside the if block. If the block is
+  intentionally empty, add a comment explaining why, or restructure
+  the code to eliminate the empty branch. Consider inverting the
+  condition if only the else branch contains logic.
+references:
+  - https://eslint.org/docs/latest/rules/no-empty
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

@@ -538,6 +538,96 @@ version: 0.1.0
     }
 
     // -------------------------------------------------------------------
+    // Load built-in TypeScript rules from disk
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn load_builtin_typescript_rules_from_disk() {
+        let rules_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("rules/builtin/typescript");
+
+        if !rules_dir.exists() {
+            panic!("TypeScript rules directory not found: {}", rules_dir.display());
+        }
+
+        let loader = DeclarativeRuleLoader;
+        let rules = loader
+            .load_from_dir(&rules_dir)
+            .expect("all TypeScript rules should load successfully");
+
+        assert_eq!(rules.len(), 30, "expected exactly 30 TypeScript rules");
+
+        // 驗證所有規則按 ID 排序
+        let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "atlas/quality/typescript/alert-usage",
+                "atlas/quality/typescript/any-type-usage",
+                "atlas/quality/typescript/console-log",
+                "atlas/quality/typescript/debugger-statement",
+                "atlas/quality/typescript/empty-catch-block",
+                "atlas/quality/typescript/empty-conditional",
+                "atlas/quality/typescript/empty-function-body",
+                "atlas/quality/typescript/empty-interface",
+                "atlas/quality/typescript/excessive-parameters",
+                "atlas/quality/typescript/loose-equality",
+                "atlas/quality/typescript/magic-number",
+                "atlas/quality/typescript/nested-ternary",
+                "atlas/quality/typescript/no-return-await",
+                "atlas/quality/typescript/non-null-assertion",
+                "atlas/quality/typescript/redundant-boolean",
+                "atlas/quality/typescript/string-concat-in-loop",
+                "atlas/quality/typescript/todo-comment",
+                "atlas/quality/typescript/var-declaration",
+                "atlas/security/typescript/code-injection-eval",
+                "atlas/security/typescript/code-injection-function-constructor",
+                "atlas/security/typescript/hardcoded-secret",
+                "atlas/security/typescript/insecure-random",
+                "atlas/security/typescript/open-redirect",
+                "atlas/security/typescript/path-traversal",
+                "atlas/security/typescript/prototype-pollution",
+                "atlas/security/typescript/regex-dos",
+                "atlas/security/typescript/sql-injection",
+                "atlas/security/typescript/ssrf",
+                "atlas/security/typescript/weak-crypto",
+                "atlas/security/typescript/xss-innerhtml",
+            ]
+        );
+
+        // 驗證共同屬性
+        for rule in &rules {
+            assert_eq!(rule.language, Language::TypeScript);
+            assert_eq!(rule.analysis_level, AnalysisLevel::L1);
+            assert_eq!(rule.rule_type, RuleType::Declarative);
+            assert!(rule.pattern.is_some());
+            assert!(!rule.tags.is_empty());
+            assert_eq!(rule.version, "1.0.0");
+        }
+
+        // 驗證安全規則
+        let security_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Security)
+            .collect();
+        assert_eq!(security_rules.len(), 12, "expected 12 security rules");
+        for rule in &security_rules {
+            assert!(rule.cwe_id.is_some(), "security rule {} should have CWE ID", rule.id);
+        }
+
+        // 驗證品質規則
+        let quality_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Quality)
+            .collect();
+        assert_eq!(quality_rules.len(), 18, "expected 18 quality rules");
+    }
+
+    // -------------------------------------------------------------------
     // Load built-in Python rules from disk
     // -------------------------------------------------------------------
 

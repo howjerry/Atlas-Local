@@ -1,0 +1,30 @@
+id: atlas/quality/typescript/alert-usage
+name: Alert Function Usage
+description: >
+  Detects calls to the alert() function. Alert dialogs are debugging
+  artifacts that block the UI thread, provide a poor user experience,
+  and should never appear in production web applications. They can also
+  be exploited for social engineering attacks.
+severity: low
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (call_expression
+    function: (identifier) @_fn
+    (#eq? @_fn "alert"))
+  @match
+remediation: >
+  Replace alert() calls with proper UI notifications such as toast
+  messages, modal dialogs from a component library, or structured
+  logging. For user-facing messages, use a notification system like
+  react-toastify, notistack, or a custom notification component.
+references:
+  - https://eslint.org/docs/latest/rules/no-alert
+  - https://developer.mozilla.org/en-US/docs/Web/API/Window/alert
+tags:
+  - code-quality
+  - debug-residual
+metadata:
+  quality_domain: debug-residual
+version: 1.0.0

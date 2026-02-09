@@ -1,0 +1,30 @@
+id: atlas/quality/typescript/empty-interface
+name: Empty Interface Declaration
+description: >
+  Detects TypeScript interface declarations with empty bodies. Empty
+  interfaces provide no type safety and are equivalent to the empty object
+  type {}. They often indicate incomplete type definitions or unnecessary
+  abstractions that add complexity without value.
+severity: low
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (interface_declaration
+    body: (interface_body
+      .
+      "}"))
+  @match
+remediation: >
+  Add members to the interface or remove it entirely. If used as a marker
+  interface for type discrimination, consider using a type alias with a
+  branded type instead. For example, replace `interface Empty {}` with
+  `type Empty = Record<string, never>` or add meaningful properties.
+references:
+  - https://typescript-eslint.io/rules/no-empty-interface
+tags:
+  - code-quality
+  - type-safety
+metadata:
+  quality_domain: type-safety
+version: 1.0.0

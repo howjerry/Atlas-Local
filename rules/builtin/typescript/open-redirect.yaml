@@ -1,0 +1,44 @@
+id: atlas/security/typescript/open-redirect
+name: Open Redirect via Location API
+description: >
+  Detects calls to window.location.assign() or window.location.replace()
+  which can lead to open redirect vulnerabilities. If the URL argument is
+  user-controlled, an attacker can redirect users to malicious websites for
+  phishing or credential theft.
+severity: medium
+category: security
+language: TypeScript
+cwe_id: CWE-601
+pattern: |
+  (call_expression
+    function: (member_expression
+      object: (member_expression
+        property: (property_identifier) @_loc
+        (#eq? @_loc "location"))
+      property: (property_identifier) @_method
+      (#match? @_method "^(assign|replace)$")))
+  @match
+remediation: >
+  Validate redirect URLs against an allowlist of trusted domains before
+  redirecting. Use relative paths instead of absolute URLs when possible.
+  Never pass user input directly to location.assign() or location.replace().
+  For example, validate with `new URL(target, window.location.origin)` and
+  check the hostname against allowed domains.
+references:
+  - https://cwe.mitre.org/data/definitions/601.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/04-Testing_for_Client-side_URL_Redirect
+tags:
+  - open-redirect
+  - redirect
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+version: 1.0.0

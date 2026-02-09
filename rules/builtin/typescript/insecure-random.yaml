@@ -1,0 +1,46 @@
+id: atlas/security/typescript/insecure-random
+name: Insecure Random Number Generation
+description: >
+  Detects usage of Math.random() for generating random values. Math.random()
+  uses a non-cryptographic PRNG and produces predictable output. When used
+  for security-sensitive purposes such as token generation, session IDs, or
+  passwords, an attacker can predict the generated values and compromise the
+  application.
+severity: medium
+category: security
+language: TypeScript
+cwe_id: CWE-330
+pattern: |
+  (call_expression
+    function: (member_expression
+      object: (identifier) @_obj
+      property: (property_identifier) @_prop
+      (#eq? @_obj "Math")
+      (#eq? @_prop "random")))
+  @match
+remediation: >
+  Use the Web Crypto API (crypto.getRandomValues()) or Node.js crypto module
+  (crypto.randomBytes(), crypto.randomUUID()) for generating cryptographically
+  secure random values. For example, replace `Math.random().toString(36)` with
+  `crypto.randomUUID()` or `crypto.randomBytes(32).toString('hex')`.
+references:
+  - https://cwe.mitre.org/data/definitions/330.html
+  - https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html
+tags:
+  - insecure-random
+  - cryptography
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+version: 1.0.0

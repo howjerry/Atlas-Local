@@ -1,0 +1,42 @@
+id: atlas/security/typescript/regex-dos
+name: Regular Expression Denial of Service (ReDoS)
+description: >
+  Detects construction of RegExp objects from dynamic (non-literal) input.
+  When user-controlled input is used to create regular expressions, an
+  attacker can craft patterns with catastrophic backtracking that consume
+  excessive CPU, causing denial of service.
+severity: medium
+category: security
+language: TypeScript
+cwe_id: CWE-1333
+pattern: |
+  (new_expression
+    constructor: (identifier) @_ctor
+    arguments: (arguments
+      [(identifier) (member_expression) (template_string)])
+    (#eq? @_ctor "RegExp"))
+  @match
+remediation: >
+  Avoid constructing regular expressions from user input. If dynamic regex
+  is required, escape all special characters with a function like
+  `str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')` before passing to RegExp.
+  Consider using a safe regex library like re2 or safe-regex to validate
+  patterns against catastrophic backtracking.
+references:
+  - https://cwe.mitre.org/data/definitions/1333.html
+  - https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+  - https://github.com/google/re2
+tags:
+  - regex-dos
+  - denial-of-service
+  - owasp-top-10
+  - a06-vulnerable-components
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A06:2021"
+      description: Vulnerable and Outdated Components
+    - framework: nist-800-53
+      requirement: SC-5
+      description: Denial-of-Service Protection
+version: 1.0.0

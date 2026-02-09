@@ -1,0 +1,30 @@
+id: atlas/quality/typescript/no-return-await
+name: Unnecessary Return Await
+description: >
+  Detects return statements that directly await an expression. Using
+  `return await` in a non-try block is unnecessary because the calling
+  function already receives a promise that it will await. The extra await
+  adds an unnecessary microtask tick, marginally impacting performance
+  and adding visual noise.
+severity: low
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (return_statement
+    (await_expression))
+  @match
+remediation: >
+  Remove the await keyword from the return statement. Replace
+  `return await fetchData()` with `return fetchData()`. Note: keep
+  `return await` inside try-catch blocks where you need to catch
+  rejections from the awaited promise.
+references:
+  - https://eslint.org/docs/latest/rules/no-return-await
+  - https://typescript-eslint.io/rules/return-await
+tags:
+  - code-quality
+  - best-practices
+metadata:
+  quality_domain: best-practices
+version: 1.0.0

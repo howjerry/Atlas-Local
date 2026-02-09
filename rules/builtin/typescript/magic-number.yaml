@@ -1,0 +1,28 @@
+id: atlas/quality/typescript/magic-number
+name: Magic Number Literal
+description: >
+  Detects numeric literals with values of 100 or greater used directly in
+  code without being assigned to a named constant. Magic numbers reduce
+  code readability because their purpose is unclear. Extracting them into
+  named constants makes the code self-documenting and easier to maintain.
+severity: low
+category: quality
+language: TypeScript
+confidence: low
+pattern: |
+  (binary_expression
+    (number) @match
+    (#match? @match "^[1-9][0-9]{2,}$"))
+remediation: >
+  Extract the numeric literal into a named constant with a descriptive
+  name that explains its purpose. For example, replace `if (retries > 300)`
+  with `const MAX_RETRIES = 300; if (retries > MAX_RETRIES)`.
+references:
+  - https://eslint.org/docs/latest/rules/no-magic-numbers
+  - https://refactoring.guru/replace-magic-number-with-symbolic-constant
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0

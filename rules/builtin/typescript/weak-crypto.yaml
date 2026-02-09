@@ -1,0 +1,47 @@
+id: atlas/security/typescript/weak-crypto
+name: Weak Cryptographic Hash Algorithm
+description: >
+  Detects usage of weak or broken hash algorithms (MD4, MD5, SHA-1) via
+  the createHash() function. These algorithms have known collision
+  vulnerabilities and should not be used for security purposes such as
+  password hashing, digital signatures, or integrity verification.
+severity: medium
+category: security
+language: TypeScript
+cwe_id: CWE-327
+pattern: |
+  (call_expression
+    function: (member_expression
+      property: (property_identifier) @_method
+      (#eq? @_method "createHash"))
+    arguments: (arguments
+      (string
+        (string_fragment) @_algo
+        (#match? @_algo "^(md4|md5|sha1)$"))))
+  @match
+remediation: >
+  Replace weak hash algorithms with strong ones. Use SHA-256 or SHA-3 for
+  general hashing, and bcrypt, scrypt, or Argon2 for password hashing. For
+  example, replace `crypto.createHash('md5')` with
+  `crypto.createHash('sha256')`.
+references:
+  - https://cwe.mitre.org/data/definitions/327.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+  - https://nodejs.org/api/crypto.html#cryptocreatehashalgorithm-options
+tags:
+  - weak-crypto
+  - cryptography
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-13
+      description: Cryptographic Protection
+version: 1.0.0

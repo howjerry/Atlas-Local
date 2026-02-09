@@ -1,0 +1,46 @@
+id: atlas/security/typescript/ssrf
+name: Server-Side Request Forgery via fetch
+description: >
+  Detects fetch() calls where the URL argument is a dynamic value (variable
+  or template string) rather than a hardcoded string. When user-controlled
+  input is passed to fetch(), an attacker can make the server send requests
+  to internal services, cloud metadata endpoints, or other unintended
+  destinations, potentially exposing sensitive data or internal infrastructure.
+severity: high
+category: security
+language: TypeScript
+cwe_id: CWE-918
+pattern: |
+  (call_expression
+    function: (identifier) @_fn
+    arguments: (arguments
+      [(template_string) (identifier)])
+    (#eq? @_fn "fetch"))
+  @match
+remediation: >
+  Validate and sanitize all URLs before passing them to fetch(). Use an
+  allowlist of permitted domains and protocols. Parse the URL with
+  `new URL()` and verify the hostname against allowed values. Block
+  requests to private IP ranges (10.x, 172.16-31.x, 192.168.x, 127.x)
+  and cloud metadata endpoints (169.254.169.254).
+references:
+  - https://cwe.mitre.org/data/definitions/918.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+tags:
+  - ssrf
+  - network
+  - owasp-top-10
+  - a10-ssrf
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A10:2021"
+      description: Server-Side Request Forgery (SSRF)
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-7
+      description: Boundary Protection
+version: 1.0.0

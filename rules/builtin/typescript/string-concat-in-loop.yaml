@@ -1,0 +1,30 @@
+id: atlas/quality/typescript/string-concat-in-loop
+name: String Concatenation in Loop
+description: >
+  Detects string concatenation using the += operator inside for loops.
+  Repeated string concatenation in loops creates a new string object on
+  each iteration, resulting in O(n^2) time complexity. For large datasets,
+  this causes significant performance degradation.
+severity: low
+category: quality
+language: TypeScript
+confidence: medium
+pattern: |
+  (for_statement
+    body: (statement_block
+      (expression_statement
+        (augmented_assignment_expression
+          operator: "+=") @match)))
+remediation: >
+  Collect values in an array and join them at the end with Array.join().
+  For example, replace the loop with `const parts: string[] = [];` then
+  `parts.push(item);` inside the loop, and `const result = parts.join('');`
+  after the loop.
+references:
+  - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/join
+tags:
+  - code-quality
+  - performance
+metadata:
+  quality_domain: performance
+version: 1.0.0

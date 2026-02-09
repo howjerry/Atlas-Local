@@ -1,0 +1,28 @@
+id: atlas/quality/typescript/nested-ternary
+name: Nested Ternary Expression
+description: >
+  Detects ternary expressions nested inside other ternary expressions.
+  Nested ternary operators are difficult to read and understand, making
+  code harder to maintain and more prone to logic errors. They should be
+  refactored into if-else statements or extracted into helper functions.
+severity: medium
+category: quality
+language: TypeScript
+confidence: high
+pattern: |
+  (ternary_expression
+    (ternary_expression))
+  @match
+remediation: >
+  Refactor nested ternary expressions into if-else statements or extract
+  the logic into a named helper function. For example, replace
+  `a ? b ? 1 : 2 : 3` with an if-else block or a function like
+  `function getValueFromConditions(a, b) { if (a && b) return 1; ... }`.
+references:
+  - https://eslint.org/docs/latest/rules/no-nested-ternary
+tags:
+  - code-quality
+  - maintainability
+metadata:
+  quality_domain: maintainability
+version: 1.0.0
