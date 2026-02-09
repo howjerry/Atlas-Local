@@ -370,7 +370,16 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         analysis_level: args.analysis_level,
         exclude_patterns: config.scan.exclude_patterns.clone(),
         follow_symlinks: config.scan.follow_symlinks,
-        cache_dir: config.cache.path.as_ref().map(std::path::PathBuf::from),
+        cache_dir: if config.cache.enabled {
+            config
+                .cache
+                .path
+                .as_ref()
+                .map(std::path::PathBuf::from)
+                .or_else(|| dirs_next::home_dir().map(|h| h.join(".atlas")))
+        } else {
+            None
+        },
     };
 
     // 7. Show progress spinner (unless --quiet).

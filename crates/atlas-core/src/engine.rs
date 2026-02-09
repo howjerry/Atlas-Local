@@ -30,10 +30,12 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rayon::prelude::*;
+use sha2::{Digest, Sha256};
 use tracing::{debug, info, warn};
 
 use atlas_analysis::{DiffStatus, Finding, L1PatternEngine, RuleMatchMetadata};
 use atlas_analysis::l2_engine::L2Engine;
+use atlas_cache::cache::{CacheConfig, ResultCache};
 use atlas_lang::{
     AdapterRegistry, register_csharp_adapter, register_go_adapter, register_java_adapter,
     register_js_ts_adapters, register_python_adapter,
@@ -346,8 +348,68 @@ impl ScanEngine {
             "L1 query pre-compilation complete"
         );
 
+        // 計算 rules version hash（用於快取 key 和 invalidation）。
+        let rules_hash = self.compute_rules_hash();
+
+        // 開啟結果快取（SQLite Connection 非 Send，不能在 rayon 內使用）。
+        let result_cache = if !options.no_cache {
+            self.open_result_cache(options.cache_dir.as_deref(), &rules_hash)
+        } else {
+            None
+        };
+
+        // 快取 lookup：序列讀檔、算 key、查快取。
+        // 命中的直接收集 findings，未命中的送入平行處理。
+        let mut cached_findings: Vec<Finding> = Vec::new();
+        let mut uncached_files: Vec<(usize, String)> = Vec::new(); // (index, cache_key)
+        let mut cache_hits: u32 = 0;
+        let mut cache_misses: u32 = 0;
+
+        for (idx, discovered) in discovery.files.iter().enumerate() {
+            if let Some(ref cache) = result_cache {
+                // 讀檔計算 cache key。
+                if let Ok(content) = std::fs::read(&discovered.path) {
+                    let cache_key = ResultCache::compute_key(
+                        &content,
+                        &rules_hash,
+                        &format!("{}", options.analysis_level.depth()),
+                    );
+                    match cache.get(&cache_key) {
+                        Ok(Some(data)) => {
+                            // 快取命中：反序列化 findings。
+                            if let Ok(findings) = serde_json::from_slice::<Vec<Finding>>(&data) {
+                                cache_hits += 1;
+                                cached_findings.extend(findings);
+                                continue;
+                            }
+                            // 反序列化失敗 → 當作 miss。
+                        }
+                        Ok(None) => {}
+                        Err(e) => {
+                            debug!(error = %e, "cache lookup error; treating as miss");
+                        }
+                    }
+                    cache_misses += 1;
+                    uncached_files.push((idx, cache_key));
+                } else {
+                    // 檔案讀取失敗，稍後 process_file 會處理。
+                    uncached_files.push((idx, String::new()));
+                }
+            } else {
+                uncached_files.push((idx, String::new()));
+            }
+        }
+
+        if result_cache.is_some() {
+            info!(
+                cache_hits,
+                cache_misses,
+                "result cache lookup complete"
+            );
+        }
+
         // Shared counters for parallel processing.
-        let files_scanned = AtomicU32::new(0);
+        let files_scanned = AtomicU32::new(cache_hits);
         let files_skipped = AtomicU32::new(0);
         let parse_failures = AtomicU32::new(0);
 
@@ -364,13 +426,13 @@ impl ScanEngine {
 
         let analysis_level = options.analysis_level;
 
-        // Step 2: Process each discovered file in parallel.
-        let mut all_findings: Vec<Finding> = pool.install(|| {
-            discovery
-                .files
+        // Step 2: Process uncached files in parallel.
+        let processed_results: Vec<(usize, Vec<Finding>)> = pool.install(|| {
+            uncached_files
                 .par_iter()
-                .flat_map(|discovered| {
-                    self.process_file(
+                .map(|(idx, _cache_key)| {
+                    let discovered = &discovery.files[*idx];
+                    let findings = self.process_file(
                         discovered,
                         max_file_bytes,
                         &query_cache,
@@ -379,10 +441,36 @@ impl ScanEngine {
                         &parse_failures,
                         diff_ctx,
                         analysis_level,
-                    )
+                    );
+                    (*idx, findings)
                 })
                 .collect()
         });
+
+        // 寫入快取（序列操作）。
+        if let Some(ref cache) = result_cache {
+            let uncached_map: HashMap<usize, &str> = uncached_files
+                .iter()
+                .map(|(idx, key)| (*idx, key.as_str()))
+                .collect();
+            for (idx, findings) in &processed_results {
+                if let Some(cache_key) = uncached_map.get(idx) {
+                    if !cache_key.is_empty() {
+                        if let Ok(data) = serde_json::to_vec(findings) {
+                            if let Err(e) = cache.put(cache_key, &data) {
+                                debug!(error = %e, "failed to write cache entry");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 合併 cached + processed findings。
+        let mut all_findings = cached_findings;
+        for (_idx, findings) in processed_results {
+            all_findings.extend(findings);
+        }
 
         // Step 3: Sort findings deterministically.
         all_findings.sort();
@@ -393,11 +481,21 @@ impl ScanEngine {
 
         let languages_detected: Vec<Language> = discovery.languages_detected.into_iter().collect();
 
+        let total_cacheable = cache_hits + cache_misses;
+        let cache_hit_rate = if result_cache.is_some() && total_cacheable > 0 {
+            Some(cache_hits as f64 / total_cacheable as f64)
+        } else if result_cache.is_some() {
+            Some(0.0)
+        } else {
+            None
+        };
+
         info!(
             findings = all_findings.len(),
             files_scanned = scanned,
             files_skipped = skipped,
             parse_failures = parse_fail_count,
+            ?cache_hit_rate,
             "scan complete"
         );
 
@@ -407,7 +505,7 @@ impl ScanEngine {
         let stats = ScanStats {
             duration_ms,
             parse_failures: parse_fail_count,
-            cache_hit_rate: if options.no_cache { None } else { Some(0.0) },
+            cache_hit_rate,
         };
 
         // Step 7: Return result.
@@ -454,6 +552,50 @@ impl ScanEngine {
             }
         }
         cache
+    }
+
+    /// 計算所有已載入規則的版本雜湊，用於快取 invalidation。
+    fn compute_rules_hash(&self) -> String {
+        let mut hasher = Sha256::new();
+        for rule in &self.rules {
+            hasher.update(rule.id.as_bytes());
+            hasher.update(rule.version.as_bytes());
+        }
+        hex::encode(hasher.finalize())
+    }
+
+    /// 嘗試開啟結果快取。僅在明確指定 `cache_dir` 時啟用。
+    /// 失敗時回傳 None（降級為不使用快取）。
+    fn open_result_cache(
+        &self,
+        cache_dir: Option<&Path>,
+        rules_hash: &str,
+    ) -> Option<ResultCache> {
+        // 僅在明確指定快取目錄時啟用，CLI 層負責提供預設路徑。
+        let cache_path = cache_dir
+            .map(|d| d.join("atlas-cache.db"))?;
+
+        // 確保目錄存在。
+        if let Some(parent) = cache_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
+        let config = CacheConfig {
+            max_entries: 10_000,
+            engine_version: env!("CARGO_PKG_VERSION").to_string(),
+            rules_version_hash: rules_hash.to_string(),
+        };
+
+        match ResultCache::open(&cache_path, config) {
+            Ok(cache) => {
+                info!(path = %cache_path.display(), "result cache opened");
+                Some(cache)
+            }
+            Err(e) => {
+                warn!(error = %e, "failed to open result cache; continuing without cache");
+                None
+            }
+        }
     }
 
     /// Process a single discovered file: read, validate, parse, and evaluate
@@ -916,5 +1058,51 @@ mod tests {
 
         assert_eq!(result.files_scanned, 1);
         assert_eq!(result.files_skipped, 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Cache 整合測試
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn scan_with_cache_second_run_has_hits() {
+        let src = tempfile::tempdir().unwrap();
+        let cache_dir = tempfile::tempdir().unwrap();
+        std::fs::write(src.path().join("app.ts"), "const x: number = 42;").unwrap();
+
+        let engine = ScanEngine::new();
+        let options = ScanOptions {
+            cache_dir: Some(cache_dir.path().to_path_buf()),
+            ..Default::default()
+        };
+
+        // 第一次掃描：cache miss → hit rate = 0.0。
+        let r1 = engine.scan_with_options(src.path(), None, &options).unwrap();
+        assert_eq!(r1.files_scanned, 1);
+        assert_eq!(r1.stats.cache_hit_rate, Some(0.0));
+
+        // 第二次掃描：cache hit → hit rate > 0。
+        let r2 = engine.scan_with_options(src.path(), None, &options).unwrap();
+        assert_eq!(r2.files_scanned, 1);
+        assert!(
+            r2.stats.cache_hit_rate.unwrap() > 0.0,
+            "expected cache_hit_rate > 0 on second scan, got {:?}",
+            r2.stats.cache_hit_rate
+        );
+    }
+
+    #[test]
+    fn scan_with_no_cache_flag_skips_cache() {
+        let src = tempfile::tempdir().unwrap();
+        std::fs::write(src.path().join("app.ts"), "const x = 1;").unwrap();
+
+        let engine = ScanEngine::new();
+        let options = ScanOptions {
+            no_cache: true,
+            ..Default::default()
+        };
+
+        let result = engine.scan_with_options(src.path(), None, &options).unwrap();
+        assert!(result.stats.cache_hit_rate.is_none());
     }
 }

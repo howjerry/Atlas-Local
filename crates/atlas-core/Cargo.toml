@@ -17,6 +17,7 @@ sha2 = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yml = { workspace = true }
+hex = { workspace = true }
 thiserror = { workspace = true }
 
 tree-sitter = { workspace = true }
@@ -24,6 +25,7 @@ tree-sitter = { workspace = true }
 atlas-lang = { path = "../atlas-lang" }
 atlas-rules = { path = "../atlas-rules" }
 atlas-analysis = { path = "../atlas-analysis" }
+atlas-cache = { path = "../atlas-cache" }
 
 [dev-dependencies]
 tempfile = { workspace = true }
