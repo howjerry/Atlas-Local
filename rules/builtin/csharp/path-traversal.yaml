@@ -1,11 +1,13 @@
 id: atlas/security/csharp/path-traversal
 name: Path Traversal via File System Access
 description: >
-  Detects calls to File.ReadAllText, File.WriteAllText, File.Open,
-  Path.Combine, and similar file system methods, as well as creation of
-  FileStream, StreamReader, or StreamWriter objects where the path
-  argument may come from user input. An attacker can use path traversal
-  sequences (../) to access files outside the intended directory.
+  Detects calls to File and Directory I/O methods (ReadAllText,
+  WriteAllText, Open, Delete, Copy, Move, etc.) and creation of
+  FileStream, FileInfo, or DirectoryInfo objects where the argument is
+  a non-literal expression that may come from user input. An attacker
+  can use path traversal sequences (../) to access files outside the
+  intended directory. Path utility methods (Combine, GetFullPath, Exists)
+  and Stream-based constructors are excluded to reduce false positives.
 severity: high
 category: security
 language: CSharp
@@ -30,19 +32,19 @@ pattern: |
       function: (member_access_expression
         expression: (identifier) @obj
         name: (identifier) @method
-        (#match? @obj "^(File|Directory|Path)$")
-        (#match? @method "^(ReadAllText|ReadAllTextAsync|ReadAllBytes|ReadAllBytesAsync|ReadAllLines|ReadAllLinesAsync|WriteAllText|WriteAllTextAsync|WriteAllBytes|WriteAllBytesAsync|Open|OpenRead|OpenWrite|OpenText|Create|Delete|Copy|Move|Exists|Combine|GetFullPath)$"))
+        (#match? @obj "^(File|Directory)$")
+        (#match? @method "^(ReadAllText|ReadAllTextAsync|ReadAllBytes|ReadAllBytesAsync|ReadAllLines|ReadAllLinesAsync|WriteAllText|WriteAllTextAsync|WriteAllBytes|WriteAllBytesAsync|Open|OpenRead|OpenWrite|OpenText|Create|Delete|Copy|Move)$"))
       arguments: (argument_list
         (argument
-          (_) @path_arg)))
+          [(identifier) (member_access_expression) (invocation_expression) (interpolated_string_expression) (element_access_expression) (binary_expression)] @path_arg)))
     @match
 
     (object_creation_expression
       type: (identifier) @type
       arguments: (argument_list
         (argument
-          (_) @path_arg))
-      (#match? @type "^(FileStream|StreamReader|StreamWriter|FileInfo|DirectoryInfo)$"))
+          [(identifier) (member_access_expression) (invocation_expression) (interpolated_string_expression) (element_access_expression) (binary_expression)] @path_arg))
+      (#match? @type "^(FileStream|FileInfo|DirectoryInfo)$"))
     @match
   ]
 remediation: >

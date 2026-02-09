@@ -1,23 +1,31 @@
 // Path Traversal: should NOT trigger the rule
-// Uses validated and sanitized paths via helper methods
+// Uses hardcoded paths, path utilities, or stream-based constructors
 
 using System.IO;
 
 public class PathTraversalPass
 {
-    private readonly string _baseDir = "/app/data";
-
-    public byte[] SafeFileAccess(string userInput)
+    public void HardcodedPaths()
     {
-        string safePath = ValidatePath(userInput);
-        return SafeReadHelper.ReadFile(safePath);
+        string content = File.ReadAllText("config.yaml");
+        File.WriteAllText("/app/data/output.txt", "data");
     }
 
-    private string ValidatePath(string input)
+    public void PathUtilities(string userInput)
     {
-        string fullPath = GetSafePath(_baseDir, input);
-        if (!fullPath.StartsWith(_baseDir))
-            throw new System.Security.SecurityException("Path traversal detected");
-        return fullPath;
+        string combined = Path.Combine("base", userInput);
+        string full = Path.GetFullPath(userInput);
+    }
+
+    public void StreamConstructors(Stream stream)
+    {
+        var writer = new StreamWriter(stream, System.Text.Encoding.UTF8);
+        var reader = new StreamReader(stream);
+    }
+
+    public void ExistenceChecks(string path)
+    {
+        bool exists = File.Exists(path);
+        bool dirExists = Directory.Exists(path);
     }
 }
