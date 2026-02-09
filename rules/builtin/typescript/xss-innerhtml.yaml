@@ -34,4 +34,18 @@ tags:
   - dom-manipulation
   - owasp-top-10
   - a07-xss
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+    - framework: hipaa-security
+      requirement: 164.312(c)(1)
+      description: Integrity
 version: 1.0.0

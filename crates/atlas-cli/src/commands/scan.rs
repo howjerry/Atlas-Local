@@ -173,6 +173,73 @@ fn resolve_output_dir(base: &Path, target: &Path) -> PathBuf {
         .join(timestamp.to_string())
 }
 
+/// Build compliance coverage summaries from findings and rules.
+///
+/// Loads framework definitions from `rules/compliance/`, computes per-framework
+/// coverage (rules mapped), and enriches each category with the count of actual
+/// findings that map to it via `metadata.compliance`.
+fn build_compliance_summary(
+    findings: &[atlas_analysis::Finding],
+    rules: &[atlas_rules::Rule],
+) -> Option<Vec<atlas_core::compliance::ComplianceSummary>> {
+    let compliance_dir = PathBuf::from("rules/compliance");
+    let frameworks = atlas_core::compliance::load_frameworks(&compliance_dir).ok()?;
+    if frameworks.is_empty() {
+        return None;
+    }
+
+    let mut summaries: Vec<atlas_core::compliance::ComplianceSummary> = frameworks
+        .iter()
+        .map(|fw| atlas_core::compliance::compute_coverage(fw, rules))
+        .collect();
+
+    // Enrich with finding counts from actual scan findings.
+    for summary in &mut summaries {
+        for finding in findings {
+            if let Some(compliance_val) = finding.metadata.get("compliance") {
+                if let Some(arr) = compliance_val.as_array() {
+                    for entry in arr {
+                        if let (Some(fw), Some(req)) = (
+                            entry.get("framework").and_then(|v| v.as_str()),
+                            entry.get("requirement").and_then(|v| v.as_str()),
+                        ) {
+                            if fw == summary.framework {
+                                if let Some(cat) = summary
+                                    .categories
+                                    .iter_mut()
+                                    .find(|c| c.category_id == req)
+                                {
+                                    cat.finding_count += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Also count via CWE auto-mapping.
+            if let Some(ref cwe_id) = finding.cwe_id {
+                let fw = frameworks.iter().find(|f| f.id == summary.framework);
+                if let Some(fw) = fw {
+                    for fw_cat in &fw.categories {
+                        if fw_cat.cwe_mappings.contains(cwe_id) {
+                            if let Some(cat) = summary
+                                .categories
+                                .iter_mut()
+                                .find(|c| c.category_id == fw_cat.id)
+                            {
+                                cat.finding_count += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Some(summaries)
+}
+
 // ---------------------------------------------------------------------------
 // execute
 // ---------------------------------------------------------------------------
@@ -461,6 +528,9 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         }
     });
 
+    // 10b. Build compliance summary from findings + framework definitions.
+    let compliance_summary = build_compliance_summary(&result.findings, engine.rules());
+
     let report_options = ReportOptions {
         include_timestamp: args.timestamp,
         gate_status: Some(&gate_status),
@@ -469,6 +539,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         baseline_applied: baseline_path_str.as_deref(),
         baseline_diff: report_baseline_diff,
         diff_context: report_diff_context,
+        compliance_summary,
     };
 
     let reports = generate_reports(

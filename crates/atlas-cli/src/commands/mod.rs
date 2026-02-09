@@ -1,5 +1,6 @@
 pub mod audit;
 pub mod baseline;
+pub mod compliance;
 pub mod config;
 pub mod diag;
 pub mod license;

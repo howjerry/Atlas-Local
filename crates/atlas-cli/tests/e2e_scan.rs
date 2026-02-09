@@ -358,6 +358,7 @@ fn e2e_report_with_gate_result() {
         baseline_applied: None,
         baseline_diff: None,
         diff_context: None,
+        compliance_summary: None,
     };
 
     let json = format_report_with_options(

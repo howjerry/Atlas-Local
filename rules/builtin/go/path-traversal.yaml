@@ -9,6 +9,20 @@ severity: high
 category: security
 language: Go
 cwe_id: CWE-22
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: AC-3
+      description: Access Enforcement
+    - framework: hipaa-security
+      requirement: "164.312(a)(1)"
+      description: Access Control
 pattern: |
   [
     (call_expression

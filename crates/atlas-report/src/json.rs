@@ -67,6 +67,10 @@ pub struct AtlasReport {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diff_context: Option<DiffContextReport>,
 
+    /// Compliance framework coverage summaries, if computed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compliance_summary: Option<Vec<atlas_core::compliance::ComplianceSummary>>,
+
     /// Scan performance statistics (reserved for future use).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stats: Option<ScanStats>,
@@ -309,6 +313,8 @@ pub struct ReportOptions<'a> {
     pub baseline_diff: Option<BaselineDiff>,
     /// Diff context report, if diff-aware scanning was used.
     pub diff_context: Option<DiffContextReport>,
+    /// Compliance coverage summaries computed from findings metadata.
+    pub compliance_summary: Option<Vec<atlas_core::compliance::ComplianceSummary>>,
 }
 
 /// Formats a complete Atlas Findings JSON v1.0.0 report.
@@ -413,6 +419,7 @@ pub fn format_report_with_options(
         gate_details: options.gate_details.clone(),
         baseline_diff: options.baseline_diff.clone(),
         diff_context: options.diff_context.clone(),
+        compliance_summary: options.compliance_summary.clone(),
         stats: None,
     };
 
@@ -897,6 +904,59 @@ mod tests {
         assert_eq!(
             parsed["findings"][0]["diff_status"], "new",
             "diff_status should be serialised as 'new'"
+        );
+    }
+
+    #[test]
+    fn report_compliance_summary_included_when_present() {
+        let scan_result = make_scan_result(vec![]);
+        let rules: Vec<Rule> = vec![];
+        let config = AtlasConfig::default();
+
+        let summary = atlas_core::compliance::ComplianceSummary {
+            framework: "owasp-top-10-2021".to_string(),
+            framework_name: "OWASP Top 10 2021".to_string(),
+            categories: vec![atlas_core::compliance::ComplianceCoverage {
+                category_id: "A03:2021".to_string(),
+                category_title: "Injection".to_string(),
+                mapped_rules: 3,
+                finding_count: 2,
+                status: "Covered".to_string(),
+            }],
+            total_rules: 3,
+            covered_categories: 1,
+            coverage_percentage: 10.0,
+        };
+
+        let options = ReportOptions {
+            compliance_summary: Some(vec![summary]),
+            ..Default::default()
+        };
+
+        let json =
+            format_report_with_options(&scan_result, "/project/src", &rules, &config, &options);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let cs = &parsed["compliance_summary"];
+        assert!(!cs.is_null(), "compliance_summary should be present");
+        assert!(cs.is_array());
+        assert_eq!(cs[0]["framework"], "owasp-top-10-2021");
+        assert_eq!(cs[0]["categories"][0]["finding_count"], 2);
+        assert_eq!(cs[0]["coverage_percentage"], 10.0);
+    }
+
+    #[test]
+    fn report_compliance_summary_omitted_when_none() {
+        let scan_result = make_scan_result(vec![]);
+        let rules: Vec<Rule> = vec![];
+        let config = AtlasConfig::default();
+
+        let json = format_report(&scan_result, "/project/src", &rules, &config, false);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert!(
+            parsed["compliance_summary"].is_null(),
+            "compliance_summary should be omitted when not provided"
         );
     }
 

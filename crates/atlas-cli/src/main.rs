@@ -26,6 +26,8 @@ enum Commands {
     Baseline(commands::baseline::BaselineArgs),
     /// Manage Atlas licences (activate, status, deactivate).
     License(commands::license::LicenseArgs),
+    /// Compliance framework coverage reporting.
+    Compliance(commands::compliance::ComplianceArgs),
     /// Generate signed audit bundles for compliance.
     Audit(commands::audit::AuditArgs),
     /// Display diagnostic information.
@@ -37,6 +39,7 @@ fn main() -> std::process::ExitCode {
 
     let result = match cli.command {
         Commands::Scan(args) => commands::scan::execute(args),
+        Commands::Compliance(args) => commands::compliance::execute(args),
         Commands::Config(args) => commands::config::execute(args),
         Commands::Rulepack(args) => commands::rulepack::execute(args),
         Commands::Baseline(args) => commands::baseline::execute(args),

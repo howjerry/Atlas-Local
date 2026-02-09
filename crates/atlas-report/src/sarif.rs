@@ -203,6 +203,9 @@ pub struct SarifDescriptorProperties {
     /// CWE identifier, if applicable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cwe: Option<String>,
+    /// Compliance framework mappings from rule metadata.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compliance: Option<Vec<serde_json::Value>>,
 }
 
 /// Custom properties for a result (finding).
@@ -249,6 +252,12 @@ fn severity_to_sarif_level(severity: &Severity) -> &'static str {
 fn rule_to_descriptor(rule: &Rule) -> SarifReportingDescriptor {
     let help_uri = rule.references.first().cloned();
 
+    let compliance = rule
+        .metadata
+        .get("compliance")
+        .and_then(|v| v.as_array())
+        .cloned();
+
     SarifReportingDescriptor {
         id: rule.id.clone(),
         name: rule.name.clone(),
@@ -261,6 +270,7 @@ fn rule_to_descriptor(rule: &Rule) -> SarifReportingDescriptor {
         help_uri,
         properties: SarifDescriptorProperties {
             cwe: rule.cwe_id.clone(),
+            compliance,
         },
     }
 }
@@ -772,6 +782,46 @@ mod tests {
         assert_eq!(
             properties["diffStatus"], "new",
             "diff_status should be present as 'new' in SARIF properties"
+        );
+    }
+
+    #[test]
+    fn sarif_rule_compliance_included_when_present() {
+        let mut rule = make_rule("atlas/security/ts/sqli", "1.0.0");
+        rule.metadata.insert(
+            "compliance".to_string(),
+            serde_json::json!([
+                { "framework": "owasp-top-10-2021", "requirement": "A03:2021", "description": "Injection" },
+                { "framework": "pci-dss-4.0", "requirement": "6.2.4", "description": "Prevention of Common Software Attacks" }
+            ]),
+        );
+
+        let findings = vec![make_finding(Severity::High, "atlas/security/ts/sqli")];
+        let scan_result = make_scan_result(findings);
+
+        let json = format_sarif(&scan_result, &[rule]);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let rule_props = &parsed["runs"][0]["tool"]["driver"]["rules"][0]["properties"];
+        let compliance = rule_props["compliance"].as_array().unwrap();
+        assert_eq!(compliance.len(), 2);
+        assert_eq!(compliance[0]["framework"], "owasp-top-10-2021");
+        assert_eq!(compliance[1]["framework"], "pci-dss-4.0");
+    }
+
+    #[test]
+    fn sarif_rule_compliance_omitted_when_absent() {
+        let findings = vec![make_finding(Severity::High, "atlas/security/ts/sqli")];
+        let scan_result = make_scan_result(findings);
+        let rules = vec![make_rule("atlas/security/ts/sqli", "1.0.0")];
+
+        let json = format_sarif(&scan_result, &rules);
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        let rule_props = &parsed["runs"][0]["tool"]["driver"]["rules"][0]["properties"];
+        assert!(
+            rule_props.get("compliance").is_none() || rule_props["compliance"].is_null(),
+            "compliance should be omitted when rule has no compliance metadata"
         );
     }
 

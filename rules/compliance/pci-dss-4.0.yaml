@@ -1,0 +1,115 @@
+id: pci-dss-4.0
+name: PCI DSS 4.0 — Requirement 6
+version: "4.0"
+categories:
+  - id: "6.2.1"
+    title: Secure Development Lifecycle
+    description: >
+      Software is developed securely throughout the software development lifecycle.
+    cwe_mappings: []
+
+  - id: "6.2.2"
+    title: Software Security Training
+    description: >
+      Software development personnel working on bespoke and custom software are
+      trained in software security relevant to their job function.
+    cwe_mappings: []
+
+  - id: "6.2.3"
+    title: Software Review Before Release
+    description: >
+      Bespoke and custom software is reviewed prior to being released into production
+      to identify and correct potential coding vulnerabilities.
+    cwe_mappings: []
+
+  - id: "6.2.4"
+    title: Prevention of Common Software Attacks
+    description: >
+      Software engineering techniques or other methods are defined and in use to
+      prevent or mitigate common software attacks and related vulnerabilities.
+    cwe_mappings:
+      - CWE-89
+      - CWE-79
+      - CWE-78
+      - CWE-22
+      - CWE-94
+      - CWE-95
+      - CWE-502
+      - CWE-798
+      - CWE-259
+
+  - id: "6.3.1"
+    title: Vulnerability Identification
+    description: >
+      Security vulnerabilities are identified and managed through a defined process.
+    cwe_mappings: []
+
+  - id: "6.3.2"
+    title: Software Inventory
+    description: >
+      An inventory of bespoke and custom software and third-party components is maintained.
+    cwe_mappings: []
+
+  - id: "6.4.1"
+    title: Public-Facing Web Application Protection
+    description: >
+      For public-facing web applications, new threats and vulnerabilities are addressed
+      on an ongoing basis and these applications are protected against known attacks.
+    cwe_mappings:
+      - CWE-79
+      - CWE-89
+      - CWE-918
+
+  - id: "6.4.2"
+    title: Automated Technical Solution for Web Applications
+    description: >
+      For public-facing web applications, an automated technical solution is deployed
+      that detects and prevents web-based attacks.
+    cwe_mappings: []
+
+  - id: "6.4.3"
+    title: Payment Page Script Management
+    description: >
+      All payment page scripts that are loaded and executed in the consumer's browser
+      are managed and inventoried.
+    cwe_mappings: []
+
+  - id: "6.5.1"
+    title: Change Management for System Components
+    description: >
+      Changes to system components in production are managed through a change control process.
+    cwe_mappings: []
+
+  - id: "6.5.2"
+    title: Custom Software Change Testing
+    description: >
+      Upon completion of a significant change, all applicable PCI DSS requirements
+      are confirmed to be in place.
+    cwe_mappings: []
+
+  - id: "6.5.3"
+    title: Pre-Production Environment Separation
+    description: >
+      Pre-production environments are separated from production environments and the
+      separation is enforced with access controls.
+    cwe_mappings: []
+
+  - id: "6.5.4"
+    title: Separation of Duties
+    description: >
+      Roles and functions are separated between production and pre-production environments.
+    cwe_mappings: []
+
+  - id: "6.5.5"
+    title: Live PANs in Testing
+    description: >
+      Live PANs are not used in pre-production environments unless those environments
+      are included in the CDE.
+    cwe_mappings: []
+
+  - id: "6.5.6"
+    title: Test Data and Account Removal
+    description: >
+      Test data and test accounts are removed from system components before the system
+      goes into production.
+    cwe_mappings: []

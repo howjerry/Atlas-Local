@@ -8,6 +8,17 @@ severity: critical
 category: security
 language: CSharp
 cwe_id: CWE-78
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
 pattern: |
   [
     (invocation_expression

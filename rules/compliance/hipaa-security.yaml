@@ -1,0 +1,65 @@
+id: hipaa-security
+name: HIPAA Security Rule
+version: "2013"
+categories:
+  - id: "164.312(a)(1)"
+    title: Access Control
+    description: >
+      Implement technical policies and procedures for electronic information systems
+      that maintain electronic protected health information to allow access only to
+      those persons or software programs that have been granted access rights.
+    cwe_mappings:
+      - CWE-22
+      - CWE-284
+      - CWE-285
+      - CWE-862
+      - CWE-863
+      - CWE-798
+      - CWE-259
+
+  - id: "164.312(b)"
+    title: Audit Controls
+    description: >
+      Implement hardware, software, and/or procedural mechanisms that record and
+      examine activity in information systems that contain or use electronic
+      protected health information.
+    cwe_mappings:
+      - CWE-778
+      - CWE-223
+      - CWE-117
+      - CWE-532
+
+  - id: "164.312(c)(1)"
+    title: Integrity
+    description: >
+      Implement policies and procedures to protect electronic protected health
+      information from improper alteration or destruction.
+    cwe_mappings:
+      - CWE-502
+      - CWE-345
+      - CWE-20
+      - CWE-89
+      - CWE-79
+
+  - id: "164.312(d)"
+    title: Person or Entity Authentication
+    description: >
+      Implement procedures to verify that a person or entity seeking access to
+      electronic protected health information is the one claimed.
+    cwe_mappings:
+      - CWE-287
+      - CWE-798
+      - CWE-259
+      - CWE-521
+
+  - id: "164.312(e)(1)"
+    title: Transmission Security
+    description: >
+      Implement technical security measures to guard against unauthorized access
+      to electronic protected health information that is being transmitted over
+      an electronic communications network.
+    cwe_mappings:
+      - CWE-319
+      - CWE-311
+      - CWE-327
+      - CWE-326

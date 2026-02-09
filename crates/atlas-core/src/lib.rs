@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 // Future modules -- uncomment as they are implemented.
+pub mod compliance;
 pub mod config;
 pub mod diff;
 pub mod engine;

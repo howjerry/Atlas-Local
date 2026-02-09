@@ -39,4 +39,18 @@ tags:
   - yaml
   - owasp-top-10
   - a08-integrity
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A08:2021"
+      description: Software and Data Integrity Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: CM-7
+      description: Least Functionality
+    - framework: hipaa-security
+      requirement: "164.312(c)(1)"
+      description: Integrity
 version: 1.0.0

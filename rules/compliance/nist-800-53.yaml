@@ -1,0 +1,119 @@
+id: nist-800-53
+name: NIST SP 800-53 Rev 5
+version: "5"
+categories:
+  - id: "AC-3"
+    title: Access Enforcement
+    description: >
+      The system enforces approved authorizations for logical access to information
+      and system resources.
+    cwe_mappings:
+      - CWE-22
+      - CWE-284
+      - CWE-285
+      - CWE-862
+      - CWE-863
+
+  - id: "AC-6"
+    title: Least Privilege
+    description: >
+      The organization employs the principle of least privilege, allowing only
+      authorized accesses for users necessary to accomplish assigned tasks.
+    cwe_mappings:
+      - CWE-250
+      - CWE-269
+      - CWE-266
+
+  - id: "AU-2"
+    title: Event Logging
+    description: >
+      The system identifies events that need to be logged and provides event
+      logging capability.
+    cwe_mappings:
+      - CWE-778
+      - CWE-223
+      - CWE-117
+
+  - id: "AU-3"
+    title: Content of Audit Records
+    description: >
+      The system generates audit records that contain information establishing
+      what type of event occurred, when it occurred, where it occurred, and who caused it.
+    cwe_mappings:
+      - CWE-532
+      - CWE-778
+
+  - id: "IA-5"
+    title: Authenticator Management
+    description: >
+      The organization manages system authenticators by verifying the identity of
+      individuals, groups, roles, or devices receiving authenticators.
+    cwe_mappings:
+      - CWE-798
+      - CWE-259
+      - CWE-255
+      - CWE-521
+
+  - id: "SC-8"
+    title: Transmission Confidentiality and Integrity
+    description: >
+      The system protects the confidentiality and integrity of transmitted information.
+    cwe_mappings:
+      - CWE-319
+      - CWE-311
+
+  - id: "SC-13"
+    title: Cryptographic Protection
+    description: >
+      The system implements cryptographic mechanisms to prevent unauthorized disclosure
+      and detect changes to information during transmission and in storage.
+    cwe_mappings:
+      - CWE-327
+      - CWE-326
+      - CWE-328
+
+  - id: "SC-28"
+    title: Protection of Information at Rest
+    description: >
+      The system protects the confidentiality and integrity of information at rest.
+    cwe_mappings:
+      - CWE-311
+      - CWE-312
+      - CWE-316
+
+  - id: "SI-10"
+    title: Information Input Validation
+    description: >
+      The system checks the validity of information inputs to prevent injection attacks
+      and other input-based vulnerabilities.
+    cwe_mappings:
+      - CWE-20
+      - CWE-79
+      - CWE-89
+      - CWE-78
+      - CWE-94
+      - CWE-95
+
+  - id: "SI-11"
+    title: Error Handling
+    description: >
+      The system generates error messages that provide information necessary for
+      corrective actions without revealing information exploitable by adversaries.
+    cwe_mappings:
+      - CWE-209
+      - CWE-200
+
+  - id: "SA-11"
+    title: Developer Testing and Evaluation
+    description: >
+      Require the developer of the system to create and implement a plan for
+      security assessment activities.
+    cwe_mappings: []
+
+  - id: "CM-7"
+    title: Least Functionality
+    description: >
+      The organization configures the system to provide only essential capabilities
+      and prohibits or restricts the use of specified functions and services.
+    cwe_mappings:
+      - CWE-502
