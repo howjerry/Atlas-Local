@@ -144,6 +144,9 @@ fn parse_language(name: &str) -> Option<Language> {
         "python" | "py" => Some(Language::Python),
         "go" | "golang" => Some(Language::Go),
         "csharp" | "c#" | "cs" => Some(Language::CSharp),
+        "ruby" | "rb" => Some(Language::Ruby),
+        "php" => Some(Language::Php),
+        "kotlin" | "kt" => Some(Language::Kotlin),
         _ => None,
     }
 }
@@ -676,12 +679,17 @@ mod tests {
         assert_eq!(parse_language("csharp"), Some(Language::CSharp));
         assert_eq!(parse_language("c#"), Some(Language::CSharp));
         assert_eq!(parse_language("cs"), Some(Language::CSharp));
+        assert_eq!(parse_language("ruby"), Some(Language::Ruby));
+        assert_eq!(parse_language("rb"), Some(Language::Ruby));
+        assert_eq!(parse_language("php"), Some(Language::Php));
+        assert_eq!(parse_language("kotlin"), Some(Language::Kotlin));
+        assert_eq!(parse_language("kt"), Some(Language::Kotlin));
     }
 
     #[test]
     fn parse_language_unknown() {
         assert_eq!(parse_language("rust"), None);
-        assert_eq!(parse_language("ruby"), None);
+        assert_eq!(parse_language("swift"), None);
         assert_eq!(parse_language(""), None);
     }
 
@@ -715,7 +723,7 @@ mod tests {
 
     #[test]
     fn parse_language_filter_with_unknown() {
-        let langs = parse_language_filter("typescript,ruby,python");
+        let langs = parse_language_filter("typescript,swift,python");
         assert_eq!(langs.len(), 2);
         assert!(langs.contains(&Language::TypeScript));
         assert!(langs.contains(&Language::Python));

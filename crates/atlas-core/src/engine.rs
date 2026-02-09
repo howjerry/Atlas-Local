@@ -38,7 +38,8 @@ use atlas_analysis::l2_engine::L2Engine;
 use atlas_cache::cache::{CacheConfig, ResultCache};
 use atlas_lang::{
     AdapterRegistry, register_csharp_adapter, register_go_adapter, register_java_adapter,
-    register_js_ts_adapters, register_python_adapter,
+    register_js_ts_adapters, register_kotlin_adapter, register_php_adapter,
+    register_python_adapter, register_ruby_adapter,
 };
 use atlas_rules::declarative::DeclarativeRuleLoader;
 use atlas_rules::Rule;
@@ -191,6 +192,9 @@ impl ScanEngine {
         register_python_adapter(&mut registry);
         register_csharp_adapter(&mut registry);
         register_go_adapter(&mut registry);
+        register_ruby_adapter(&mut registry);
+        register_php_adapter(&mut registry);
+        register_kotlin_adapter(&mut registry);
         Self {
             adapter_registry: registry,
             rules: Vec::new(),

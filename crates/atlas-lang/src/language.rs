@@ -27,6 +27,12 @@ pub enum Language {
     Go,
     /// C# (`.cs`).
     CSharp,
+    /// Ruby (`.rb`).
+    Ruby,
+    /// PHP (`.php`).
+    Php,
+    /// Kotlin (`.kt`, `.kts`).
+    Kotlin,
 }
 
 impl Language {
@@ -42,6 +48,9 @@ impl Language {
             Self::Python => &[".py", ".pyi"],
             Self::Go => &[".go"],
             Self::CSharp => &[".cs"],
+            Self::Ruby => &[".rb"],
+            Self::Php => &[".php"],
+            Self::Kotlin => &[".kt", ".kts"],
         }
     }
 
@@ -55,6 +64,9 @@ impl Language {
             Self::Python,
             Self::Go,
             Self::CSharp,
+            Self::Ruby,
+            Self::Php,
+            Self::Kotlin,
         ]
     }
 
@@ -70,6 +82,9 @@ impl Language {
             ".py" | ".pyi" => Some(Self::Python),
             ".go" => Some(Self::Go),
             ".cs" => Some(Self::CSharp),
+            ".rb" => Some(Self::Ruby),
+            ".php" => Some(Self::Php),
+            ".kt" | ".kts" => Some(Self::Kotlin),
             _ => None,
         }
     }
@@ -84,6 +99,9 @@ impl fmt::Display for Language {
             Self::Python => "Python",
             Self::Go => "Go",
             Self::CSharp => "CSharp",
+            Self::Ruby => "Ruby",
+            Self::Php => "Php",
+            Self::Kotlin => "Kotlin",
         };
         f.write_str(label)
     }
@@ -108,6 +126,9 @@ mod tests {
         assert_eq!(Language::Python.extensions(), &[".py", ".pyi"]);
         assert_eq!(Language::Go.extensions(), &[".go"]);
         assert_eq!(Language::CSharp.extensions(), &[".cs"]);
+        assert_eq!(Language::Ruby.extensions(), &[".rb"]);
+        assert_eq!(Language::Php.extensions(), &[".php"]);
+        assert_eq!(Language::Kotlin.extensions(), &[".kt", ".kts"]);
     }
 
     #[test]
@@ -123,7 +144,11 @@ mod tests {
         assert_eq!(Language::from_extension(".pyi"), Some(Language::Python));
         assert_eq!(Language::from_extension(".go"), Some(Language::Go));
         assert_eq!(Language::from_extension(".cs"), Some(Language::CSharp));
-        assert_eq!(Language::from_extension(".rb"), None);
+        assert_eq!(Language::from_extension(".rb"), Some(Language::Ruby));
+        assert_eq!(Language::from_extension(".php"), Some(Language::Php));
+        assert_eq!(Language::from_extension(".kt"), Some(Language::Kotlin));
+        assert_eq!(Language::from_extension(".kts"), Some(Language::Kotlin));
+        assert_eq!(Language::from_extension(".rs"), None);
     }
 
     #[test]
@@ -142,12 +167,15 @@ mod tests {
         assert_eq!(Language::Python.to_string(), "Python");
         assert_eq!(Language::Go.to_string(), "Go");
         assert_eq!(Language::CSharp.to_string(), "CSharp");
+        assert_eq!(Language::Ruby.to_string(), "Ruby");
+        assert_eq!(Language::Php.to_string(), "Php");
+        assert_eq!(Language::Kotlin.to_string(), "Kotlin");
     }
 
     #[test]
     fn all_languages_covered() {
         let all = Language::all();
-        assert_eq!(all.len(), 6);
+        assert_eq!(all.len(), 9);
         // Every language should resolve from at least one of its own extensions.
         for lang in all {
             let ext = lang.extensions()[0];

@@ -494,6 +494,9 @@ fn language_short_name(language: Language) -> &'static str {
         Language::Python => "python",
         Language::CSharp => "csharp",
         Language::Go => "go",
+        Language::Ruby => "ruby",
+        Language::Php => "php",
+        Language::Kotlin => "kotlin",
     }
 }
 

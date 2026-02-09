@@ -26,12 +26,21 @@ pub mod csharp;
 
 pub mod go;
 
+pub mod ruby;
+
+pub mod php;
+
+pub mod kotlin;
+
 // Re-exports for convenience.
 pub use adapter::{AdapterRegistry, LanguageAdapter};
 pub use csharp::{CSharpAdapter, register_csharp_adapter};
 pub use error::{LangError, LangResult};
 pub use go::{GoAdapter, register_go_adapter};
 pub use java::{JavaAdapter, register_java_adapter};
+pub use kotlin::{KotlinAdapter, register_kotlin_adapter};
 pub use language::Language;
+pub use php::{PhpAdapter, register_php_adapter};
 pub use python::{PythonAdapter, register_python_adapter};
+pub use ruby::{RubyAdapter, register_ruby_adapter};
 pub use typescript::{JavaScriptAdapter, TypeScriptAdapter, register_js_ts_adapters};

@@ -310,6 +310,8 @@ pub fn get_l2_config(language: atlas_lang::Language) -> Option<&'static dyn L2La
         atlas_lang::Language::Python => Some(&PythonL2Config),
         atlas_lang::Language::CSharp => Some(&CSharpL2Config),
         atlas_lang::Language::Go => Some(&GoL2Config),
+        // 新語言尚未支援 L2 分析
+        _ => None,
     }
 }
 

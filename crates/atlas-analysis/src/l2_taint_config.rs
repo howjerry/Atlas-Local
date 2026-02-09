@@ -81,6 +81,8 @@ pub fn load_taint_config(language: atlas_lang::Language) -> Result<TaintConfig, 
         atlas_lang::Language::Python => PYTHON_CONFIG,
         atlas_lang::Language::CSharp => CSHARP_CONFIG,
         atlas_lang::Language::Go => GO_CONFIG,
+        // 新語言尚未支援 L2 分析
+        _ => return Err(format!("L2 taint config not available for {language}")),
     };
     serde_yml::from_str(yaml)
         .map_err(|e| format!("failed to parse taint config for {language}: {e}"))
