@@ -370,7 +370,10 @@ mod tests {
         assert_eq!(Language::from_extension(".pyi"), Some(Language::Python));
         assert_eq!(Language::from_extension(".go"), Some(Language::Go));
         assert_eq!(Language::from_extension(".cs"), Some(Language::CSharp));
-        assert_eq!(Language::from_extension(".rb"), None);
+        assert_eq!(Language::from_extension(".rb"), Some(Language::Ruby));
+        assert_eq!(Language::from_extension(".php"), Some(Language::Php));
+        assert_eq!(Language::from_extension(".kt"), Some(Language::Kotlin));
+        assert_eq!(Language::from_extension(".kts"), Some(Language::Kotlin));
     }
 
     #[test]
@@ -441,7 +444,7 @@ mod tests {
     #[test]
     fn all_languages_covered() {
         let all = Language::all();
-        assert_eq!(all.len(), 6);
+        assert_eq!(all.len(), 9);
         // Every language should resolve from at least one of its own extensions.
         for lang in all {
             let ext = lang.extensions()[0];

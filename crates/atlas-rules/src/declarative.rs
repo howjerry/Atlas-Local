@@ -649,24 +649,38 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Python rules should load successfully");
 
-        assert_eq!(rules.len(), 11, "expected exactly 11 Python rules");
+        assert_eq!(rules.len(), 25, "expected exactly 25 Python rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(
             ids,
             vec![
+                "atlas/quality/python/assert-usage",
                 "atlas/quality/python/bare-except",
+                "atlas/quality/python/broad-exception",
+                "atlas/quality/python/empty-conditional",
                 "atlas/quality/python/empty-function-body",
+                "atlas/quality/python/excessive-parameters",
+                "atlas/quality/python/global-variable",
                 "atlas/quality/python/magic-number",
                 "atlas/quality/python/mutable-default-arg",
+                "atlas/quality/python/nested-ternary",
                 "atlas/quality/python/pass-in-except",
                 "atlas/quality/python/print-statement",
+                "atlas/quality/python/redundant-boolean",
+                "atlas/quality/python/string-concat-in-loop",
                 "atlas/quality/python/todo-comment",
                 "atlas/security/python/command-injection",
                 "atlas/security/python/eval-usage",
+                "atlas/security/python/hardcoded-secret",
+                "atlas/security/python/insecure-random",
+                "atlas/security/python/open-redirect",
                 "atlas/security/python/sql-injection",
+                "atlas/security/python/ssrf",
                 "atlas/security/python/unsafe-deserialization",
+                "atlas/security/python/unsafe-yaml-load",
+                "atlas/security/python/weak-crypto",
             ]
         );
 
@@ -680,12 +694,12 @@ version: 0.1.0
             assert_eq!(rule.version, "1.0.0");
         }
 
-        // Verify security rules.
+        // 驗證安全規則（原 4 + 新增 6 = 10）
         let security_rules: Vec<&Rule> = rules
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 4, "expected 4 security rules");
+        assert_eq!(security_rules.len(), 10, "expected 10 security rules");
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some());
         }
@@ -713,12 +727,12 @@ version: 0.1.0
             .unwrap();
         assert_eq!(deser.severity, Severity::High);
 
-        // Verify quality rules.
+        // 驗證品質規則（原 7 + 新增 8 = 15）
         let quality_rules: Vec<&Rule> = rules
             .iter()
             .filter(|r| r.category == Category::Quality)
             .collect();
-        assert_eq!(quality_rules.len(), 7, "expected 7 quality rules");
+        assert_eq!(quality_rules.len(), 15, "expected 15 quality rules");
         for rule in &quality_rules {
             assert!(rule.cwe_id.is_none());
         }
@@ -795,24 +809,38 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Java rules should load successfully");
 
-        assert_eq!(rules.len(), 11, "expected exactly 11 Java rules");
+        assert_eq!(rules.len(), 25, "expected exactly 25 Java rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
         assert_eq!(
             ids,
             vec![
+                "atlas/quality/java/boolean-method-naming",
                 "atlas/quality/java/empty-catch-block",
+                "atlas/quality/java/empty-conditional",
                 "atlas/quality/java/empty-method-body",
+                "atlas/quality/java/excessive-parameters",
+                "atlas/quality/java/magic-number",
+                "atlas/quality/java/missing-default-case",
+                "atlas/quality/java/nested-ternary",
                 "atlas/quality/java/raw-type-usage",
                 "atlas/quality/java/redundant-boolean",
                 "atlas/quality/java/string-concat-in-loop",
+                "atlas/quality/java/system-exit",
                 "atlas/quality/java/system-out-println",
+                "atlas/quality/java/thread-sleep-in-loop",
                 "atlas/quality/java/todo-comment",
+                "atlas/security/java/hardcoded-secret",
                 "atlas/security/java/insecure-deserialization",
+                "atlas/security/java/insecure-random",
+                "atlas/security/java/open-redirect",
                 "atlas/security/java/path-traversal",
                 "atlas/security/java/sql-injection",
+                "atlas/security/java/ssrf",
+                "atlas/security/java/weak-crypto",
                 "atlas/security/java/xss-servlet",
+                "atlas/security/java/xxe",
             ]
         );
 
@@ -831,7 +859,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 4, "expected 4 security rules");
+        assert_eq!(security_rules.len(), 10, "expected 10 security rules");
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some());
         }
@@ -861,12 +889,49 @@ version: 0.1.0
         assert_eq!(path.severity, Severity::High);
         assert_eq!(path.cwe_id.as_deref(), Some("CWE-22"));
 
+        // 驗證新增的安全規則
+        let insecure_random = rules
+            .iter()
+            .find(|r| r.id.contains("insecure-random"))
+            .unwrap();
+        assert_eq!(insecure_random.severity, Severity::Medium);
+        assert_eq!(insecure_random.cwe_id.as_deref(), Some("CWE-330"));
+
+        let weak_crypto = rules
+            .iter()
+            .find(|r| r.id.contains("weak-crypto"))
+            .unwrap();
+        assert_eq!(weak_crypto.severity, Severity::Medium);
+        assert_eq!(weak_crypto.cwe_id.as_deref(), Some("CWE-327"));
+
+        let open_redirect = rules
+            .iter()
+            .find(|r| r.id.contains("open-redirect"))
+            .unwrap();
+        assert_eq!(open_redirect.severity, Severity::Medium);
+        assert_eq!(open_redirect.cwe_id.as_deref(), Some("CWE-601"));
+
+        let ssrf = rules.iter().find(|r| r.id.contains("ssrf")).unwrap();
+        assert_eq!(ssrf.severity, Severity::High);
+        assert_eq!(ssrf.cwe_id.as_deref(), Some("CWE-918"));
+
+        let xxe = rules.iter().find(|r| r.id.contains("xxe")).unwrap();
+        assert_eq!(xxe.severity, Severity::High);
+        assert_eq!(xxe.cwe_id.as_deref(), Some("CWE-611"));
+
+        let hardcoded_secret = rules
+            .iter()
+            .find(|r| r.id.contains("hardcoded-secret"))
+            .unwrap();
+        assert_eq!(hardcoded_secret.severity, Severity::High);
+        assert_eq!(hardcoded_secret.cwe_id.as_deref(), Some("CWE-798"));
+
         // Verify quality rules.
         let quality_rules: Vec<&Rule> = rules
             .iter()
             .filter(|r| r.category == Category::Quality)
             .collect();
-        assert_eq!(quality_rules.len(), 7, "expected 7 quality rules");
+        assert_eq!(quality_rules.len(), 15, "expected 15 quality rules");
 
         let empty_catch = rules
             .iter()
@@ -936,6 +1001,71 @@ version: 0.1.0
         assert!(raw_type.cwe_id.is_none());
         assert_eq!(raw_type.confidence, crate::Confidence::Medium);
         assert!(raw_type.tags.contains(&"type-safety".to_owned()));
+
+        // 驗證新增的品質規則
+        let empty_cond = rules
+            .iter()
+            .find(|r| r.id.contains("empty-conditional"))
+            .unwrap();
+        assert_eq!(empty_cond.severity, Severity::Low);
+        assert_eq!(empty_cond.category, Category::Quality);
+        assert!(empty_cond.cwe_id.is_none());
+        assert_eq!(empty_cond.confidence, crate::Confidence::High);
+
+        let magic_num = rules
+            .iter()
+            .find(|r| r.id.contains("magic-number"))
+            .unwrap();
+        assert_eq!(magic_num.severity, Severity::Low);
+        assert_eq!(magic_num.category, Category::Quality);
+        assert!(magic_num.cwe_id.is_none());
+        assert_eq!(magic_num.confidence, crate::Confidence::Medium);
+
+        let nested_ternary = rules
+            .iter()
+            .find(|r| r.id.contains("nested-ternary"))
+            .unwrap();
+        assert_eq!(nested_ternary.severity, Severity::Low);
+        assert_eq!(nested_ternary.category, Category::Quality);
+
+        let excessive_params = rules
+            .iter()
+            .find(|r| r.id.contains("excessive-parameters"))
+            .unwrap();
+        assert_eq!(excessive_params.severity, Severity::Low);
+        assert_eq!(excessive_params.category, Category::Quality);
+        assert_eq!(excessive_params.confidence, crate::Confidence::High);
+
+        let sys_exit = rules
+            .iter()
+            .find(|r| r.id.contains("system-exit"))
+            .unwrap();
+        assert_eq!(sys_exit.severity, Severity::Medium);
+        assert_eq!(sys_exit.category, Category::Quality);
+        assert_eq!(sys_exit.confidence, crate::Confidence::High);
+
+        let missing_default = rules
+            .iter()
+            .find(|r| r.id.contains("missing-default-case"))
+            .unwrap();
+        assert_eq!(missing_default.severity, Severity::Low);
+        assert_eq!(missing_default.category, Category::Quality);
+
+        let thread_sleep = rules
+            .iter()
+            .find(|r| r.id.contains("thread-sleep-in-loop"))
+            .unwrap();
+        assert_eq!(thread_sleep.severity, Severity::Medium);
+        assert_eq!(thread_sleep.category, Category::Quality);
+        assert_eq!(thread_sleep.confidence, crate::Confidence::High);
+
+        let bool_naming = rules
+            .iter()
+            .find(|r| r.id.contains("boolean-method-naming"))
+            .unwrap();
+        assert_eq!(bool_naming.severity, Severity::Low);
+        assert_eq!(bool_naming.category, Category::Quality);
+        assert_eq!(bool_naming.confidence, crate::Confidence::Medium);
     }
 
     // -------------------------------------------------------------------
@@ -960,7 +1090,7 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all C# rules should load successfully");
 
-        assert_eq!(rules.len(), 11, "expected exactly 11 C# rules");
+        assert_eq!(rules.len(), 20, "expected exactly 20 C# rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
@@ -969,15 +1099,24 @@ version: 0.1.0
             vec![
                 "atlas/quality/csharp/console-writeline",
                 "atlas/quality/csharp/empty-catch-block",
+                "atlas/quality/csharp/empty-conditional",
+                "atlas/quality/csharp/empty-finally-block",
                 "atlas/quality/csharp/empty-method-body",
+                "atlas/quality/csharp/excessive-parameters",
+                "atlas/quality/csharp/goto-usage",
+                "atlas/quality/csharp/nested-ternary",
                 "atlas/quality/csharp/object-type-usage",
                 "atlas/quality/csharp/redundant-boolean",
+                "atlas/quality/csharp/string-concat-in-loop",
                 "atlas/quality/csharp/todo-comment",
                 "atlas/security/csharp/command-injection",
                 "atlas/security/csharp/insecure-deserialization",
+                "atlas/security/csharp/insecure-random",
+                "atlas/security/csharp/open-redirect",
                 "atlas/security/csharp/path-traversal",
                 "atlas/security/csharp/sql-injection-concatenation",
                 "atlas/security/csharp/sql-injection-interpolation",
+                "atlas/security/csharp/weak-crypto",
             ]
         );
 
@@ -996,7 +1135,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 5);
+        assert_eq!(security_rules.len(), 8);
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some());
         }
@@ -1006,7 +1145,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Quality)
             .collect();
-        assert_eq!(quality_rules.len(), 6);
+        assert_eq!(quality_rules.len(), 12);
         for rule in &quality_rules {
             assert!(rule.cwe_id.is_none());
         }
@@ -1088,6 +1227,71 @@ version: 0.1.0
             .unwrap();
         assert_eq!(cmd.severity, Severity::Critical);
         assert_eq!(cmd.cwe_id.as_deref(), Some("CWE-78"));
+
+        // 新安全規則驗證
+        let insecure_random = rules
+            .iter()
+            .find(|r| r.id.contains("insecure-random"))
+            .unwrap();
+        assert_eq!(insecure_random.severity, Severity::Medium);
+        assert_eq!(insecure_random.cwe_id.as_deref(), Some("CWE-330"));
+
+        let weak_crypto = rules
+            .iter()
+            .find(|r| r.id.contains("weak-crypto"))
+            .unwrap();
+        assert_eq!(weak_crypto.severity, Severity::Medium);
+        assert_eq!(weak_crypto.cwe_id.as_deref(), Some("CWE-327"));
+
+        let open_redirect = rules
+            .iter()
+            .find(|r| r.id.contains("open-redirect"))
+            .unwrap();
+        assert_eq!(open_redirect.severity, Severity::Medium);
+        assert_eq!(open_redirect.cwe_id.as_deref(), Some("CWE-601"));
+
+        // 新品質規則驗證
+        let empty_cond = rules
+            .iter()
+            .find(|r| r.id.contains("empty-conditional"))
+            .unwrap();
+        assert_eq!(empty_cond.severity, Severity::Low);
+        assert_eq!(empty_cond.category, Category::Quality);
+
+        let nested_ternary = rules
+            .iter()
+            .find(|r| r.id.contains("nested-ternary"))
+            .unwrap();
+        assert_eq!(nested_ternary.severity, Severity::Low);
+        assert_eq!(nested_ternary.category, Category::Quality);
+
+        let excessive_params = rules
+            .iter()
+            .find(|r| r.id.contains("excessive-parameters"))
+            .unwrap();
+        assert_eq!(excessive_params.severity, Severity::Low);
+        assert_eq!(excessive_params.category, Category::Quality);
+
+        let string_concat = rules
+            .iter()
+            .find(|r| r.id.contains("string-concat-in-loop"))
+            .unwrap();
+        assert_eq!(string_concat.severity, Severity::Low);
+        assert_eq!(string_concat.category, Category::Quality);
+
+        let empty_finally = rules
+            .iter()
+            .find(|r| r.id.contains("empty-finally-block"))
+            .unwrap();
+        assert_eq!(empty_finally.severity, Severity::Low);
+        assert_eq!(empty_finally.category, Category::Quality);
+
+        let goto = rules
+            .iter()
+            .find(|r| r.id.contains("goto-usage"))
+            .unwrap();
+        assert_eq!(goto.severity, Severity::Low);
+        assert_eq!(goto.category, Category::Quality);
     }
 
     // -------------------------------------------------------------------
@@ -1112,7 +1316,7 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Go rules should load successfully");
 
-        assert_eq!(rules.len(), 9, "expected exactly 9 Go rules");
+        assert_eq!(rules.len(), 20, "expected exactly 20 Go rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
@@ -1120,14 +1324,25 @@ version: 0.1.0
             ids,
             vec![
                 "atlas/quality/go/defer-in-loop",
+                "atlas/quality/go/empty-conditional",
                 "atlas/quality/go/empty-error-check",
                 "atlas/quality/go/empty-function-body",
+                "atlas/quality/go/excessive-parameters",
                 "atlas/quality/go/fmt-println",
+                "atlas/quality/go/panic-usage",
+                "atlas/quality/go/redundant-boolean",
+                "atlas/quality/go/string-concat-in-loop",
                 "atlas/quality/go/todo-comment",
+                "atlas/quality/go/type-assertion-without-check",
                 "atlas/quality/go/unchecked-error",
                 "atlas/security/go/command-injection",
+                "atlas/security/go/hardcoded-secret",
+                "atlas/security/go/insecure-random",
+                "atlas/security/go/open-redirect",
                 "atlas/security/go/path-traversal",
                 "atlas/security/go/sql-injection",
+                "atlas/security/go/ssrf",
+                "atlas/security/go/weak-crypto",
             ]
         );
 
@@ -1146,7 +1361,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 3, "expected 3 security rules");
+        assert_eq!(security_rules.len(), 8, "expected 8 security rules");
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some());
         }
@@ -1177,7 +1392,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Quality)
             .collect();
-        assert_eq!(quality_rules.len(), 6, "expected 6 quality rules");
+        assert_eq!(quality_rules.len(), 12, "expected 12 quality rules");
         for rule in &quality_rules {
             assert!(rule.cwe_id.is_none());
         }
@@ -1284,5 +1499,411 @@ version: 0.1.0
                 "atlas/secrets/generic/twilio-api-key",
             ]
         );
+    }
+
+    // -------------------------------------------------------------------
+    // Load built-in Kotlin rules from disk
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn load_builtin_kotlin_rules_from_disk() {
+        let rules_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("rules/builtin/kotlin");
+
+        if !rules_dir.exists() {
+            panic!(
+                "Kotlin rules directory not found: {}",
+                rules_dir.display()
+            );
+        }
+
+        let loader = DeclarativeRuleLoader;
+        let rules = loader
+            .load_from_dir(&rules_dir)
+            .expect("all Kotlin rules should load successfully");
+
+        assert_eq!(rules.len(), 20, "expected exactly 20 Kotlin rules");
+
+        // 驗證排序後的規則 ID 清單
+        let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "atlas/quality/kotlin/empty-catch-block",
+                "atlas/quality/kotlin/empty-function-body",
+                "atlas/quality/kotlin/empty-when-branch",
+                "atlas/quality/kotlin/excessive-parameters",
+                "atlas/quality/kotlin/force-unwrap",
+                "atlas/quality/kotlin/magic-number",
+                "atlas/quality/kotlin/println-residual",
+                "atlas/quality/kotlin/redundant-boolean",
+                "atlas/quality/kotlin/string-concat-in-loop",
+                "atlas/quality/kotlin/todo-comment",
+                "atlas/quality/kotlin/unsafe-cast",
+                "atlas/quality/kotlin/var-could-be-val",
+                "atlas/security/kotlin/command-injection",
+                "atlas/security/kotlin/hardcoded-secret",
+                "atlas/security/kotlin/insecure-deserialization",
+                "atlas/security/kotlin/insecure-random",
+                "atlas/security/kotlin/path-traversal",
+                "atlas/security/kotlin/sql-injection",
+                "atlas/security/kotlin/weak-crypto",
+                "atlas/security/kotlin/xss",
+            ]
+        );
+
+        // 驗證所有規則共通屬性
+        for rule in &rules {
+            assert_eq!(rule.language, Language::Kotlin);
+            assert_eq!(rule.analysis_level, AnalysisLevel::L1);
+            assert_eq!(rule.rule_type, RuleType::Declarative);
+            assert!(rule.pattern.is_some());
+            assert!(!rule.tags.is_empty());
+            assert_eq!(rule.version, "1.0.0");
+        }
+
+        // 驗證安全規則
+        let security_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Security)
+            .collect();
+        assert_eq!(security_rules.len(), 8, "expected 8 security rules");
+        for rule in &security_rules {
+            assert!(rule.cwe_id.is_some());
+        }
+
+        // 驗證品質規則
+        let quality_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Quality)
+            .collect();
+        assert_eq!(quality_rules.len(), 12, "expected 12 quality rules");
+
+        // 驗證個別安全規則
+        let sql = rules
+            .iter()
+            .find(|r| r.id.contains("sql-injection"))
+            .unwrap();
+        assert_eq!(sql.severity, Severity::Critical);
+        assert_eq!(sql.cwe_id.as_deref(), Some("CWE-89"));
+
+        let cmd = rules
+            .iter()
+            .find(|r| r.id.contains("command-injection"))
+            .unwrap();
+        assert_eq!(cmd.severity, Severity::Critical);
+        assert_eq!(cmd.cwe_id.as_deref(), Some("CWE-78"));
+
+        let xss = rules.iter().find(|r| r.id.contains("/xss")).unwrap();
+        assert_eq!(xss.severity, Severity::High);
+        assert_eq!(xss.cwe_id.as_deref(), Some("CWE-79"));
+
+        let path = rules
+            .iter()
+            .find(|r| r.id.contains("path-traversal"))
+            .unwrap();
+        assert_eq!(path.severity, Severity::High);
+        assert_eq!(path.cwe_id.as_deref(), Some("CWE-22"));
+
+        let insecure_random = rules
+            .iter()
+            .find(|r| r.id.contains("insecure-random"))
+            .unwrap();
+        assert_eq!(insecure_random.severity, Severity::Medium);
+        assert_eq!(insecure_random.cwe_id.as_deref(), Some("CWE-330"));
+
+        let weak_crypto = rules
+            .iter()
+            .find(|r| r.id.contains("weak-crypto"))
+            .unwrap();
+        assert_eq!(weak_crypto.severity, Severity::Medium);
+        assert_eq!(weak_crypto.cwe_id.as_deref(), Some("CWE-327"));
+
+        let hardcoded = rules
+            .iter()
+            .find(|r| r.id.contains("hardcoded-secret"))
+            .unwrap();
+        assert_eq!(hardcoded.severity, Severity::High);
+        assert_eq!(hardcoded.cwe_id.as_deref(), Some("CWE-798"));
+
+        let deser = rules
+            .iter()
+            .find(|r| r.id.contains("insecure-deserialization"))
+            .unwrap();
+        assert_eq!(deser.severity, Severity::High);
+        assert_eq!(deser.cwe_id.as_deref(), Some("CWE-502"));
+    }
+
+    #[test]
+    fn load_builtin_ruby_rules_from_disk() {
+        let rules_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("rules/builtin/ruby");
+
+        if !rules_dir.exists() {
+            panic!(
+                "Ruby rules directory not found: {}",
+                rules_dir.display()
+            );
+        }
+
+        let loader = DeclarativeRuleLoader;
+        let rules = loader
+            .load_from_dir(&rules_dir)
+            .expect("all Ruby rules should load successfully");
+
+        assert_eq!(rules.len(), 25, "expected exactly 25 Ruby rules");
+
+        // 驗證排序後的規則 ID 清單
+        let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "atlas/quality/ruby/bare-rescue",
+                "atlas/quality/ruby/class-variable",
+                "atlas/quality/ruby/empty-conditional",
+                "atlas/quality/ruby/empty-method-body",
+                "atlas/quality/ruby/empty-rescue-block",
+                "atlas/quality/ruby/excessive-parameters",
+                "atlas/quality/ruby/global-variable",
+                "atlas/quality/ruby/magic-number",
+                "atlas/quality/ruby/nested-ternary",
+                "atlas/quality/ruby/pp-debug",
+                "atlas/quality/ruby/puts-residual",
+                "atlas/quality/ruby/redundant-boolean",
+                "atlas/quality/ruby/sleep-usage",
+                "atlas/quality/ruby/string-concat-in-loop",
+                "atlas/quality/ruby/todo-comment",
+                "atlas/security/ruby/command-injection",
+                "atlas/security/ruby/dynamic-code-execution",
+                "atlas/security/ruby/hardcoded-secret",
+                "atlas/security/ruby/mass-assignment",
+                "atlas/security/ruby/open-redirect",
+                "atlas/security/ruby/path-traversal",
+                "atlas/security/ruby/sql-injection",
+                "atlas/security/ruby/weak-crypto",
+                "atlas/security/ruby/xss",
+                "atlas/security/ruby/yaml-load",
+            ]
+        );
+
+        // 驗證所有規則共通屬性
+        for rule in &rules {
+            assert_eq!(rule.language, Language::Ruby);
+            assert_eq!(rule.analysis_level, AnalysisLevel::L1);
+            assert_eq!(rule.rule_type, RuleType::Declarative);
+            assert!(rule.pattern.is_some());
+            assert!(!rule.tags.is_empty());
+            assert_eq!(rule.version, "1.0.0");
+        }
+
+        // 驗證安全規則
+        let security_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Security)
+            .collect();
+        assert_eq!(security_rules.len(), 10, "expected 10 security rules");
+        for rule in &security_rules {
+            assert!(rule.cwe_id.is_some());
+        }
+
+        // 驗證品質規則
+        let quality_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Quality)
+            .collect();
+        assert_eq!(quality_rules.len(), 15, "expected 15 quality rules");
+
+        // 驗證個別安全規則
+        let sql = rules
+            .iter()
+            .find(|r| r.id.contains("sql-injection"))
+            .unwrap();
+        assert_eq!(sql.severity, Severity::High);
+        assert_eq!(sql.cwe_id.as_deref(), Some("CWE-89"));
+
+        let cmd = rules
+            .iter()
+            .find(|r| r.id.contains("command-injection"))
+            .unwrap();
+        assert_eq!(cmd.severity, Severity::Critical);
+        assert_eq!(cmd.cwe_id.as_deref(), Some("CWE-78"));
+
+        let xss = rules.iter().find(|r| r.id.contains("/xss")).unwrap();
+        assert_eq!(xss.severity, Severity::High);
+        assert_eq!(xss.cwe_id.as_deref(), Some("CWE-79"));
+
+        let path = rules
+            .iter()
+            .find(|r| r.id.contains("path-traversal"))
+            .unwrap();
+        assert_eq!(path.severity, Severity::High);
+        assert_eq!(path.cwe_id.as_deref(), Some("CWE-22"));
+
+        let yaml = rules
+            .iter()
+            .find(|r| r.id.contains("yaml-load"))
+            .unwrap();
+        assert_eq!(yaml.severity, Severity::High);
+        assert_eq!(yaml.cwe_id.as_deref(), Some("CWE-502"));
+
+        let weak_crypto = rules
+            .iter()
+            .find(|r| r.id.contains("weak-crypto"))
+            .unwrap();
+        assert_eq!(weak_crypto.severity, Severity::Medium);
+        assert_eq!(weak_crypto.cwe_id.as_deref(), Some("CWE-327"));
+
+        let hardcoded = rules
+            .iter()
+            .find(|r| r.id.contains("hardcoded-secret"))
+            .unwrap();
+        assert_eq!(hardcoded.severity, Severity::High);
+        assert_eq!(hardcoded.cwe_id.as_deref(), Some("CWE-798"));
+    }
+
+    #[test]
+    fn load_builtin_php_rules_from_disk() {
+        let rules_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("rules/builtin/php");
+
+        if !rules_dir.exists() {
+            panic!(
+                "PHP rules directory not found: {}",
+                rules_dir.display()
+            );
+        }
+
+        let loader = DeclarativeRuleLoader;
+        let rules = loader
+            .load_from_dir(&rules_dir)
+            .expect("all PHP rules should load successfully");
+
+        assert_eq!(rules.len(), 25, "expected exactly 25 PHP rules");
+
+        // 驗證排序後的規則 ID 清單
+        let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "atlas/quality/php/bare-exception",
+                "atlas/quality/php/empty-catch-block",
+                "atlas/quality/php/empty-conditional",
+                "atlas/quality/php/empty-function-body",
+                "atlas/quality/php/error-suppression",
+                "atlas/quality/php/excessive-parameters",
+                "atlas/quality/php/exit-usage",
+                "atlas/quality/php/global-statement",
+                "atlas/quality/php/loose-comparison",
+                "atlas/quality/php/magic-number",
+                "atlas/quality/php/nested-ternary",
+                "atlas/quality/php/print-r-residual",
+                "atlas/quality/php/redundant-boolean",
+                "atlas/quality/php/todo-comment",
+                "atlas/quality/php/var-dump-residual",
+                "atlas/security/php/code-injection",
+                "atlas/security/php/command-injection",
+                "atlas/security/php/file-inclusion",
+                "atlas/security/php/open-redirect",
+                "atlas/security/php/path-traversal",
+                "atlas/security/php/sql-injection",
+                "atlas/security/php/ssrf",
+                "atlas/security/php/unserialize",
+                "atlas/security/php/weak-crypto",
+                "atlas/security/php/xss",
+            ]
+        );
+
+        // 驗證所有規則共通屬性
+        for rule in &rules {
+            assert_eq!(rule.language, Language::Php);
+            assert_eq!(rule.analysis_level, AnalysisLevel::L1);
+            assert_eq!(rule.rule_type, RuleType::Declarative);
+            assert!(rule.pattern.is_some());
+            assert!(!rule.tags.is_empty());
+            assert_eq!(rule.version, "1.0.0");
+        }
+
+        // 驗證安全規則
+        let security_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Security)
+            .collect();
+        assert_eq!(security_rules.len(), 10, "expected 10 security rules");
+        for rule in &security_rules {
+            assert!(rule.cwe_id.is_some());
+        }
+
+        // 驗證品質規則
+        let quality_rules: Vec<&Rule> = rules
+            .iter()
+            .filter(|r| r.category == Category::Quality)
+            .collect();
+        assert_eq!(quality_rules.len(), 15, "expected 15 quality rules");
+
+        // 驗證個別安全規則
+        let sql = rules
+            .iter()
+            .find(|r| r.id.contains("sql-injection"))
+            .unwrap();
+        assert_eq!(sql.severity, Severity::Critical);
+        assert_eq!(sql.cwe_id.as_deref(), Some("CWE-89"));
+
+        let cmd = rules
+            .iter()
+            .find(|r| r.id.contains("command-injection"))
+            .unwrap();
+        assert_eq!(cmd.severity, Severity::Critical);
+        assert_eq!(cmd.cwe_id.as_deref(), Some("CWE-78"));
+
+        let xss = rules.iter().find(|r| r.id.contains("/xss")).unwrap();
+        assert_eq!(xss.severity, Severity::High);
+        assert_eq!(xss.cwe_id.as_deref(), Some("CWE-79"));
+
+        let path = rules
+            .iter()
+            .find(|r| r.id.contains("path-traversal"))
+            .unwrap();
+        assert_eq!(path.severity, Severity::High);
+        assert_eq!(path.cwe_id.as_deref(), Some("CWE-22"));
+
+        let code_inj = rules
+            .iter()
+            .find(|r| r.id.contains("code-injection"))
+            .unwrap();
+        assert_eq!(code_inj.severity, Severity::Critical);
+        assert_eq!(code_inj.cwe_id.as_deref(), Some("CWE-94"));
+
+        let file_inc = rules
+            .iter()
+            .find(|r| r.id.contains("file-inclusion"))
+            .unwrap();
+        assert_eq!(file_inc.severity, Severity::Critical);
+        assert_eq!(file_inc.cwe_id.as_deref(), Some("CWE-98"));
+
+        let unserialize = rules
+            .iter()
+            .find(|r| r.id.contains("unserialize"))
+            .unwrap();
+        assert_eq!(unserialize.severity, Severity::High);
+        assert_eq!(unserialize.cwe_id.as_deref(), Some("CWE-502"));
+
+        let weak_crypto = rules
+            .iter()
+            .find(|r| r.id.contains("weak-crypto"))
+            .unwrap();
+        assert_eq!(weak_crypto.severity, Severity::Medium);
+        assert_eq!(weak_crypto.cwe_id.as_deref(), Some("CWE-327"));
     }
 }
