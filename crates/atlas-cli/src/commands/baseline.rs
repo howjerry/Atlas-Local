@@ -136,9 +136,7 @@ fn execute_create(args: CreateArgs) -> Result<ExitCode, anyhow::Error> {
     // 3. Build scan options and run scan.
     let scan_options = ScanOptions {
         max_file_size_kb: config.scan.max_file_size_kb,
-        jobs: None,
-        no_cache: false,
-        diff_context: None,
+        ..Default::default()
     };
 
     let result = engine
@@ -216,9 +214,7 @@ fn execute_diff(args: DiffArgs) -> Result<ExitCode, anyhow::Error> {
     // 3. Build scan options and run scan.
     let scan_options = ScanOptions {
         max_file_size_kb: config.scan.max_file_size_kb,
-        jobs: None,
-        no_cache: false,
-        diff_context: None,
+        ..Default::default()
     };
 
     let result = engine

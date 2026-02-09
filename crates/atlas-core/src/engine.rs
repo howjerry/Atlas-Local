@@ -33,6 +33,7 @@ use rayon::prelude::*;
 use tracing::{debug, info, warn};
 
 use atlas_analysis::{DiffStatus, Finding, L1PatternEngine, RuleMatchMetadata};
+use atlas_analysis::l2_engine::L2Engine;
 use atlas_lang::{
     AdapterRegistry, register_csharp_adapter, register_go_adapter, register_java_adapter,
     register_js_ts_adapters, register_python_adapter,
@@ -137,6 +138,8 @@ pub struct ScanOptions {
     /// Git diff context for diff-aware scanning.
     /// When set (and not fallback), only changed files are scanned.
     pub diff_context: Option<DiffContext>,
+    /// 分析深度等級。預設 L1（僅 AST 模式比對），L2 啟用 intra-procedural 資料流分析。
+    pub analysis_level: AnalysisLevel,
 }
 
 impl Default for ScanOptions {
@@ -146,6 +149,7 @@ impl Default for ScanOptions {
             jobs: None,
             no_cache: false,
             diff_context: None,
+            analysis_level: AnalysisLevel::L1,
         }
     }
 }
@@ -343,6 +347,8 @@ impl ScanEngine {
                 .map_err(|e| CoreError::Config(format!("failed to build thread pool: {e}")))?
         };
 
+        let analysis_level = options.analysis_level;
+
         // Step 2: Process each discovered file in parallel.
         let mut all_findings: Vec<Finding> = pool.install(|| {
             discovery
@@ -356,14 +362,11 @@ impl ScanEngine {
                         &files_scanned,
                         &files_skipped,
                         diff_ctx,
+                        analysis_level,
                     )
                 })
                 .collect()
         });
-
-        // NOTE: L2 (intra-procedural) and L3 (inter-procedural) analysis modules
-        // exist as scaffolding in atlas-analysis but are not yet integrated into
-        // the scan pipeline. Only L1 pattern matching is active.
 
         // Step 3: Sort findings deterministically.
         all_findings.sort();
@@ -445,6 +448,7 @@ impl ScanEngine {
         files_scanned: &AtomicU32,
         files_skipped: &AtomicU32,
         diff_context: Option<&DiffContext>,
+        analysis_level: AnalysisLevel,
     ) -> Vec<Finding> {
         // 2a. Look up adapter by language.
         let adapter = match self.adapter_registry.get_by_language(discovered.language) {
@@ -572,6 +576,31 @@ impl ScanEngine {
             }
 
             findings.extend(rule_findings);
+        }
+
+        // L2: intra-procedural data-flow analysis（若啟用）
+        if analysis_level.depth() >= 2 {
+            match L2Engine::new(discovered.language) {
+                Ok(l2_engine) => {
+                    let l2_findings =
+                        l2_engine.analyze_file(&tree, &source, &discovered.relative_path);
+                    if !l2_findings.is_empty() {
+                        debug!(
+                            file = %discovered.relative_path,
+                            count = l2_findings.len(),
+                            "L2 data-flow findings"
+                        );
+                    }
+                    findings.extend(l2_findings);
+                }
+                Err(e) => {
+                    warn!(
+                        file = %discovered.relative_path,
+                        error = %e,
+                        "failed to initialize L2 engine; skipping L2 analysis"
+                    );
+                }
+            }
         }
 
         // Attribute diff status to each finding.

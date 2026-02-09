@@ -9,7 +9,7 @@ use tracing::info;
 use atlas_analysis::DiffStatus;
 use atlas_core::diff;
 use atlas_core::engine::{ScanEngine, ScanOptions};
-use atlas_core::{Category, GateResult, Language, Severity};
+use atlas_core::{AnalysisLevel, Category, GateResult, Language, Severity};
 use atlas_policy::baseline;
 use atlas_policy::gate::{self, GateFinding};
 use atlas_report::{
@@ -79,6 +79,10 @@ pub struct ScanArgs {
     /// "new-only": count only findings on changed lines.
     #[arg(long = "diff-gate-mode", default_value = "all")]
     pub diff_gate_mode: DiffGateMode,
+
+    /// Analysis depth level: L1 (AST pattern matching, default) or L2 (data-flow analysis).
+    #[arg(long = "analysis-level", default_value = "L1", value_parser = parse_analysis_level)]
+    pub analysis_level: AnalysisLevel,
 }
 
 /// Gate evaluation mode for diff-aware scans.
@@ -115,6 +119,18 @@ impl GateFinding for FindingAdapter<'_> {
 // ---------------------------------------------------------------------------
 // Language parsing helper
 // ---------------------------------------------------------------------------
+
+/// 解析 `--analysis-level` 旗標值。
+///
+/// 接受 `L1` 或 `L2`。`L3` 尚未實作，將被拒絕並顯示描述性錯誤訊息。
+fn parse_analysis_level(s: &str) -> Result<AnalysisLevel, String> {
+    match s.to_uppercase().as_str() {
+        "L1" => Ok(AnalysisLevel::L1),
+        "L2" => Ok(AnalysisLevel::L2),
+        "L3" => Err("L3 analysis (inter-procedural taint tracking) is not yet implemented. Use L1 or L2.".to_string()),
+        other => Err(format!("invalid analysis level '{other}'. Valid values: L1, L2")),
+    }
+}
 
 /// Maps a human-readable language name to [`Language`].
 ///
@@ -329,6 +345,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         jobs: args.jobs,
         no_cache: args.no_cache,
         diff_context,
+        analysis_level: args.analysis_level,
     };
 
     // 7. Show progress spinner (unless --quiet).
@@ -686,6 +703,7 @@ mod tests {
             timestamp: false,
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
+            analysis_level: AnalysisLevel::L1,
         };
         let result = execute(args);
         assert!(result.is_err());
@@ -709,6 +727,7 @@ mod tests {
             timestamp: false,
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
+            analysis_level: AnalysisLevel::L1,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -760,6 +779,7 @@ fail_on:
             timestamp: false,
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
+            analysis_level: AnalysisLevel::L1,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -790,6 +810,7 @@ fail_on:
             timestamp: false,
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
+            analysis_level: AnalysisLevel::L1,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -880,6 +901,7 @@ fail_on:
             timestamp: false,
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
+            analysis_level: AnalysisLevel::L1,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -903,6 +925,7 @@ fail_on:
             timestamp: false,
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
+            analysis_level: AnalysisLevel::L1,
         };
         let result = execute(args);
         assert!(result.is_err());
