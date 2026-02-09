@@ -1,0 +1,81 @@
+# Python 污染追蹤配置
+sources:
+  - pattern: "request.form"
+    label: "Flask form data"
+  - pattern: "request.args"
+    label: "Flask query parameters"
+  - pattern: "request.data"
+    label: "Flask raw request data"
+  - pattern: "request.json"
+    label: "Flask JSON body"
+  - pattern: "request.GET"
+    label: "Django GET parameters"
+  - pattern: "request.POST"
+    label: "Django POST parameters"
+  - pattern: "input"
+    label: "Standard input"
+
+sinks:
+  # SQL Injection
+  - function: "cursor.execute"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  - function: "db.execute"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  # XSS
+  - function: "render_template_string"
+    tainted_args: [0]
+    vulnerability: "xss"
+    cwe: "CWE-79"
+  - function: "Markup"
+    tainted_args: [0]
+    vulnerability: "xss"
+    cwe: "CWE-79"
+  # Command Injection
+  - function: "subprocess.run"
+    tainted_args: [0]
+    vulnerability: "command-injection"
+    cwe: "CWE-78"
+  - function: "subprocess.call"
+    tainted_args: [0]
+    vulnerability: "command-injection"
+    cwe: "CWE-78"
+  - function: "subprocess.Popen"
+    tainted_args: [0]
+    vulnerability: "command-injection"
+    cwe: "CWE-78"
+  # Path Traversal
+  - function: "open"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  - function: "os.path.join"
+    tainted_args: [1]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  # SSRF
+  - function: "requests.get"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+  - function: "requests.post"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+  - function: "urllib.request.urlopen"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+
+sanitizers:
+  - function: "int"
+  - function: "float"
+  - function: "str.strip"
+  - function: "bleach.clean"
+  - function: "escape"
+  - function: "markupsafe.escape"
+  - function: "os.path.basename"
+  - function: "shlex.quote"

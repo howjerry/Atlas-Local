@@ -115,10 +115,12 @@ checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
 name = "atlas-analysis"
 version = "0.1.0"
 dependencies = [
+ "atlas-lang",
  "atlas-rules",
  "hex",
  "serde",
  "serde_json",
+ "serde_yml",
  "sha2",
  "thiserror 2.0.18",
  "tracing",

@@ -15,7 +15,9 @@ tracing = { workspace = true }
 hex = { workspace = true }
 thiserror = { workspace = true }
 
+atlas-lang = { path = "../atlas-lang" }
 atlas-rules = { path = "../atlas-rules" }
+serde_yml = { workspace = true }
 
 [dev-dependencies]
 tree-sitter-typescript = "0.23"

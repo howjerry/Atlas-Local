@@ -1,0 +1,84 @@
+# TypeScript / JavaScript 污染追蹤配置
+# 注意：此檔案定義 SAST 工具應偵測的危險 sink 函數，並非使用這些函數
+sources:
+  - pattern: "req.body"
+    label: "HTTP request body"
+  - pattern: "req.params"
+    label: "HTTP URL parameters"
+  - pattern: "req.query"
+    label: "HTTP query string"
+  - pattern: "req.headers"
+    label: "HTTP request headers"
+  - pattern: "request.body"
+    label: "HTTP request body"
+  - pattern: "request.params"
+    label: "HTTP URL parameters"
+  - pattern: "request.query"
+    label: "HTTP query string"
+
+sinks:
+  # SQL Injection
+  - function: "db.query"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  - function: "connection.query"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  - function: "pool.query"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  # XSS
+  - function: "res.send"
+    tainted_args: [0]
+    vulnerability: "xss"
+    cwe: "CWE-79"
+  - function: "res.write"
+    tainted_args: [0]
+    vulnerability: "xss"
+    cwe: "CWE-79"
+  # Command Injection
+  - function: "eval"
+    tainted_args: [0]
+    vulnerability: "command-injection"
+    cwe: "CWE-78"
+  # Path Traversal
+  - function: "fs.readFile"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  - function: "fs.readFileSync"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  - function: "fs.writeFile"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  # SSRF
+  - function: "fetch"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+  - function: "axios.get"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+  - function: "http.request"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+
+sanitizers:
+  - function: "parseInt"
+  - function: "parseFloat"
+  - function: "Number"
+  - function: "encodeURIComponent"
+  - function: "encodeURI"
+  - function: "escapeHtml"
+  - function: "sanitize"
+  - function: "DOMPurify.sanitize"
+  - function: "validator.escape"
+  - function: "path.normalize"

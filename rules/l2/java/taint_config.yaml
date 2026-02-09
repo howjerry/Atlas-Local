@@ -1,0 +1,74 @@
+# Java 污染追蹤配置
+sources:
+  - pattern: "request.getParameter"
+    label: "HTTP request parameter"
+  - pattern: "request.getInputStream"
+    label: "HTTP request input stream"
+  - pattern: "request.getReader"
+    label: "HTTP request reader"
+  - pattern: "request.getHeader"
+    label: "HTTP request header"
+  - pattern: "request.getCookies"
+    label: "HTTP cookies"
+  - pattern: "request.getQueryString"
+    label: "HTTP query string"
+
+sinks:
+  # SQL Injection
+  - function: "statement.executeQuery"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  - function: "statement.execute"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  - function: "statement.executeUpdate"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  # XSS
+  - function: "response.getWriter().print"
+    tainted_args: [0]
+    vulnerability: "xss"
+    cwe: "CWE-79"
+  - function: "response.getWriter().println"
+    tainted_args: [0]
+    vulnerability: "xss"
+    cwe: "CWE-79"
+  # Command Injection
+  - function: "Runtime.getRuntime().exec"
+    tainted_args: [0]
+    vulnerability: "command-injection"
+    cwe: "CWE-78"
+  - function: "ProcessBuilder"
+    tainted_args: [0]
+    vulnerability: "command-injection"
+    cwe: "CWE-78"
+  # Path Traversal
+  - function: "new File"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  - function: "Paths.get"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  # SSRF
+  - function: "new URL"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+  - function: "HttpClient.newHttpClient().send"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+
+sanitizers:
+  - function: "Integer.parseInt"
+  - function: "Integer.valueOf"
+  - function: "Long.parseLong"
+  - function: "Double.parseDouble"
+  - function: "StringEscapeUtils.escapeHtml4"
+  - function: "HtmlUtils.htmlEscape"
+  - function: "PreparedStatement"

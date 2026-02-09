@@ -1,0 +1,79 @@
+# Go 污染追蹤配置
+sources:
+  - pattern: "r.URL.Query"
+    label: "HTTP query parameters"
+  - pattern: "r.FormValue"
+    label: "HTTP form value"
+  - pattern: "r.Body"
+    label: "HTTP request body"
+  - pattern: "r.Header.Get"
+    label: "HTTP request header"
+  - pattern: "r.PostFormValue"
+    label: "HTTP POST form value"
+
+sinks:
+  # SQL Injection
+  - function: "db.Query"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  - function: "db.Exec"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  - function: "db.QueryRow"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  # XSS
+  - function: "fmt.Fprintf"
+    tainted_args: [1]
+    vulnerability: "xss"
+    cwe: "CWE-79"
+  - function: "w.Write"
+    tainted_args: [0]
+    vulnerability: "xss"
+    cwe: "CWE-79"
+  - function: "template.HTML"
+    tainted_args: [0]
+    vulnerability: "xss"
+    cwe: "CWE-79"
+  # Command Injection
+  - function: "exec.Command"
+    tainted_args: [0]
+    vulnerability: "command-injection"
+    cwe: "CWE-78"
+  # Path Traversal
+  - function: "os.Open"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  - function: "os.ReadFile"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  - function: "ioutil.ReadFile"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  # SSRF
+  - function: "http.Get"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+  - function: "http.Post"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+  - function: "http.NewRequest"
+    tainted_args: [1]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+
+sanitizers:
+  - function: "strconv.Atoi"
+  - function: "strconv.ParseInt"
+  - function: "html.EscapeString"
+  - function: "url.QueryEscape"
+  - function: "filepath.Base"
+  - function: "filepath.Clean"

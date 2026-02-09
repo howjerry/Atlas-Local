@@ -1,0 +1,72 @@
+# C# 污染追蹤配置
+sources:
+  - pattern: "Request.Form"
+    label: "HTTP form data"
+  - pattern: "Request.QueryString"
+    label: "HTTP query string"
+  - pattern: "Request.Headers"
+    label: "HTTP request headers"
+  - pattern: "Request.Cookies"
+    label: "HTTP cookies"
+  - pattern: "Request.Body"
+    label: "HTTP request body"
+
+sinks:
+  # SQL Injection
+  - function: "SqlCommand"
+    tainted_args: [0]
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  - function: "command.ExecuteReader"
+    tainted_args: []
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  - function: "command.ExecuteNonQuery"
+    tainted_args: []
+    vulnerability: "sql-injection"
+    cwe: "CWE-89"
+  # XSS
+  - function: "Response.Write"
+    tainted_args: [0]
+    vulnerability: "xss"
+    cwe: "CWE-79"
+  - function: "Content"
+    tainted_args: [0]
+    vulnerability: "xss"
+    cwe: "CWE-79"
+  # Command Injection
+  - function: "Process.Start"
+    tainted_args: [0]
+    vulnerability: "command-injection"
+    cwe: "CWE-78"
+  # Path Traversal
+  - function: "File.ReadAllText"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  - function: "File.OpenRead"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  - function: "StreamReader"
+    tainted_args: [0]
+    vulnerability: "path-traversal"
+    cwe: "CWE-22"
+  # SSRF
+  - function: "HttpClient.GetAsync"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+  - function: "WebRequest.Create"
+    tainted_args: [0]
+    vulnerability: "ssrf"
+    cwe: "CWE-918"
+
+sanitizers:
+  - function: "int.Parse"
+  - function: "int.TryParse"
+  - function: "Convert.ToInt32"
+  - function: "HtmlEncoder.Encode"
+  - function: "WebUtility.HtmlEncode"
+  - function: "Path.GetFileName"
+  - function: "SqlParameter"
