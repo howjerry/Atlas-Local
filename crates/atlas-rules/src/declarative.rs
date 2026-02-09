@@ -1134,4 +1134,65 @@ version: 0.1.0
         assert_eq!(unchecked.severity, Severity::High);
         assert_eq!(unchecked.category, Category::Quality);
     }
+
+    // -------------------------------------------------------------------
+    // Load built-in secrets rules from disk
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn load_builtin_secrets_rules_from_disk() {
+        let rules_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("rules/builtin/secrets");
+
+        if !rules_dir.exists() {
+            panic!(
+                "Secrets rules directory not found: {}",
+                rules_dir.display()
+            );
+        }
+
+        let loader = DeclarativeRuleLoader;
+        let rules = loader
+            .load_from_dir(&rules_dir)
+            .expect("all secrets rules should load successfully");
+
+        assert_eq!(rules.len(), 15, "expected exactly 15 secrets rules");
+
+        // 驗證所有規則共通屬性
+        for rule in &rules {
+            assert_eq!(rule.category, Category::Secrets);
+            assert_eq!(rule.analysis_level, AnalysisLevel::L1);
+            assert_eq!(rule.rule_type, RuleType::Declarative);
+            assert!(rule.pattern.is_some());
+            assert!(rule.cwe_id.is_some(), "secrets rule {} should have CWE", rule.id);
+            assert_eq!(rule.version, "1.0.0");
+        }
+
+        // 驗證排序後的規則 ID 清單
+        let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "atlas/secrets/generic/aws-access-key",
+                "atlas/secrets/generic/azure-storage-key",
+                "atlas/secrets/generic/connection-string-password",
+                "atlas/secrets/generic/generic-api-key",
+                "atlas/secrets/generic/github-token",
+                "atlas/secrets/generic/gitlab-pat",
+                "atlas/secrets/generic/google-api-key",
+                "atlas/secrets/generic/jwt-secret",
+                "atlas/secrets/generic/jwt-token",
+                "atlas/secrets/generic/npm-token",
+                "atlas/secrets/generic/private-key-header",
+                "atlas/secrets/generic/sendgrid-api-key",
+                "atlas/secrets/generic/slack-webhook",
+                "atlas/secrets/generic/stripe-secret-key",
+                "atlas/secrets/generic/twilio-api-key",
+            ]
+        );
+    }
 }
