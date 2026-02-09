@@ -191,7 +191,7 @@ fn check_license_status() -> (String, Option<String>, Option<String>) {
     match atlas_license::validator::load_license(&license_path) {
         Ok(license) => {
             let fingerprint = atlas_license::node_locked::hardware_fingerprint();
-            let status = atlas_license::validator::license_status(&license, Some(&fingerprint));
+            let status = atlas_license::validator::license_status(&license, Some(&fingerprint), None);
             let status_str = if status.valid { "valid" } else { "invalid" };
             (
                 status_str.to_string(),

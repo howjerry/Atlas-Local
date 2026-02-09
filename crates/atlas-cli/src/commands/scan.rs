@@ -324,10 +324,6 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         );
     }
 
-    // 5. Parse language filter from --lang flag.
-    let language_filter: Option<Vec<Language>> = args.lang.as_deref().map(parse_language_filter);
-    let language_filter_ref = language_filter.as_deref();
-
     // 6. Compute diff context if --diff was specified.
     let diff_context = if let Some(ref git_ref) = args.diff_ref {
         match diff::compute_diff(&args.target, git_ref) {
@@ -345,6 +341,26 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         None
     };
 
+    // 5b. 若 --lang 未指定，fallback 到 config.scan.languages。
+    let language_filter: Option<Vec<Language>> = args
+        .lang
+        .as_deref()
+        .map(parse_language_filter)
+        .or_else(|| {
+            if config.scan.languages.is_empty() {
+                None
+            } else {
+                let langs: Vec<Language> = config
+                    .scan
+                    .languages
+                    .iter()
+                    .filter_map(|s| parse_language(s))
+                    .collect();
+                if langs.is_empty() { None } else { Some(langs) }
+            }
+        });
+    let language_filter_ref = language_filter.as_deref();
+
     // 6b. Build scan options from CLI args and config.
     let scan_options = ScanOptions {
         max_file_size_kb: config.scan.max_file_size_kb,
@@ -352,6 +368,9 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         no_cache: args.no_cache,
         diff_context,
         analysis_level: args.analysis_level,
+        exclude_patterns: config.scan.exclude_patterns.clone(),
+        follow_symlinks: config.scan.follow_symlinks,
+        cache_dir: config.cache.path.as_ref().map(std::path::PathBuf::from),
     };
 
     // 7. Show progress spinner (unless --quiet).

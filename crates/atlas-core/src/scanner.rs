@@ -82,12 +82,13 @@ pub struct DiscoveryResult {
 ///
 /// - Respects `.gitignore` files found in the directory tree.
 /// - Respects `.atlasignore` files found in the directory tree (same syntax).
-/// - Follows symlinks with cycle detection.
+/// - Follows symlinks with cycle detection (可透過 `options.follow_symlinks` 控制).
 /// - Skips binary files (detected via content sniffing of the first 8 KiB).
 /// - Detects language by file extension; files with unrecognized extensions are
 ///   skipped with a debug-level log message.
 /// - When `language_filter` is `Some`, only files matching one of the listed
 ///   languages are included.
+/// - `options.exclude_patterns` 中的 glob 模式會排除匹配的檔案。
 ///
 /// # Errors
 ///
@@ -96,6 +97,16 @@ pub fn discover_files(
     root: &Path,
     language_filter: Option<&[Language]>,
 ) -> Result<DiscoveryResult, CoreError> {
+    discover_files_with_options(root, language_filter, &[], true)
+}
+
+/// 帶額外選項的檔案發現。
+pub fn discover_files_with_options(
+    root: &Path,
+    language_filter: Option<&[Language]>,
+    exclude_patterns: &[String],
+    follow_symlinks: bool,
+) -> Result<DiscoveryResult, CoreError> {
     let root = root.canonicalize().map_err(|e| {
         CoreError::Io(std::io::Error::new(
             e.kind(),
@@ -103,10 +114,28 @@ pub fn discover_files(
         ))
     })?;
 
+    // 建立排除模式 GlobSet（若有 exclude_patterns）。
+    let exclude_set = if !exclude_patterns.is_empty() {
+        let mut builder = globset::GlobSetBuilder::new();
+        for pattern in exclude_patterns {
+            match globset::Glob::new(pattern) {
+                Ok(glob) => {
+                    builder.add(glob);
+                }
+                Err(e) => {
+                    warn!(pattern = %pattern, error = %e, "invalid exclude pattern; skipping");
+                }
+            }
+        }
+        builder.build().ok()
+    } else {
+        None
+    };
+
     let mut walker = WalkBuilder::new(&root);
     walker
-        // Follow symlinks; the `ignore` crate handles cycle detection internally.
-        .follow_links(true)
+        // 根據選項決定是否追蹤符號連結。
+        .follow_links(follow_symlinks)
         // Respect .gitignore
         .git_ignore(true)
         .git_global(true)
@@ -143,6 +172,19 @@ pub fn discover_files(
 
         stats.total_entries += 1;
         let path = entry.path();
+
+        // 排除模式過濾。
+        if let Some(ref exclude) = exclude_set {
+            let relative = path
+                .strip_prefix(&root)
+                .unwrap_or(path)
+                .to_string_lossy();
+            if exclude.is_match(relative.as_ref()) {
+                debug!(path = %path.display(), "skipping excluded file");
+                stats.skipped_unsupported += 1;
+                continue;
+            }
+        }
 
         // Detect language by extension.
         let ext = match path.extension().and_then(|e| e.to_str()) {
@@ -556,5 +598,48 @@ mod tests {
             .find(|f| f.relative_path == "config.example.ts")
             .unwrap();
         assert!(example.secrets_excluded);
+    }
+
+    // -- 3A: 設定生效測試 -------------------------------------------------
+
+    #[test]
+    fn discover_with_exclude_patterns() {
+        let tmp = tempfile::tempdir().unwrap();
+        fs::create_dir_all(tmp.path().join("src")).unwrap();
+        fs::create_dir_all(tmp.path().join("vendor")).unwrap();
+        fs::write(tmp.path().join("src/app.ts"), "const a = 1;").unwrap();
+        fs::write(tmp.path().join("vendor/lib.ts"), "const b = 2;").unwrap();
+
+        let exclude = vec!["vendor/**".to_string()];
+        let result = discover_files_with_options(tmp.path(), None, &exclude, true).unwrap();
+
+        assert_eq!(result.files.len(), 1);
+        assert!(result.files[0].relative_path.contains("app.ts"));
+    }
+
+    #[test]
+    fn discover_follow_symlinks_disabled() {
+        let tmp = tempfile::tempdir().unwrap();
+        let real_dir = tmp.path().join("real");
+        fs::create_dir_all(&real_dir).unwrap();
+        fs::write(real_dir.join("file.ts"), "const x = 1;").unwrap();
+
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(&real_dir, tmp.path().join("link")).unwrap();
+
+            // follow_symlinks = false → symlink 不被追蹤
+            let result = discover_files_with_options(
+                tmp.path(),
+                None,
+                &[],
+                false,
+            )
+            .unwrap();
+
+            // 只有 real/file.ts，不含 link/file.ts
+            assert_eq!(result.files.len(), 1);
+            assert!(result.files[0].relative_path.contains("real"));
+        }
     }
 }

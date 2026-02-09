@@ -76,7 +76,7 @@ fn execute_activate(args: ActivateArgs) -> Result<ExitCode, anyhow::Error> {
         .context("failed to load licence file")?;
 
     let fingerprint = atlas_license::node_locked::hardware_fingerprint();
-    let status = atlas_license::validator::license_status(&license, Some(&fingerprint));
+    let status = atlas_license::validator::license_status(&license, Some(&fingerprint), None);
 
     if status.valid {
         // Copy licence to standard location.
@@ -124,7 +124,7 @@ fn execute_status(args: StatusArgs) -> Result<ExitCode, anyhow::Error> {
         atlas_license::validator::load_license(&path).context("failed to load licence file")?;
 
     let fingerprint = atlas_license::node_locked::hardware_fingerprint();
-    let status = atlas_license::validator::license_status(&license, Some(&fingerprint));
+    let status = atlas_license::validator::license_status(&license, Some(&fingerprint), None);
 
     println!("Licence Status:");
     println!(

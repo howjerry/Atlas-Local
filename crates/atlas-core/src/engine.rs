@@ -44,7 +44,7 @@ use atlas_rules::Rule;
 use crate::AnalysisLevel;
 
 use crate::diff::DiffContext;
-use crate::scanner::discover_files;
+use crate::scanner::{discover_files_with_options};
 use crate::{CoreError, Language};
 
 // ---------------------------------------------------------------------------
@@ -140,6 +140,12 @@ pub struct ScanOptions {
     pub diff_context: Option<DiffContext>,
     /// 分析深度等級。預設 L1（僅 AST 模式比對），L2 啟用 intra-procedural 資料流分析。
     pub analysis_level: AnalysisLevel,
+    /// Glob 排除模式。匹配的檔案在 discovery 階段被排除。
+    pub exclude_patterns: Vec<String>,
+    /// 是否追蹤符號連結。
+    pub follow_symlinks: bool,
+    /// 快取資料庫目錄路徑。
+    pub cache_dir: Option<std::path::PathBuf>,
 }
 
 impl Default for ScanOptions {
@@ -150,6 +156,9 @@ impl Default for ScanOptions {
             no_cache: false,
             diff_context: None,
             analysis_level: AnalysisLevel::L1,
+            exclude_patterns: Vec::new(),
+            follow_symlinks: true,
+            cache_dir: None,
         }
     }
 }
@@ -272,8 +281,13 @@ impl ScanEngine {
     ) -> Result<ScanResult, CoreError> {
         let scan_start = std::time::Instant::now();
 
-        // Step 1: Discover files.
-        let mut discovery = discover_files(target, language_filter)?;
+        // Step 1: Discover files（套用 exclude_patterns 和 follow_symlinks 設定）。
+        let mut discovery = discover_files_with_options(
+            target,
+            language_filter,
+            &options.exclude_patterns,
+            options.follow_symlinks,
+        )?;
         info!(
             files = discovery.files.len(),
             languages = ?discovery.languages_detected,
