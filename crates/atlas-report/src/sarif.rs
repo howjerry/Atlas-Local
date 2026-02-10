@@ -450,6 +450,8 @@ mod tests {
             languages_detected: vec![Language::TypeScript, Language::JavaScript],
             summary,
             stats: atlas_core::engine::ScanStats::default(),
+            file_metrics: vec![],
+            duplication: None,
         }
     }
 

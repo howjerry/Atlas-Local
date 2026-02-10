@@ -515,7 +515,7 @@ impl MetricsEngine {
     fn collect_comment_lines(
         &self,
         node: Node,
-        source: &str,
+        _source: &str,
         lang_config: &dyn MetricsLanguageConfig,
         comment_lines: &mut HashSet<usize>,
     ) {
@@ -531,7 +531,7 @@ impl MetricsEngine {
 
         let mut cursor = node.walk();
         for child in node.children(&mut cursor) {
-            self.collect_comment_lines(child, source, lang_config, comment_lines);
+            self.collect_comment_lines(child, _source, lang_config, comment_lines);
         }
     }
 
@@ -766,6 +766,34 @@ impl MetricsEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use atlas_lang::{JavaAdapter, LanguageAdapter, PythonAdapter};
+
+    // -----------------------------------------------------------------------
+    // 輔助函數：解析各語言原始碼
+    // -----------------------------------------------------------------------
+
+    /// 解析 TypeScript 原始碼（使用 dev-dependency tree-sitter-typescript）
+    fn parse_ts(source: &[u8]) -> Tree {
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into())
+            .unwrap();
+        parser.parse(source, None).unwrap()
+    }
+
+    /// 解析 Java 原始碼（透過 atlas_lang adapter）
+    fn parse_java(source: &[u8]) -> Tree {
+        JavaAdapter.parse(source).unwrap()
+    }
+
+    /// 解析 Python 原始碼（透過 atlas_lang adapter）
+    fn parse_python(source: &[u8]) -> Tree {
+        PythonAdapter.parse(source).unwrap()
+    }
+
+    // -----------------------------------------------------------------------
+    // 既有測試
+    // -----------------------------------------------------------------------
 
     #[test]
     fn test_metrics_config_default() {
@@ -797,5 +825,301 @@ mod tests {
     fn test_metrics_engine_creation() {
         let config = MetricsConfig::default();
         let _engine = MetricsEngine::new(config);
+    }
+
+    // =======================================================================
+    // 6.1 Cyclomatic Complexity 測試
+    // =======================================================================
+
+    // --- TypeScript ---
+
+    #[test]
+    fn test_cyclomatic_simple_typescript() {
+        // 沒有分支的簡單函數，CC 應為 1（基礎值）
+        let source = b"function foo() { return 1; }";
+        let tree = parse_ts(source);
+        let engine = MetricsEngine::new(MetricsConfig::default());
+        let metrics = engine
+            .compute_file_metrics(
+                &tree,
+                std::str::from_utf8(source).unwrap(),
+                Language::TypeScript,
+                "test.ts",
+            )
+            .unwrap();
+
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "foo");
+        assert_eq!(metrics.functions[0].cyclomatic_complexity, 1);
+    }
+
+    #[test]
+    fn test_cyclomatic_branching_typescript() {
+        // 含 if/else + for 迴圈，CC 應大於 1
+        let source = br#"function bar(x: number) {
+    if (x > 0) {
+        return x;
+    } else {
+        for (let i = 0; i < x; i++) {
+            console.log(i);
+        }
+    }
+    return 0;
+}"#;
+        let tree = parse_ts(source);
+        let engine = MetricsEngine::new(MetricsConfig::default());
+        let metrics = engine
+            .compute_file_metrics(
+                &tree,
+                std::str::from_utf8(source).unwrap(),
+                Language::TypeScript,
+                "test.ts",
+            )
+            .unwrap();
+
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "bar");
+        // if + for = 2 個決策點，基礎值 1，合計至少 3
+        assert!(
+            metrics.functions[0].cyclomatic_complexity > 1,
+            "帶分支的函數 CC 應 > 1，實際為 {}",
+            metrics.functions[0].cyclomatic_complexity
+        );
+    }
+
+    // --- Java ---
+
+    #[test]
+    fn test_cyclomatic_simple_java() {
+        // 沒有分支的簡單方法，CC 應為 1
+        let source = br#"public class Foo {
+    public int getValue() {
+        return 42;
+    }
+}"#;
+        let tree = parse_java(source);
+        let engine = MetricsEngine::new(MetricsConfig::default());
+        let metrics = engine
+            .compute_file_metrics(
+                &tree,
+                std::str::from_utf8(source).unwrap(),
+                Language::Java,
+                "Foo.java",
+            )
+            .unwrap();
+
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "getValue");
+        assert_eq!(metrics.functions[0].cyclomatic_complexity, 1);
+    }
+
+    #[test]
+    fn test_cyclomatic_branching_java() {
+        // 含 if + for + catch，CC 應 > 1
+        let source = br#"public class Bar {
+    public void process(int x) {
+        if (x > 0) {
+            for (int i = 0; i < x; i++) {
+                System.out.println(i);
+            }
+        }
+        try {
+            System.out.println("try");
+        } catch (Exception e) {
+            System.out.println("error");
+        }
+    }
+}"#;
+        let tree = parse_java(source);
+        let engine = MetricsEngine::new(MetricsConfig::default());
+        let metrics = engine
+            .compute_file_metrics(
+                &tree,
+                std::str::from_utf8(source).unwrap(),
+                Language::Java,
+                "Bar.java",
+            )
+            .unwrap();
+
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "process");
+        // if + for + catch = 3 個決策點，基礎值 1，合計至少 4
+        assert!(
+            metrics.functions[0].cyclomatic_complexity > 1,
+            "帶分支的方法 CC 應 > 1，實際為 {}",
+            metrics.functions[0].cyclomatic_complexity
+        );
+    }
+
+    // --- Python ---
+
+    #[test]
+    fn test_cyclomatic_simple_python() {
+        // 沒有分支的簡單函數，CC 應為 1
+        let source = b"def hello():\n    return 42\n";
+        let tree = parse_python(source);
+        let engine = MetricsEngine::new(MetricsConfig::default());
+        let metrics = engine
+            .compute_file_metrics(
+                &tree,
+                std::str::from_utf8(source).unwrap(),
+                Language::Python,
+                "test.py",
+            )
+            .unwrap();
+
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "hello");
+        assert_eq!(metrics.functions[0].cyclomatic_complexity, 1);
+    }
+
+    #[test]
+    fn test_cyclomatic_branching_python() {
+        // 含 if/elif + for + except，CC 應 > 1
+        let source = br#"def process(x):
+    if x > 0:
+        for i in range(x):
+            print(i)
+    elif x == 0:
+        print("zero")
+    try:
+        pass
+    except Exception:
+        print("error")
+    return x
+"#;
+        let tree = parse_python(source);
+        let engine = MetricsEngine::new(MetricsConfig::default());
+        let metrics = engine
+            .compute_file_metrics(
+                &tree,
+                std::str::from_utf8(source).unwrap(),
+                Language::Python,
+                "test.py",
+            )
+            .unwrap();
+
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "process");
+        // if + for + elif + except = 4 個決策點，基礎值 1，合計至少 5
+        assert!(
+            metrics.functions[0].cyclomatic_complexity > 1,
+            "帶分支的函數 CC 應 > 1，實際為 {}",
+            metrics.functions[0].cyclomatic_complexity
+        );
+    }
+
+    // =======================================================================
+    // 6.2 Cognitive Complexity 測試
+    // =======================================================================
+
+    #[test]
+    fn test_cognitive_no_nesting() {
+        // 單層 if（無巢狀），cognitive = 1（增量 1，巢狀層級 0）
+        let source = br#"function check(x: number) {
+    if (x > 0) {
+        return true;
+    }
+    return false;
+}"#;
+        let tree = parse_ts(source);
+        let engine = MetricsEngine::new(MetricsConfig::default());
+        let metrics = engine
+            .compute_file_metrics(
+                &tree,
+                std::str::from_utf8(source).unwrap(),
+                Language::TypeScript,
+                "test.ts",
+            )
+            .unwrap();
+
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "check");
+        // 單個 if，無巢狀：cognitive = 1
+        assert_eq!(
+            metrics.functions[0].cognitive_complexity, 1,
+            "單層 if 的 cognitive 應為 1，實際為 {}",
+            metrics.functions[0].cognitive_complexity
+        );
+    }
+
+    #[test]
+    fn test_cognitive_nested() {
+        // 巢狀 if（if 內 if），cognitive 應 > 2
+        // 外層 if：增量 1 + 巢狀 0 = 1
+        // 內層 if：增量 1 + 巢狀 1 = 2
+        // 合計 = 3
+        let source = br#"function deepCheck(x: number, y: number) {
+    if (x > 0) {
+        if (y > 0) {
+            return true;
+        }
+    }
+    return false;
+}"#;
+        let tree = parse_ts(source);
+        let engine = MetricsEngine::new(MetricsConfig::default());
+        let metrics = engine
+            .compute_file_metrics(
+                &tree,
+                std::str::from_utf8(source).unwrap(),
+                Language::TypeScript,
+                "test.ts",
+            )
+            .unwrap();
+
+        assert_eq!(metrics.functions.len(), 1);
+        assert_eq!(metrics.functions[0].name, "deepCheck");
+        // 巢狀 if 結構：cognitive 應 > 2
+        assert!(
+            metrics.functions[0].cognitive_complexity > 2,
+            "巢狀 if 的 cognitive 應 > 2，實際為 {}",
+            metrics.functions[0].cognitive_complexity
+        );
+    }
+
+    // =======================================================================
+    // 6.3 LOC 統計測試
+    // =======================================================================
+
+    #[test]
+    fn test_loc_basic_typescript() {
+        // 驗證 total_lines / code_lines / blank_lines / comment_lines
+        let source = "// 這是註解\nfunction foo() {\n    return 1;\n}\n\n// 另一個註解\n";
+        let tree = parse_ts(source.as_bytes());
+        let engine = MetricsEngine::new(MetricsConfig::default());
+        let metrics = engine
+            .compute_file_metrics(&tree, source, Language::TypeScript, "test.ts")
+            .unwrap();
+
+        // 共 7 行（含最後的空行）：
+        //   第 1 行: // 這是註解       → 註解
+        //   第 2 行: function foo() {  → 程式碼
+        //   第 3 行:     return 1;     → 程式碼
+        //   第 4 行: }                 → 程式碼
+        //   第 5 行: (空行)            → 空行
+        //   第 6 行: // 另一個註解      → 註解
+        //   第 7 行: (空行)            → 空行（末尾換行產生）
+        // 但 lines() 不包含最後空字串，所以 total = 6
+        assert_eq!(
+            metrics.total_lines, 6,
+            "總行數應為 6，實際為 {}",
+            metrics.total_lines
+        );
+        assert_eq!(
+            metrics.comment_lines, 2,
+            "註解行應為 2，實際為 {}",
+            metrics.comment_lines
+        );
+        assert_eq!(
+            metrics.blank_lines, 1,
+            "空行應為 1，實際為 {}",
+            metrics.blank_lines
+        );
+        assert_eq!(
+            metrics.code_lines, 3,
+            "程式碼行應為 3，實際為 {}",
+            metrics.code_lines
+        );
     }
 }

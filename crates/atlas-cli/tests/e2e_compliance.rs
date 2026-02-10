@@ -195,6 +195,7 @@ fn e2e_scan_json_report_includes_compliance_summary() {
         baseline_diff: None,
         diff_context: None,
         compliance_summary: Some(summaries),
+        metrics_report: None,
     };
 
     let json = format_report_with_options(
