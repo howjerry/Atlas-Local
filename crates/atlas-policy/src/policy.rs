@@ -102,6 +102,10 @@ pub struct CategoryOverrides {
     /// Overrides for the secrets category.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub secrets: Option<Thresholds>,
+
+    /// Overrides for the metrics category.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metrics: Option<Thresholds>,
 }
 
 impl CategoryOverrides {
@@ -113,6 +117,7 @@ impl CategoryOverrides {
             security: merge_optional_thresholds(&self.security, &other.security),
             quality: merge_optional_thresholds(&self.quality, &other.quality),
             secrets: merge_optional_thresholds(&self.secrets, &other.secrets),
+            metrics: merge_optional_thresholds(&self.metrics, &other.metrics),
         }
     }
 }
@@ -127,6 +132,41 @@ fn merge_optional_thresholds(
         (None, Some(o)) => Some(o.clone()),
         (Some(b), None) => Some(b.clone()),
         (None, None) => None,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// MetricsPolicyConfig
+// ---------------------------------------------------------------------------
+
+/// Policy 層級的品質度量閾值配置。
+///
+/// 允許透過 policy YAML 覆蓋 `MetricsConfig` 的預設值。
+/// 每個欄位皆為 `Option`，未設定的欄位沿用預設值。
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MetricsPolicyConfig {
+    /// 循環複雜度上限（McCabe）。覆蓋預設的 15。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cyclomatic_max: Option<u32>,
+
+    /// 認知複雜度上限（SonarSource）。覆蓋預設的 25。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cognitive_max: Option<u32>,
+
+    /// 最小 token 數（低於此值不報告 duplication）。覆蓋預設的 100。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_tokens: Option<u32>,
+}
+
+impl MetricsPolicyConfig {
+    /// 合併兩個 `MetricsPolicyConfig`。`other`（更具體層級）的值優先。
+    #[must_use]
+    pub fn merge(&self, other: &MetricsPolicyConfig) -> MetricsPolicyConfig {
+        MetricsPolicyConfig {
+            cyclomatic_max: other.cyclomatic_max.or(self.cyclomatic_max),
+            cognitive_max: other.cognitive_max.or(self.cognitive_max),
+            min_tokens: other.min_tokens.or(self.min_tokens),
+        }
     }
 }
 
@@ -193,6 +233,10 @@ pub struct Policy {
     /// Fingerprint-based suppressions for accepted findings.
     #[serde(default)]
     pub suppressions: Vec<Suppression>,
+
+    /// 品質度量閾值配置（可選）。覆蓋 MetricsConfig 的預設值。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub metrics_config: Option<MetricsPolicyConfig>,
 }
 
 fn default_schema_version() -> String {
@@ -227,6 +271,7 @@ pub fn default_policy() -> Policy {
         exclude_rules: Vec::new(),
         include_rules: Vec::new(),
         suppressions: Vec::new(),
+        metrics_config: None,
     }
 }
 
@@ -353,6 +398,13 @@ pub fn merge_policies(policies: &[Policy]) -> Policy {
                 merged.suppressions.push(sup.clone());
             }
         }
+
+        // Metrics config: deep merge（per-field 覆蓋）。
+        merged.metrics_config = match (&merged.metrics_config, &policy.metrics_config) {
+            (Some(base), Some(overlay)) => Some(base.merge(overlay)),
+            (None, Some(overlay)) => Some(overlay.clone()),
+            (existing, None) => existing.clone(),
+        };
     }
 
     merged
@@ -1071,5 +1123,136 @@ suppressions:
         let serialized = serde_yml::to_string(&policy).unwrap();
         let deserialized: Policy = serde_yml::from_str(&serialized).unwrap();
         assert_eq!(policy.suppressions, deserialized.suppressions);
+    }
+
+    // -- MetricsPolicyConfig tests --------------------------------------------
+
+    #[test]
+    fn metrics_policy_config_default_all_none() {
+        let mc = MetricsPolicyConfig::default();
+        assert_eq!(mc.cyclomatic_max, None);
+        assert_eq!(mc.cognitive_max, None);
+        assert_eq!(mc.min_tokens, None);
+    }
+
+    #[test]
+    fn load_policy_with_metrics_config() {
+        let yaml = r#"
+schema_version: "1.0.0"
+name: metrics-test
+fail_on:
+  critical: 0
+metrics_config:
+  cyclomatic_max: 10
+  cognitive_max: 20
+  min_tokens: 50
+"#;
+        let policy = load_policy_from_str(yaml).unwrap();
+        let mc = policy.metrics_config.as_ref().unwrap();
+        assert_eq!(mc.cyclomatic_max, Some(10));
+        assert_eq!(mc.cognitive_max, Some(20));
+        assert_eq!(mc.min_tokens, Some(50));
+    }
+
+    #[test]
+    fn load_policy_with_partial_metrics_config() {
+        let yaml = r#"
+schema_version: "1.0.0"
+name: partial-metrics
+fail_on:
+  critical: 0
+metrics_config:
+  cyclomatic_max: 12
+"#;
+        let policy = load_policy_from_str(yaml).unwrap();
+        let mc = policy.metrics_config.as_ref().unwrap();
+        assert_eq!(mc.cyclomatic_max, Some(12));
+        assert_eq!(mc.cognitive_max, None);
+        assert_eq!(mc.min_tokens, None);
+    }
+
+    #[test]
+    fn load_policy_without_metrics_config_defaults_none() {
+        let policy = load_policy_from_str(minimal_yaml()).unwrap();
+        assert!(policy.metrics_config.is_none());
+    }
+
+    #[test]
+    fn default_policy_has_no_metrics_config() {
+        let policy = super::default_policy();
+        assert!(policy.metrics_config.is_none());
+    }
+
+    #[test]
+    fn metrics_policy_config_merge() {
+        let base = MetricsPolicyConfig {
+            cyclomatic_max: Some(15),
+            cognitive_max: Some(25),
+            min_tokens: None,
+        };
+        let overlay = MetricsPolicyConfig {
+            cyclomatic_max: Some(10),
+            cognitive_max: None,
+            min_tokens: Some(50),
+        };
+        let merged = base.merge(&overlay);
+        assert_eq!(merged.cyclomatic_max, Some(10)); // overlay 覆蓋
+        assert_eq!(merged.cognitive_max, Some(25)); // base 保留
+        assert_eq!(merged.min_tokens, Some(50)); // overlay 新增
+    }
+
+    #[test]
+    fn merge_policies_metrics_config_deep() {
+        let org = load_policy_from_str(
+            r#"
+schema_version: "1.0.0"
+name: org
+level: Organization
+fail_on:
+  critical: 0
+metrics_config:
+  cyclomatic_max: 20
+  cognitive_max: 30
+"#,
+        )
+        .unwrap();
+
+        let local = load_policy_from_str(
+            r#"
+schema_version: "1.0.0"
+name: local
+level: Local
+fail_on:
+  critical: 0
+metrics_config:
+  cyclomatic_max: 10
+  min_tokens: 80
+"#,
+        )
+        .unwrap();
+
+        let merged = merge_policies(&[org, local]);
+        let mc = merged.metrics_config.as_ref().unwrap();
+        assert_eq!(mc.cyclomatic_max, Some(10)); // local 覆蓋
+        assert_eq!(mc.cognitive_max, Some(30)); // org 保留
+        assert_eq!(mc.min_tokens, Some(80)); // local 新增
+    }
+
+    #[test]
+    fn metrics_policy_config_serde_roundtrip() {
+        let yaml = r#"
+schema_version: "1.0.0"
+name: roundtrip-metrics
+fail_on:
+  critical: 0
+metrics_config:
+  cyclomatic_max: 10
+  cognitive_max: 20
+  min_tokens: 50
+"#;
+        let policy = load_policy_from_str(yaml).unwrap();
+        let serialized = serde_yml::to_string(&policy).unwrap();
+        let deserialized: Policy = serde_yml::from_str(&serialized).unwrap();
+        assert_eq!(policy.metrics_config, deserialized.metrics_config);
     }
 }

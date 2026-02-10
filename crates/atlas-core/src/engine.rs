@@ -158,6 +158,9 @@ pub struct ScanOptions {
     /// 是否計算程式碼品質 metrics（cyclomatic/cognitive complexity、duplication、LOC）。
     /// 預設 false（opt-in via `--metrics`）。
     pub compute_metrics: bool,
+    /// 從 policy YAML 讀取的 metrics 閾值配置。
+    /// 設定時覆蓋 `MetricsConfig::default()` 的對應欄位。
+    pub metrics_config: Option<MetricsConfig>,
 }
 
 impl Default for ScanOptions {
@@ -172,6 +175,7 @@ impl Default for ScanOptions {
             follow_symlinks: true,
             cache_dir: None,
             compute_metrics: false,
+            metrics_config: None,
         }
     }
 }
@@ -443,8 +447,14 @@ impl ScanEngine {
         let analysis_level = options.analysis_level;
 
         // 建立 Metrics Engine（僅在 --metrics 啟用時）
+        // 若 policy 有提供 metrics_config，用它覆蓋預設值。
         let metrics_engine = if options.compute_metrics {
-            Some(MetricsEngine::new(MetricsConfig::default()))
+            let config = if let Some(ref override_cfg) = options.metrics_config {
+                override_cfg.clone()
+            } else {
+                MetricsConfig::default()
+            };
+            Some(MetricsEngine::new(config))
         } else {
             None
         };
@@ -1195,5 +1205,82 @@ mod tests {
 
         let result = engine.scan_with_options(src.path(), None, &options).unwrap();
         assert!(result.stats.cache_hit_rate.is_none());
+    }
+
+    // -----------------------------------------------------------------------
+    // Task 6.5: Metrics pipeline 整合測試
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_scan_with_metrics_produces_file_metrics() {
+        // 建立含有函數定義的 TypeScript 檔案，啟用 compute_metrics 後掃描，
+        // 驗證 file_metrics 包含正確的函數級指標。
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("app.ts"),
+            "function hello() { if (true) { return 1; } return 0; }",
+        )
+        .unwrap();
+
+        let engine = ScanEngine::new();
+        let options = ScanOptions {
+            compute_metrics: true,
+            ..Default::default()
+        };
+        let result = engine
+            .scan_with_options(tmp.path(), None, &options)
+            .unwrap();
+
+        // 應成功掃描 1 個檔案
+        assert_eq!(result.files_scanned, 1);
+        // 啟用 metrics 後，file_metrics 應包含 1 筆資料
+        assert_eq!(result.file_metrics.len(), 1);
+
+        let fm = &result.file_metrics[0];
+        // 至少偵測到 1 個函數（hello）
+        assert_eq!(fm.functions.len(), 1);
+        // if 分支至少貢獻 cyclomatic complexity >= 2
+        assert!(
+            fm.functions[0].cyclomatic_complexity >= 2,
+            "expected cyclomatic_complexity >= 2, got {}",
+            fm.functions[0].cyclomatic_complexity,
+        );
+        // LOC 計數應大於 0
+        assert!(fm.total_lines > 0);
+    }
+
+    #[test]
+    fn test_scan_without_metrics_no_file_metrics() {
+        // 建立相同的 TypeScript 檔案，但 compute_metrics = false（預設），
+        // 驗證 file_metrics 為空且 duplication 為 None。
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("app.ts"),
+            "function hello() { if (true) { return 1; } return 0; }",
+        )
+        .unwrap();
+
+        let engine = ScanEngine::new();
+        let options = ScanOptions {
+            compute_metrics: false,
+            ..Default::default()
+        };
+        let result = engine
+            .scan_with_options(tmp.path(), None, &options)
+            .unwrap();
+
+        // 檔案仍應被正常掃描
+        assert_eq!(result.files_scanned, 1);
+        // 未啟用 metrics 時，file_metrics 應為空
+        assert!(
+            result.file_metrics.is_empty(),
+            "expected empty file_metrics when compute_metrics=false, got {} entries",
+            result.file_metrics.len(),
+        );
+        // duplication 也應為 None
+        assert!(
+            result.duplication.is_none(),
+            "expected duplication=None when compute_metrics=false",
+        );
     }
 }

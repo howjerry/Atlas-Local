@@ -369,6 +369,24 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         });
     let language_filter_ref = language_filter.as_deref();
 
+    // 6c. 提前載入 policy，以便在建構 ScanOptions 時讀取 metrics_config。
+    let policy = if let Some(policy_path) = &args.policy {
+        atlas_policy::load_policy(policy_path)
+            .with_context(|| format!("failed to load policy from '{}'", policy_path.display()))?
+    } else {
+        atlas_policy::default_policy()
+    };
+
+    // 6d. 將 policy 的 metrics_config 轉換為引擎使用的 MetricsConfig。
+    let metrics_config = policy.metrics_config.as_ref().map(|mc| {
+        let defaults = atlas_analysis::metrics::MetricsConfig::default();
+        atlas_analysis::metrics::MetricsConfig {
+            cyclomatic_max: mc.cyclomatic_max.unwrap_or(defaults.cyclomatic_max),
+            cognitive_max: mc.cognitive_max.unwrap_or(defaults.cognitive_max),
+            min_tokens: mc.min_tokens.unwrap_or(defaults.min_tokens),
+        }
+    });
+
     // 6b. Build scan options from CLI args and config.
     let scan_options = ScanOptions {
         max_file_size_kb: config.scan.max_file_size_kb,
@@ -379,6 +397,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         exclude_patterns: config.scan.exclude_patterns.clone(),
         follow_symlinks: config.scan.follow_symlinks,
         compute_metrics: args.metrics,
+        metrics_config,
         cache_dir: if config.cache.enabled {
             config
                 .cache
@@ -428,13 +447,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         "scan completed"
     );
 
-    // 9. Load policy and evaluate gate.
-    let policy = if let Some(policy_path) = &args.policy {
-        atlas_policy::load_policy(policy_path)
-            .with_context(|| format!("failed to load policy from '{}'", policy_path.display()))?
-    } else {
-        atlas_policy::default_policy()
-    };
+    // 9. Evaluate gate（policy 已在步驟 6c 提前載入）。
 
     // 9.1. Apply suppressions from policy.
     let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
@@ -444,7 +457,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         .filter(|s| {
             s.expires
                 .as_ref()
-                .map_or(true, |exp| exp.as_str() > today.as_str())
+                .is_none_or(|exp| exp.as_str() > today.as_str())
         })
         .map(|s| s.fingerprint.as_str())
         .collect();

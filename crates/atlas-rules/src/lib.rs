@@ -104,6 +104,8 @@ pub enum Category {
     Quality,
     /// Hard-coded secrets and credentials.
     Secrets,
+    /// Code metrics (complexity, duplication, LOC statistics).
+    Metrics,
 }
 
 impl fmt::Display for Category {
@@ -112,6 +114,7 @@ impl fmt::Display for Category {
             Self::Security => "security",
             Self::Quality => "quality",
             Self::Secrets => "secrets",
+            Self::Metrics => "metrics",
         };
         f.write_str(label)
     }
@@ -929,6 +932,7 @@ mod tests {
         assert_eq!(Category::Security.to_string(), "security");
         assert_eq!(Category::Quality.to_string(), "quality");
         assert_eq!(Category::Secrets.to_string(), "secrets");
+        assert_eq!(Category::Metrics.to_string(), "metrics");
     }
 
     #[test]

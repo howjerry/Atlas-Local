@@ -74,6 +74,99 @@ pub struct AtlasReport {
     /// Scan performance statistics (reserved for future use).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stats: Option<ScanStats>,
+
+    /// 程式碼品質度量（cyclomatic/cognitive complexity, LOC, duplication），
+    /// 僅在 `--metrics` 啟用時產生。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metrics: Option<MetricsReport>,
+}
+
+// ---------------------------------------------------------------------------
+// Metrics report structs
+// ---------------------------------------------------------------------------
+
+/// 完整的 metrics 報告，包含 per-file 與 project-level 聚合資料。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetricsReport {
+    /// 每個檔案的度量資料。
+    pub files: Vec<FileMetrics>,
+    /// Project-level 聚合度量。
+    pub project: ProjectMetrics,
+}
+
+/// 單一檔案的度量。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileMetrics {
+    /// 相對檔案路徑。
+    pub path: String,
+    /// 總行數。
+    pub total_lines: u32,
+    /// 程式碼行數（排除空白與註解）。
+    pub code_lines: u32,
+    /// 空白行數。
+    pub blank_lines: u32,
+    /// 註解行數。
+    pub comment_lines: u32,
+    /// 該檔案中所有函數的度量。
+    pub functions: Vec<FunctionMetrics>,
+    /// 該檔案中最高的 cyclomatic complexity。
+    pub max_cyclomatic: u32,
+    /// 該檔案中最高的 cognitive complexity。
+    pub max_cognitive: u32,
+}
+
+/// 單一函數/方法的度量。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FunctionMetrics {
+    /// 函數名稱。
+    pub name: String,
+    /// 起始行（1-indexed）。
+    pub start_line: u32,
+    /// 結束行（1-indexed）。
+    pub end_line: u32,
+    /// 函數行數。
+    pub loc: u32,
+    /// McCabe cyclomatic complexity。
+    pub cyclomatic_complexity: u32,
+    /// SonarSource cognitive complexity。
+    pub cognitive_complexity: u32,
+    /// 參數數量。
+    pub parameter_count: u32,
+}
+
+/// Project-level 聚合度量。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectMetrics {
+    /// 掃描的檔案總數。
+    pub total_files: u32,
+    /// 總程式碼行數。
+    pub total_loc: u32,
+    /// 各語言的 LOC 分佈。
+    pub loc_by_language: std::collections::BTreeMap<String, u32>,
+    /// 平均函數行數。
+    pub avg_function_loc: f64,
+    /// 程式碼重複百分比。
+    pub duplication_percentage: f64,
+    /// 偵測到的重複區塊。
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub duplicate_blocks: Vec<DuplicateBlock>,
+}
+
+/// 一組重複的程式碼區塊。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DuplicateBlock {
+    /// 第一個檔案路徑。
+    pub file_a: String,
+    /// 第一個檔案的行範圍 [start, end]。
+    pub line_range_a: [u32; 2],
+    /// 第二個檔案路徑。
+    pub file_b: String,
+    /// 第二個檔案的行範圍 [start, end]。
+    pub line_range_b: [u32; 2],
+    /// 重複的 token 數量。
+    pub token_count: u32,
+    /// 重複的行數。
+    pub line_count: u32,
 }
 
 /// Metadata describing the scan environment and configuration.
@@ -315,6 +408,8 @@ pub struct ReportOptions<'a> {
     pub diff_context: Option<DiffContextReport>,
     /// Compliance coverage summaries computed from findings metadata.
     pub compliance_summary: Option<Vec<atlas_core::compliance::ComplianceSummary>>,
+    /// 程式碼品質度量報告（`--metrics` 啟用時提供）。
+    pub metrics_report: Option<MetricsReport>,
 }
 
 /// Formats a complete Atlas Findings JSON v1.0.0 report.
@@ -421,6 +516,7 @@ pub fn format_report_with_options(
         diff_context: options.diff_context.clone(),
         compliance_summary: options.compliance_summary.clone(),
         stats: None,
+        metrics: options.metrics_report.clone(),
     };
 
     serde_json::to_string_pretty(&report).expect("report serialization must not fail")
@@ -494,6 +590,8 @@ mod tests {
             languages_detected: vec![Language::TypeScript, Language::JavaScript],
             summary,
             stats: atlas_core::engine::ScanStats::default(),
+            file_metrics: vec![],
+            duplication: None,
         }
     }
 
@@ -773,6 +871,8 @@ mod tests {
             languages_detected: vec![],
             summary: atlas_core::engine::FindingsSummary::default(),
             stats: atlas_core::engine::ScanStats::default(),
+            file_metrics: vec![],
+            duplication: None,
         };
         let rules: Vec<Rule> = vec![];
         let config = AtlasConfig::default();
