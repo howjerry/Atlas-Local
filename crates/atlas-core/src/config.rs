@@ -52,7 +52,34 @@ impl Default for ScanConfig {
     fn default() -> Self {
         Self {
             languages: Vec::new(),
-            exclude_patterns: Vec::new(),
+            exclude_patterns: vec![
+                // === Minified / Bundled ===
+                "**/*.min.js".into(),
+                "**/*.min.css".into(),
+                "**/*.bundle.js".into(),
+                "**/*.chunk.js".into(),
+                // === 第三方套件 ===
+                "**/node_modules/**".into(),
+                "**/vendor/**".into(),
+                "**/bower_components/**".into(),
+                // === Python 虛擬環境 / 快取 ===
+                "**/venv/**".into(),
+                "**/.venv/**".into(),
+                "**/__pycache__/**".into(),
+                "**/.tox/**".into(),
+                "**/site-packages/**".into(),
+                // === .NET 編譯產物 ===
+                "**/bin/Debug/**".into(),
+                "**/bin/Release/**".into(),
+                "**/obj/**".into(),
+                // === 通用 Build Artifacts ===
+                "**/dist/**".into(),
+                "**/build/output/**".into(),
+                // === IDE / 工具 ===
+                "**/.idea/**".into(),
+                "**/.vs/**".into(),
+                "**/.vscode/**".into(),
+            ],
             follow_symlinks: true,
             max_file_size_kb: 1024,
         }
@@ -304,6 +331,15 @@ mod tests {
     fn default_config() {
         let config = AtlasConfig::default();
         assert!(config.scan.languages.is_empty());
+        // 預設排除模式應包含常見的第三方/build/minified 路徑
+        assert!(
+            !config.scan.exclude_patterns.is_empty(),
+            "default exclude_patterns should not be empty"
+        );
+        assert!(
+            config.scan.exclude_patterns.contains(&"**/node_modules/**".to_string()),
+            "default excludes should contain node_modules"
+        );
         assert!(config.scan.follow_symlinks);
         assert_eq!(config.scan.max_file_size_kb, 1024);
         assert_eq!(config.analysis.max_depth, AnalysisLevel::L2);
@@ -340,7 +376,15 @@ reporting:
         let config = load_config(Some(tmp.path())).unwrap();
 
         assert_eq!(config.scan.languages, vec!["typescript", "java"]);
-        assert_eq!(config.scan.exclude_patterns, vec!["node_modules/**"]);
+        // 合併邏輯是 union：預設排除 + overlay 排除
+        assert!(
+            config.scan.exclude_patterns.contains(&"node_modules/**".to_string()),
+            "overlay pattern should be merged"
+        );
+        assert!(
+            config.scan.exclude_patterns.contains(&"**/node_modules/**".to_string()),
+            "default patterns should be preserved"
+        );
         assert!(!config.scan.follow_symlinks);
         assert_eq!(config.scan.max_file_size_kb, 2048);
         assert_eq!(config.analysis.max_depth, AnalysisLevel::L1);
