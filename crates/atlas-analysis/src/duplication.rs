@@ -3,7 +3,10 @@
 //! 使用 tree-sitter 葉節點提取 token，透過 Rabin-Karp rolling hash
 //! 偵測 Type I (完全相同) 和 Type II (變數重新命名) 的程式碼重複區塊。
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+/// 報告中保留的最大重複區塊數量上限
+const MAX_REPORTED_BLOCKS: usize = 100;
 use tree_sitter::{Node, Tree};
 
 /// 標準化的 token 表示
@@ -194,16 +197,27 @@ impl DuplicationDetector {
         // 合併重疊的區塊
         blocks = Self::merge_overlapping_blocks(blocks);
 
-        // 計算總重複行數
-        let total_duplicated_lines = blocks.iter()
-            .map(|b| b.line_count)
-            .sum::<usize>();
+        // 使用 HashSet 計算唯一重複行數（避免同一行被多個配對重複計算）
+        let mut duplicated_lines: HashSet<(&str, usize)> = HashSet::new();
+        for block in &blocks {
+            for line in block.line_range_a.0..=block.line_range_a.1 {
+                duplicated_lines.insert((&block.file_a, line));
+            }
+            for line in block.line_range_b.0..=block.line_range_b.1 {
+                duplicated_lines.insert((&block.file_b, line));
+            }
+        }
+        let total_duplicated_lines = duplicated_lines.len();
 
         let duplication_percentage = if total_lines > 0 {
             (total_duplicated_lines as f64 / total_lines as f64) * 100.0
         } else {
             0.0
         };
+
+        // 按行數降序排列，僅保留影響最大的區塊以控制報告大小
+        blocks.sort_by(|a, b| b.line_count.cmp(&a.line_count));
+        blocks.truncate(MAX_REPORTED_BLOCKS);
 
         DuplicationResult {
             blocks,
@@ -562,6 +576,199 @@ mod tests {
         assert_eq!(merged.line_range_a, (10, 30));
         assert_eq!(merged.line_range_b, (15, 35));
         assert_eq!(merged.token_count, 110);
+    }
+
+    /// 解析 TypeScript 原始碼（使用 dev-dependency tree-sitter-typescript）
+    fn parse_ts(source: &[u8]) -> tree_sitter::Tree {
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into())
+            .unwrap();
+        parser.parse(source, None).unwrap()
+    }
+
+    #[test]
+    fn test_type_i_exact_duplicate() {
+        // 兩個完全相同的函數 → 應偵測到重複
+        let source_a = b"function calculateSum(a: number, b: number): number {
+    const result = a + b;
+    console.log(result);
+    if (result > 100) {
+        throw new Error('too large');
+    }
+    return result;
+}";
+        let source_b = b"function calculateSum(a: number, b: number): number {
+    const result = a + b;
+    console.log(result);
+    if (result > 100) {
+        throw new Error('too large');
+    }
+    return result;
+}";
+
+        let tree_a = parse_ts(source_a);
+        let tree_b = parse_ts(source_b);
+
+        let file_a = DuplicationDetector::tokenize_file(
+            &tree_a,
+            std::str::from_utf8(source_a).unwrap(),
+            "file_a.ts",
+        );
+        let file_b = DuplicationDetector::tokenize_file(
+            &tree_b,
+            std::str::from_utf8(source_b).unwrap(),
+            "file_b.ts",
+        );
+
+        // 使用低閾值確保偵測到
+        let detector = DuplicationDetector::new(5);
+        let result = detector.detect(&[file_a, file_b]);
+
+        assert!(
+            !result.blocks.is_empty(),
+            "應偵測到 Type I 完全重複區塊"
+        );
+        assert!(
+            result.duplication_percentage > 0.0,
+            "重複百分比應大於 0"
+        );
+    }
+
+    #[test]
+    fn test_type_ii_renamed_vars() {
+        // 相同結構但變數名不同 → 標準化後應偵測到重複
+        let source_a = b"function processData(items: number[], factor: number): number {
+    let total = 0;
+    for (const item of items) {
+        total += item * factor;
+    }
+    console.log(total);
+    if (total > 1000) {
+        throw new Error('overflow');
+    }
+    return total;
+}";
+        let source_b = b"function handleValues(entries: number[], multiplier: number): number {
+    let sum = 0;
+    for (const entry of entries) {
+        sum += entry * multiplier;
+    }
+    console.log(sum);
+    if (sum > 1000) {
+        throw new Error('overflow');
+    }
+    return sum;
+}";
+
+        let tree_a = parse_ts(source_a);
+        let tree_b = parse_ts(source_b);
+
+        let file_a = DuplicationDetector::tokenize_file(
+            &tree_a,
+            std::str::from_utf8(source_a).unwrap(),
+            "original.ts",
+        );
+        let file_b = DuplicationDetector::tokenize_file(
+            &tree_b,
+            std::str::from_utf8(source_b).unwrap(),
+            "renamed.ts",
+        );
+
+        let detector = DuplicationDetector::new(5);
+        let result = detector.detect(&[file_a, file_b]);
+
+        assert!(
+            !result.blocks.is_empty(),
+            "應偵測到 Type II 重新命名變數的重複區塊"
+        );
+    }
+
+    #[test]
+    fn test_below_threshold_no_detection() {
+        // 短區塊 + 高閾值 → 不應偵測為重複
+        let source_a = b"const x = 1;
+const y = 2;";
+        let source_b = b"const x = 1;
+const y = 2;";
+
+        let tree_a = parse_ts(source_a);
+        let tree_b = parse_ts(source_b);
+
+        let file_a = DuplicationDetector::tokenize_file(
+            &tree_a,
+            std::str::from_utf8(source_a).unwrap(),
+            "short_a.ts",
+        );
+        let file_b = DuplicationDetector::tokenize_file(
+            &tree_b,
+            std::str::from_utf8(source_b).unwrap(),
+            "short_b.ts",
+        );
+
+        // 使用高閾值（500 tokens），短區塊不應被偵測
+        let detector = DuplicationDetector::new(500);
+        let result = detector.detect(&[file_a, file_b]);
+
+        assert!(
+            result.blocks.is_empty(),
+            "低於閾值的短區塊不應被偵測為重複"
+        );
+        assert_eq!(
+            result.duplication_percentage, 0.0,
+            "重複百分比應為 0"
+        );
+    }
+
+    #[test]
+    fn test_percentage_capped_at_100() {
+        // 兩個完全相同的檔案 → HashSet 去重後百分比不應超過 100%
+        let source = b"function a() { return 1; }\nfunction b() { return 2; }\nfunction c() { return 3; }\nfunction d() { return 4; }\nfunction e() { return 5; }";
+        let tree_a = parse_ts(source);
+        let tree_b = parse_ts(source);
+        let file_a = DuplicationDetector::tokenize_file(
+            &tree_a,
+            std::str::from_utf8(source).unwrap(),
+            "dup_a.ts",
+        );
+        let file_b = DuplicationDetector::tokenize_file(
+            &tree_b,
+            std::str::from_utf8(source).unwrap(),
+            "dup_b.ts",
+        );
+        let detector = DuplicationDetector::new(3);
+        let result = detector.detect(&[file_a, file_b]);
+        assert!(
+            result.duplication_percentage <= 100.0,
+            "重複百分比不應超過 100%，實際: {:.1}%",
+            result.duplication_percentage
+        );
+    }
+
+    #[test]
+    fn test_blocks_truncated_to_max() {
+        // 確認 blocks 數量不超過 MAX_REPORTED_BLOCKS
+        let source = b"function a() { return 1; }\nfunction b() { return 2; }\nfunction c() { return 3; }\nfunction d() { return 4; }\nfunction e() { return 5; }";
+        let tree_a = parse_ts(source);
+        let tree_b = parse_ts(source);
+        let file_a = DuplicationDetector::tokenize_file(
+            &tree_a,
+            std::str::from_utf8(source).unwrap(),
+            "trunc_a.ts",
+        );
+        let file_b = DuplicationDetector::tokenize_file(
+            &tree_b,
+            std::str::from_utf8(source).unwrap(),
+            "trunc_b.ts",
+        );
+        let detector = DuplicationDetector::new(3);
+        let result = detector.detect(&[file_a, file_b]);
+        assert!(
+            result.blocks.len() <= MAX_REPORTED_BLOCKS,
+            "blocks 數量不應超過 {}，實際: {}",
+            MAX_REPORTED_BLOCKS,
+            result.blocks.len()
+        );
     }
 
     #[test]
