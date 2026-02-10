@@ -48,7 +48,7 @@
 - [x] 6.4 Duplication detection 單元測試 — Type I（exact）、Type II（renamed vars）、below-threshold
 - [x] 6.5 Pipeline 整合測試 — `--metrics` 啟用時產生正確 report，未啟用時無 metrics 段落
 - [x] 6.6 Gate 整合測試 — `category_overrides.metrics` 閾值正確觸發 gate failure
-- [ ] 6.7 效能基準測試 — 驗證 100K 行專案 metrics 計算 < 10 秒
+- [x] 6.7 效能基準測試 — 驗證 100K 行專案 metrics 計算 < 10 秒
 
 ## 7. 驗證與清理
 
