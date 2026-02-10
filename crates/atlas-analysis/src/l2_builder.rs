@@ -431,12 +431,15 @@ impl<'a> ScopeGraphBuilder<'a> {
         // 變數宣告
         if self.config.variable_declaration_kinds().contains(&kind) {
             if let Some(name) = self.config.extract_var_name(node, self.source) {
-                let tainted = self.check_initializer_tainted(node);
+                let raw_tainted = self.check_initializer_tainted(node);
                 let sanitized = self.check_initializer_sanitized(node);
-                let taint_state = if tainted {
-                    TaintState::Tainted
-                } else if sanitized {
+                // sanitizer 優先：`parseInt(req.body.id)` 中 sanitizer 包裹 taint source，
+                // 結果應為 Clean 而非 Tainted。
+                let tainted = raw_tainted && !sanitized;
+                let taint_state = if sanitized {
                     TaintState::Clean
+                } else if raw_tainted {
+                    TaintState::Tainted
                 } else {
                     TaintState::Unknown
                 };

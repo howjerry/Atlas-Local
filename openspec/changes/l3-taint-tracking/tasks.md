@@ -101,8 +101,8 @@
 
 ## 10. 驗證與效能
 
-- [ ] 10.1 全工作區編譯通過 `cargo build`
-- [ ] 10.2 全工作區測試通過 `cargo test` — 確認零迴歸（L1+L2 測試不變）
-- [ ] 10.3 Clippy 無警告 `cargo clippy`
-- [ ] 10.4 L3 效能基準測試 — 500 函數專案 max_depth=5 在 30 秒內完成
-- [ ] 10.5 端到端驗證 — `atlas scan --analysis-level L3 <test-project>` 產生正確的 L3 findings
+- [x] 10.1 全工作區編譯通過 `cargo build`
+- [x] 10.2 全工作區測試通過 `cargo test` — 確認零迴歸（L1+L2 測試不變）
+- [x] 10.3 Clippy 無警告 `cargo clippy`
+- [x] 10.4 L3 效能基準測試 — 500 函數專案 max_depth=5 在 30 秒內完成（3.53ms）
+- [x] 10.5 端到端驗證 — `atlas scan --analysis-level L3 <test-project>` 產生正確的 L3 findings

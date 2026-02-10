@@ -159,9 +159,8 @@ fn extract_import_from_node(
 
 /// 根據節點類型分派到對應的 export 提取邏輯。
 fn extract_export_from_node(node: Node<'_>, source: &[u8], names: &mut Vec<String>) {
-    match node.kind() {
-        "export_statement" => extract_ts_exports(node, source, names),
-        _ => {}
+    if node.kind() == "export_statement" {
+        extract_ts_exports(node, source, names);
     }
 }
 
