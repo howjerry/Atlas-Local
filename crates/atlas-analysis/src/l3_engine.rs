@@ -15,7 +15,7 @@ use crate::import_resolver;
 use crate::l2_builder::{get_l2_config, ScopeGraphBuilder};
 use crate::l2_intraprocedural::{ScopeGraph, TaintState, VarDef};
 use crate::l2_taint_config::TaintConfig;
-use crate::l3_interprocedural::CallGraph;
+use crate::l3_interprocedural::{CallGraph, ImportEntry};
 use crate::l3_lang_config::get_l3_config;
 
 // ---------------------------------------------------------------------------
@@ -67,6 +67,8 @@ impl L3Engine {
         let mut call_graph = CallGraph::new();
         let mut file_map: HashMap<&str, &ParsedFile<'_>> = HashMap::new();
         let mut scope_cache: HashMap<String, ScopeGraph> = HashMap::new();
+        // 收集原始 imports，待迴圈結束後統一解析模組路徑
+        let mut raw_imports: Vec<ImportEntry> = Vec::new();
 
         for file in files {
             file_map.insert(file.file_path, file);
@@ -84,16 +86,14 @@ impl L3Engine {
                 call_graph.add_call(&caller_key, call_site);
             }
 
-            // 提取 imports
+            // 提取 imports（收集到臨時 Vec，稍後統一解析路徑）
             let imports = import_resolver::extract_imports(
                 file.tree,
                 file.source,
                 file.file_path,
                 l3_config,
             );
-            for entry in imports {
-                call_graph.imports.add(entry);
-            }
+            raw_imports.extend(imports);
 
             // 建構 scope graphs（L2 基礎設施）
             let sg_builder =
@@ -125,6 +125,15 @@ impl L3Engine {
             }
         }
 
+        // 解析 import 模組路徑（將 ./service → src/service.ts）
+        let known_files: HashSet<String> =
+            file_map.keys().map(|k| k.to_string()).collect();
+        let resolved_imports =
+            import_resolver::resolve_import_entries(raw_imports, &known_files);
+        for entry in resolved_imports {
+            call_graph.imports.add(entry);
+        }
+
         // Phase 2: BFS 從 entry points 分析
         let entry_points = find_entry_points(&call_graph, &scope_cache);
         let mut findings = Vec::new();
@@ -153,6 +162,13 @@ impl L3Engine {
     ) {
         let mut visited = HashSet::new();
         let mut queue: VecDeque<BfsItem> = VecDeque::new();
+        // Return taint propagation 用：記錄每個函數的 return 是否 tainted
+        let mut return_summaries: HashMap<String, bool> = HashMap::new();
+        // 待處理的 return receivers（BFS 結束後反向傳播）
+        let mut pending_returns: Vec<PendingReturn> = Vec::new();
+        // 儲存 BFS 過程中每個函數的 reaching definitions
+        let mut reaching_cache: HashMap<String, HashMap<String, Vec<ReachingDef>>> =
+            HashMap::new();
 
         queue.push_back(BfsItem {
             func_key: entry_key.to_string(),
@@ -216,9 +232,35 @@ impl L3Engine {
                 }
             }
 
+            // 記錄此函數的 return 是否 tainted
+            let return_tainted = check_function_return_tainted(
+                &item.func_key,
+                call_graph,
+                &reaching,
+            );
+            return_summaries.insert(item.func_key.clone(), return_tainted);
+
             // 對每個 call site，追蹤 tainted args → callee params
             if let Some(calls) = call_graph.calls.get(&item.func_key) {
                 for call_site in calls {
+                    // 記錄有 return_receiver 的 call site（供 post-BFS 使用）
+                    if let Some(ref receiver) = call_site.return_receiver {
+                        let caller_file =
+                            item.func_key.split("::").next().unwrap_or("");
+                        if let Some(callee_key) =
+                            call_graph.resolve_call(caller_file, &call_site.callee)
+                        {
+                            pending_returns.push(PendingReturn {
+                                caller_key: item.func_key.clone(),
+                                callee_key: callee_key.clone(),
+                                receiver_var: receiver.clone(),
+                                call_line: call_site.line,
+                                call_chain: item.call_chain.clone(),
+                                depth: item.depth,
+                            });
+                        }
+                    }
+
                     let tainted_args =
                         find_tainted_call_args(call_site, &reaching);
                     if tainted_args.is_empty() {
@@ -242,6 +284,90 @@ impl L3Engine {
                     }
                 }
             }
+
+            // 快取 reaching definitions 供 post-BFS 使用
+            reaching_cache.insert(item.func_key.clone(), reaching);
+        }
+
+        // Post-BFS: Return value taint propagation
+        // 若 callee 的 return 為 tainted，在 caller 中標記 receiver 為 tainted 並重新偵測 sinks
+        for pending in &pending_returns {
+            let callee_tainted = return_summaries
+                .get(&pending.callee_key)
+                .copied()
+                .unwrap_or(false);
+            if !callee_tainted {
+                continue;
+            }
+
+            // 取得 caller 的 scope graph 並標記 receiver 變數為 tainted
+            let Some(base_sg) = scope_cache.get(&pending.caller_key) else {
+                continue;
+            };
+
+            let mut sg = base_sg.clone();
+            // 加入或標記 receiver 變數為 tainted
+            let has_def = sg
+                .definitions
+                .iter_mut()
+                .any(|d| {
+                    if d.name == pending.receiver_var {
+                        d.taint_state = TaintState::Tainted;
+                        d.tainted = true;
+                        true
+                    } else {
+                        false
+                    }
+                });
+            if !has_def {
+                sg.definitions.push(VarDef {
+                    name: pending.receiver_var.clone(),
+                    def_line: pending.call_line,
+                    tainted: true,
+                    taint_state: TaintState::Tainted,
+                    scope_id: 0,
+                });
+            }
+
+            // 重新傳播 taint
+            let reaching = propagate_taint(&sg);
+
+            // 偵測 sinks
+            let file_path = pending.caller_key.split("::").next().unwrap_or("");
+            if let Some(file) = file_map.get(file_path) {
+                let source_str = std::str::from_utf8(file.source).unwrap_or("");
+                let detections = check_sinks_in_function(
+                    &pending.caller_key,
+                    call_graph,
+                    &reaching,
+                    &self.taint_config,
+                );
+
+                for detection in &detections {
+                    // 避免重複 findings（檢查是否已有相同位置的 finding）
+                    let already_found = findings.iter().any(|f| {
+                        f.file_path == file_path
+                            && f.line_range.start_line == detection.call_line
+                    });
+                    if already_found {
+                        continue;
+                    }
+
+                    let mut chain = pending.call_chain.clone();
+                    chain.push(pending.callee_key.clone());
+
+                    if let Some(finding) = build_l3_finding(
+                        detection,
+                        file_path,
+                        source_str,
+                        &chain,
+                        pending.depth + 1,
+                        self.language,
+                    ) {
+                        findings.push(finding);
+                    }
+                }
+            }
         }
     }
 }
@@ -249,6 +375,22 @@ impl L3Engine {
 // ---------------------------------------------------------------------------
 // 內部型別
 // ---------------------------------------------------------------------------
+
+/// 待處理的 return receiver（post-BFS 反向傳播用）。
+struct PendingReturn {
+    /// Caller 函數 key。
+    caller_key: String,
+    /// Callee 函數 key（return 值來源）。
+    callee_key: String,
+    /// 接收 return 值的變數名。
+    receiver_var: String,
+    /// 呼叫行號。
+    call_line: u32,
+    /// 呼叫鏈（用於 finding 報告）。
+    call_chain: Vec<String>,
+    /// 當前 BFS 深度。
+    depth: u32,
+}
 
 /// BFS 佇列項目。
 struct BfsItem {
@@ -286,6 +428,28 @@ struct L3SinkDetection {
 // ---------------------------------------------------------------------------
 // Phase 2 核心演算法
 // ---------------------------------------------------------------------------
+
+/// 檢查函數的 return 是否攜帶 tainted 值。
+///
+/// 從 `FunctionRef.return_var_names` 取得 return 中的變數名，
+/// 檢查每個變數在 reaching definitions 中是否為 tainted。
+fn check_function_return_tainted(
+    func_key: &str,
+    call_graph: &CallGraph,
+    reaching: &HashMap<String, Vec<ReachingDef>>,
+) -> bool {
+    let Some(func_ref) = call_graph.functions.get(func_key) else {
+        return false;
+    };
+
+    for (var_name, line) in &func_ref.return_var_names {
+        if is_var_tainted(var_name, *line, reaching) {
+            return true;
+        }
+    }
+
+    false
+}
 
 /// 找到含有 taint source 的函數作為 BFS 入口點。
 fn find_entry_points(
@@ -948,5 +1112,119 @@ function queryDb(sql) {
                 "call_depth 應大於 0"
             );
         }
+    }
+
+    // -------------------------------------------------------------------
+    // Return value taint propagation
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn return_value_taint_propagation() {
+        // processInput() 接收 tainted arg 並 return → caller 用結果呼叫 sink
+        let source = r#"
+function processInput(input) {
+    return input;
+}
+function handler(req) {
+    const name = req.body.name;
+    const result = processInput(name);
+    db.query(result);
+}
+"#;
+        let tree = parse_ts(source);
+        let engine = make_engine();
+        let files = [ParsedFile {
+            file_path: "app.ts",
+            source: source.as_bytes(),
+            tree: &tree,
+        }];
+        let findings = engine.analyze_project(&files);
+
+        let l3_findings: Vec<_> = findings
+            .iter()
+            .filter(|f| f.rule_id.contains("l3-"))
+            .collect();
+        assert!(
+            !l3_findings.is_empty(),
+            "應偵測到透過 return value 傳播的 taint（processInput → result → db.query），findings: {findings:?}"
+        );
+    }
+
+    #[test]
+    fn return_value_clean_no_false_positive() {
+        // getClean() return 乾淨值 → 不應產生 finding
+        let source = r#"
+function getClean() {
+    return "safe_value";
+}
+function handler(req) {
+    const data = getClean();
+    db.query(data);
+}
+"#;
+        let tree = parse_ts(source);
+        let engine = make_engine();
+        let files = [ParsedFile {
+            file_path: "app.ts",
+            source: source.as_bytes(),
+            tree: &tree,
+        }];
+        let findings = engine.analyze_project(&files);
+
+        let l3_findings: Vec<_> = findings
+            .iter()
+            .filter(|f| f.rule_id.contains("l3-"))
+            .collect();
+        assert!(
+            l3_findings.is_empty(),
+            "乾淨的 return value 不應產生 L3 finding，got: {l3_findings:?}"
+        );
+    }
+
+    // -------------------------------------------------------------------
+    // Cross-file import resolution
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn cross_file_import_resolution() {
+        // controller.ts imports service.ts → taint 跨檔案到達 sink
+        let controller_src = r#"
+import { findUser } from './service';
+
+function handleRequest(req) {
+    const name = req.body.name;
+    findUser(name);
+}
+"#;
+        let service_src = r#"
+export function findUser(name) {
+    db.query(name);
+}
+"#;
+        let tree_ctrl = parse_ts(controller_src);
+        let tree_svc = parse_ts(service_src);
+        let engine = make_engine();
+        let files = [
+            ParsedFile {
+                file_path: "src/controller.ts",
+                source: controller_src.as_bytes(),
+                tree: &tree_ctrl,
+            },
+            ParsedFile {
+                file_path: "src/service.ts",
+                source: service_src.as_bytes(),
+                tree: &tree_svc,
+            },
+        ];
+        let findings = engine.analyze_project(&files);
+
+        let l3_findings: Vec<_> = findings
+            .iter()
+            .filter(|f| f.rule_id.contains("l3-"))
+            .collect();
+        assert!(
+            !l3_findings.is_empty(),
+            "應偵測到跨檔案的 taint（controller → service → db.query），findings: {findings:?}"
+        );
     }
 }

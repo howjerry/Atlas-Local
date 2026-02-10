@@ -266,6 +266,7 @@ mod tests {
             stats: atlas_core::engine::ScanStats::default(),
             file_metrics: vec![],
             duplication: None,
+            inline_suppressed: 0,
         }
     }
 

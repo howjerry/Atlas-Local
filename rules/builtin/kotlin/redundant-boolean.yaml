@@ -10,7 +10,7 @@ language: Kotlin
 confidence: high
 pattern: |
   (if_expression
-    (control_structure_body
+    (block
       (return_expression
         ((identifier) @bool_val
           (#match? @bool_val "^(true|false)$")))))

@@ -419,6 +419,7 @@ mod tests {
             version: version.to_string(),
             confidence: Confidence::Medium,
             metadata: std::collections::BTreeMap::new(),
+            skip_test_files: false,
         }
     }
 
@@ -452,6 +453,7 @@ mod tests {
             stats: atlas_core::engine::ScanStats::default(),
             file_metrics: vec![],
             duplication: None,
+            inline_suppressed: 0,
         }
     }
 

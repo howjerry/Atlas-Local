@@ -64,6 +64,22 @@ impl Severity {
         }
     }
 
+    /// 根據 confidence 等級限制最大嚴重度。
+    ///
+    /// Low confidence → 最高 Medium；Medium → 最高 High；High → 不限制。
+    /// 用途：L1 純模式匹配的 low-confidence 規則不應產生 high/critical findings。
+    #[must_use]
+    pub fn cap_by_confidence(self, confidence: Confidence) -> Self {
+        let ceiling = match confidence {
+            Confidence::High => Severity::Critical,
+            Confidence::Medium => Severity::High,
+            Confidence::Low => Severity::Medium,
+        };
+        // derive Ord：Critical(0) < High(1) < Medium(2) < Low(3) < Info(4)
+        // max() 回傳「較不嚴重」的那個，即 cap 效果
+        std::cmp::max(self, ceiling)
+    }
+
     /// Returns all severity variants in descending order (Critical first).
     #[must_use]
     pub const fn all() -> &'static [Severity] {
@@ -374,6 +390,10 @@ pub struct Rule {
     /// Arbitrary metadata carried through to findings (e.g. `quality_domain`).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub metadata: BTreeMap<String, serde_json::Value>,
+
+    /// 是否跳過測試檔案。設為 `true` 時，引擎會對 `is_test_file` 的檔案跳過此規則。
+    #[serde(default)]
+    pub skip_test_files: bool,
 }
 
 impl Rule {
@@ -514,9 +534,11 @@ impl fmt::Display for Rule {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Default confidence level for rules that don't specify one.
+/// 規則未指定 confidence 時的預設值。
+/// 使用 High：規則作者若未明確設定，代表對該模式的信心度高。
+/// 只有明確標記為 Medium 或 Low 的規則才會觸發 severity cap。
 fn default_confidence() -> Confidence {
-    Confidence::Medium
+    Confidence::High
 }
 
 /// Basic SemVer validation: must match `MAJOR.MINOR.PATCH` where each part is
@@ -563,6 +585,7 @@ mod tests {
             tags: vec!["sql".to_owned(), "injection".to_owned()],
             version: "1.0.0".to_owned(),
             metadata: BTreeMap::new(),
+            skip_test_files: false,
         }
     }
 
@@ -587,6 +610,7 @@ mod tests {
             tags: vec!["taint".to_owned(), "xss".to_owned()],
             version: "2.1.0".to_owned(),
             metadata: BTreeMap::new(),
+            skip_test_files: false,
         }
     }
 
@@ -611,6 +635,7 @@ mod tests {
             tags: vec![],
             version: "0.1.0".to_owned(),
             metadata: BTreeMap::new(),
+            skip_test_files: false,
         }
     }
 
@@ -1000,6 +1025,44 @@ mod tests {
             version: "bad".to_owned(),
         };
         assert!(err.to_string().contains("invalid version"));
+    }
+
+    // -----------------------------------------------------------------------
+    // is_valid_semver helper
+    // -----------------------------------------------------------------------
+
+    // -----------------------------------------------------------------------
+    // Severity::cap_by_confidence
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn cap_by_confidence_high_no_change() {
+        // High confidence → 不限制，所有 severity 不變
+        assert_eq!(Severity::Critical.cap_by_confidence(Confidence::High), Severity::Critical);
+        assert_eq!(Severity::High.cap_by_confidence(Confidence::High), Severity::High);
+        assert_eq!(Severity::Medium.cap_by_confidence(Confidence::High), Severity::Medium);
+        assert_eq!(Severity::Low.cap_by_confidence(Confidence::High), Severity::Low);
+        assert_eq!(Severity::Info.cap_by_confidence(Confidence::High), Severity::Info);
+    }
+
+    #[test]
+    fn cap_by_confidence_medium_caps_critical() {
+        // Medium confidence → 最高 High
+        assert_eq!(Severity::Critical.cap_by_confidence(Confidence::Medium), Severity::High);
+        assert_eq!(Severity::High.cap_by_confidence(Confidence::Medium), Severity::High);
+        assert_eq!(Severity::Medium.cap_by_confidence(Confidence::Medium), Severity::Medium);
+        assert_eq!(Severity::Low.cap_by_confidence(Confidence::Medium), Severity::Low);
+        assert_eq!(Severity::Info.cap_by_confidence(Confidence::Medium), Severity::Info);
+    }
+
+    #[test]
+    fn cap_by_confidence_low_caps_to_medium() {
+        // Low confidence → 最高 Medium
+        assert_eq!(Severity::Critical.cap_by_confidence(Confidence::Low), Severity::Medium);
+        assert_eq!(Severity::High.cap_by_confidence(Confidence::Low), Severity::Medium);
+        assert_eq!(Severity::Medium.cap_by_confidence(Confidence::Low), Severity::Medium);
+        assert_eq!(Severity::Low.cap_by_confidence(Confidence::Low), Severity::Low);
+        assert_eq!(Severity::Info.cap_by_confidence(Confidence::Low), Severity::Info);
     }
 
     // -----------------------------------------------------------------------

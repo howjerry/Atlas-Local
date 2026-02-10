@@ -36,6 +36,10 @@ pub struct DiscoveredFile {
     /// similar patterns are marked as secrets-excluded so the scan engine
     /// can skip secrets-category rules for these files.
     pub secrets_excluded: bool,
+    /// 是否為測試檔案（路徑或檔名匹配測試模式）。
+    ///
+    /// 設為 `true` 時，規則若有 `skip_test_files: true` 將跳過此檔案。
+    pub is_test_file: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -231,12 +235,16 @@ pub fn discover_files_with_options(
         // Check if file should be excluded from secrets scanning.
         let secrets_excluded = is_secrets_excluded(path);
 
+        // 判斷是否為測試檔案。
+        let is_test_file = is_test_file_path(&relative_path, path);
+
         languages_detected.insert(language);
         files.push(DiscoveredFile {
             path: path.to_path_buf(),
             relative_path,
             language,
             secrets_excluded,
+            is_test_file,
         });
     }
 
@@ -329,6 +337,76 @@ fn is_secrets_excluded(path: &Path) -> bool {
     if file_name.contains(".example.")
         || file_name.contains(".sample.")
         || file_name.contains(".template.")
+    {
+        return true;
+    }
+
+    false
+}
+
+// ---------------------------------------------------------------------------
+// Test file detection
+// ---------------------------------------------------------------------------
+
+/// 測試目錄路徑模式：路徑中包含這些片段的檔案視為測試檔案。
+const TEST_DIR_PATTERNS: &[&str] = &[
+    "/tests/",
+    "/test/",
+    "/__tests__/",
+    "/spec/",
+    "/fixtures/",
+    "/testdata/",
+];
+
+/// 判斷檔案是否為測試檔案（基於路徑和檔名模式）。
+///
+/// 匹配規則：
+/// - 路徑包含 `/tests/`、`/test/`、`/__tests__/`、`/spec/`、`/fixtures/`、`/testdata/`
+/// - 檔名以 `_test.go`、`.test.ts`、`.test.js`、`.spec.ts`、`.spec.js` 結尾
+/// - 檔名以 `Test.cs`、`Tests.cs` 結尾（C# 慣例）
+fn is_test_file_path(relative_path: &str, path: &Path) -> bool {
+    // 路徑模式匹配（統一使用正斜線）
+    let normalized = relative_path.replace('\\', "/");
+    let check_path = format!("/{normalized}");
+    for pattern in TEST_DIR_PATTERNS {
+        if check_path.contains(pattern) {
+            return true;
+        }
+    }
+
+    // 檔名模式匹配
+    let file_name = match path.file_name().and_then(|n| n.to_str()) {
+        Some(name) => name,
+        None => return false,
+    };
+
+    // Go: _test.go
+    if file_name.ends_with("_test.go") {
+        return true;
+    }
+    // TypeScript/JavaScript: .test.ts, .test.js, .test.tsx, .test.jsx
+    if file_name.ends_with(".test.ts")
+        || file_name.ends_with(".test.js")
+        || file_name.ends_with(".test.tsx")
+        || file_name.ends_with(".test.jsx")
+    {
+        return true;
+    }
+    // TypeScript/JavaScript: .spec.ts, .spec.js, .spec.tsx, .spec.jsx
+    if file_name.ends_with(".spec.ts")
+        || file_name.ends_with(".spec.js")
+        || file_name.ends_with(".spec.tsx")
+        || file_name.ends_with(".spec.jsx")
+    {
+        return true;
+    }
+    // C#: Test.cs, Tests.cs
+    if file_name.ends_with("Test.cs") || file_name.ends_with("Tests.cs") {
+        return true;
+    }
+    // Python: test_*.py, *_test.py
+    if file_name.ends_with("_test.py")
+        || (file_name.starts_with("test_") && file_name.ends_with(".py"))
     {
         return true;
     }
@@ -641,5 +719,55 @@ mod tests {
             assert_eq!(result.files.len(), 1);
             assert!(result.files[0].relative_path.contains("real"));
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Test file detection tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_file_detected_by_dir_pattern() {
+        assert!(is_test_file_path("src/tests/helper.ts", Path::new("/tmp/src/tests/helper.ts")));
+        assert!(is_test_file_path("__tests__/app.tsx", Path::new("/tmp/__tests__/app.tsx")));
+        assert!(is_test_file_path("spec/models/user.rb", Path::new("/tmp/spec/models/user.rb")));
+        assert!(is_test_file_path("fixtures/data.ts", Path::new("/tmp/fixtures/data.ts")));
+        assert!(is_test_file_path("testdata/input.go", Path::new("/tmp/testdata/input.go")));
+    }
+
+    #[test]
+    fn test_file_detected_by_filename_pattern() {
+        assert!(is_test_file_path("pkg/handler_test.go", Path::new("/tmp/pkg/handler_test.go")));
+        assert!(is_test_file_path("src/app.test.ts", Path::new("/tmp/src/app.test.ts")));
+        assert!(is_test_file_path("src/app.spec.js", Path::new("/tmp/src/app.spec.js")));
+        assert!(is_test_file_path("Services/UserServiceTests.cs", Path::new("/tmp/Services/UserServiceTests.cs")));
+        assert!(is_test_file_path("Services/UserTest.cs", Path::new("/tmp/Services/UserTest.cs")));
+        assert!(is_test_file_path("tests/test_auth.py", Path::new("/tmp/tests/test_auth.py")));
+        assert!(is_test_file_path("src/auth_test.py", Path::new("/tmp/src/auth_test.py")));
+    }
+
+    #[test]
+    fn non_test_file_not_detected() {
+        assert!(!is_test_file_path("src/app.ts", Path::new("/tmp/src/app.ts")));
+        assert!(!is_test_file_path("Controllers/UserController.cs", Path::new("/tmp/Controllers/UserController.cs")));
+        assert!(!is_test_file_path("main.go", Path::new("/tmp/main.go")));
+    }
+
+    #[test]
+    fn discover_marks_test_files() {
+        let tmp = tempfile::tempdir().unwrap();
+        fs::create_dir_all(tmp.path().join("src")).unwrap();
+        fs::create_dir_all(tmp.path().join("tests")).unwrap();
+        fs::write(tmp.path().join("src/app.ts"), "const a = 1;").unwrap();
+        fs::write(tmp.path().join("tests/app.test.ts"), "const b = 2;").unwrap();
+
+        let result = discover_files(tmp.path(), None).unwrap();
+
+        assert_eq!(result.files.len(), 2);
+
+        let normal = result.files.iter().find(|f| f.relative_path == "src/app.ts").unwrap();
+        assert!(!normal.is_test_file);
+
+        let test = result.files.iter().find(|f| f.relative_path.contains("app.test.ts")).unwrap();
+        assert!(test.is_test_file);
     }
 }

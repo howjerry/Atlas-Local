@@ -130,4 +130,5 @@ class Greeter(private val name: String) {
         let lang = KotlinAdapter.tree_sitter_language();
         assert!(lang.node_kind_count() > 0);
     }
+
 }

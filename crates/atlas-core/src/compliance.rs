@@ -268,6 +268,7 @@ mod tests {
             tags: vec![],
             version: "1.0.0".to_string(),
             metadata,
+            skip_test_files: false,
         }
     }
 

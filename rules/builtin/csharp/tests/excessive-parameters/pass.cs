@@ -20,3 +20,12 @@ public class ExcessiveParametersPass
         Console.WriteLine("Processing...");
     }
 }
+
+// Record 宣告有多個欄位是正常的 DTO 模式，不應觸發
+public record CreateAccountCommand(
+    string Code,
+    string Name,
+    string Type,
+    int Level,
+    string ParentId,
+    string Description);

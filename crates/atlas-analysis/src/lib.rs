@@ -11,6 +11,7 @@ pub mod import_resolver;
 pub mod l3_engine;
 pub mod l3_interprocedural;
 pub mod l3_lang_config;
+pub mod inline_suppression;
 pub mod secrets;
 pub mod duplication;
 pub mod metrics;

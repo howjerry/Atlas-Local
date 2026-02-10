@@ -99,7 +99,7 @@ pub struct DeclarativeRuleFile {
     /// Target programming language (PascalCase: TypeScript, JavaScript, etc.).
     pub language: Language,
 
-    /// Detection confidence level. Defaults to `Medium` if omitted.
+    /// Detection confidence level. Defaults to `High` if omitted.
     #[serde(default)]
     pub confidence: Option<crate::Confidence>,
 
@@ -127,6 +127,10 @@ pub struct DeclarativeRuleFile {
     /// Arbitrary metadata carried through to findings (e.g. `quality_domain`).
     #[serde(default)]
     pub metadata: Option<BTreeMap<String, serde_json::Value>>,
+
+    /// 是否跳過測試檔案。
+    #[serde(default)]
+    pub skip_test_files: bool,
 }
 
 impl From<DeclarativeRuleFile> for Rule {
@@ -140,7 +144,7 @@ impl From<DeclarativeRuleFile> for Rule {
             language: file.language,
             analysis_level: AnalysisLevel::L1,
             rule_type: RuleType::Declarative,
-            confidence: file.confidence.unwrap_or(crate::Confidence::Medium),
+            confidence: file.confidence.unwrap_or(crate::Confidence::High),
             pattern: Some(file.pattern),
             script: None,
             plugin: None,
@@ -150,6 +154,7 @@ impl From<DeclarativeRuleFile> for Rule {
             tags: file.tags,
             version: file.version,
             metadata: file.metadata.unwrap_or_default(),
+            skip_test_files: file.skip_test_files,
         }
     }
 }
@@ -499,6 +504,7 @@ version: not-semver
             version: "1.0.0".to_owned(),
             confidence: None,
             metadata: None,
+            skip_test_files: false,
         };
 
         let rule: Rule = file.into();

@@ -18,3 +18,11 @@ const SESSION_TIMEOUT = SECONDS_PER_DAY;
 
 // 常數宣告本身不是 binary_expression
 const TAX_RATE = 108;
+
+// HTTP status codes 不應觸發
+if (response.status === 200) {
+  handleSuccess();
+}
+if (response.status === 404) {
+  handleNotFound();
+}

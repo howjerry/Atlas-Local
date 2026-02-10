@@ -147,6 +147,8 @@ pub struct ReportingConfig {
     pub default_format: String,
     /// Whether to include timestamps in output (disabled by default for determinism).
     pub timestamp: bool,
+    /// 自動報告儲存目錄（預設 "reports"）。設為 None 可停用自動儲存。
+    pub report_dir: Option<String>,
 }
 
 impl Default for ReportingConfig {
@@ -154,6 +156,7 @@ impl Default for ReportingConfig {
         Self {
             default_format: "json".to_string(),
             timestamp: false,
+            report_dir: Some("reports".to_string()),
         }
     }
 }
@@ -287,8 +290,11 @@ fn merge_cache(base: CacheConfig, overlay: CacheConfig) -> CacheConfig {
 }
 
 fn merge_reporting(base: ReportingConfig, overlay: ReportingConfig) -> ReportingConfig {
-    let _ = base;
-    overlay
+    ReportingConfig {
+        default_format: overlay.default_format,
+        timestamp: overlay.timestamp,
+        report_dir: overlay.report_dir.or(base.report_dir),
+    }
 }
 
 fn merge_rulepacks(base: RulepackConfig, overlay: RulepackConfig) -> RulepackConfig {
@@ -543,7 +549,9 @@ scan:
 
     impl PartialEq for ReportingConfig {
         fn eq(&self, other: &Self) -> bool {
-            self.default_format == other.default_format && self.timestamp == other.timestamp
+            self.default_format == other.default_format
+                && self.timestamp == other.timestamp
+                && self.report_dir == other.report_dir
         }
     }
 

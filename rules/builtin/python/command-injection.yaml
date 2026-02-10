@@ -6,19 +6,36 @@ description: >
   os.popen, or subprocess functions invoked with shell=True. An attacker
   can inject arbitrary shell commands, leading to full system compromise.
 severity: critical
+confidence: high
 category: security
 language: Python
 cwe_id: CWE-78
 pattern: |
-  (call
-    function: (attribute
-      object: (identifier) @module
-      attribute: (identifier) @method
-      (#match? @module "^(os|subprocess)$")
-      (#match? @method "^(system|popen|call|run|Popen|check_call|check_output)$"))
-    arguments: (argument_list
-      (_) @first_arg))
-  @match
+  [
+    (call
+      function: (attribute
+        object: (identifier) @_mod
+        attribute: (identifier) @_method
+        (#match? @_mod "^os$")
+        (#match? @_method "^(system|popen)$"))
+      arguments: (argument_list
+        (_) @_first_arg))
+    @match
+
+    (call
+      function: (attribute
+        object: (identifier) @_mod2
+        attribute: (identifier) @_method2
+        (#match? @_mod2 "^subprocess$")
+        (#match? @_method2 "^(call|run|Popen|check_call|check_output)$"))
+      arguments: (argument_list
+        (_) @_first_arg2
+        (keyword_argument
+          name: (identifier) @_kwname
+          value: (true) @_kwval
+          (#eq? @_kwname "shell"))))
+    @match
+  ]
 remediation: >
   Avoid using os.system and os.popen entirely. For subprocess functions,
   never use shell=True with untrusted input. Instead, pass commands as a list

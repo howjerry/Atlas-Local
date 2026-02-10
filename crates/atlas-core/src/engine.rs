@@ -52,6 +52,11 @@ use atlas_rules::Rule;
 /// 從重複偵測產生的最大 Finding 數量上限
 const MAX_DUPLICATION_FINDINGS: usize = 50;
 
+/// Helper for serde skip_serializing_if.
+fn is_zero_u32(val: &u32) -> bool {
+    *val == 0
+}
+
 use crate::AnalysisLevel;
 use crate::{Category, Confidence, Severity};
 
@@ -83,6 +88,8 @@ pub struct ScanResult {
     pub file_metrics: Vec<FileMetricsData>,
     /// 程式碼重複檢測結果（僅在 `--metrics` 啟用時填充）。
     pub duplication: Option<DuplicationResult>,
+    /// 被 inline `atlas-ignore` 註解抑制的 findings 總數。
+    pub inline_suppressed: u32,
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +105,9 @@ pub struct FindingsSummary {
     pub low: u32,
     pub info: u32,
     pub total: u32,
+    /// 被 inline `atlas-ignore` 註解抑制的 findings 數量。
+    #[serde(skip_serializing_if = "is_zero_u32")]
+    pub inline_suppressed: u32,
 }
 
 impl FindingsSummary {
@@ -168,6 +178,9 @@ pub struct ScanOptions {
     /// 從 policy YAML 讀取的 metrics 閾值配置。
     /// 設定時覆蓋 `MetricsConfig::default()` 的對應欄位。
     pub metrics_config: Option<MetricsConfig>,
+    /// 最低信心等級過濾。低於此閾值的 findings 會被過濾掉。
+    /// None = 不過濾（預設）。
+    pub min_confidence: Option<Confidence>,
 }
 
 impl Default for ScanOptions {
@@ -183,6 +196,7 @@ impl Default for ScanOptions {
             cache_dir: None,
             compute_metrics: false,
             metrics_config: None,
+            min_confidence: None,
         }
     }
 }
@@ -353,6 +367,7 @@ impl ScanEngine {
                         },
                         file_metrics: Vec::new(),
                         duplication: None,
+                        inline_suppressed: 0,
                     });
                 }
 
@@ -467,12 +482,12 @@ impl ScanEngine {
         };
 
         // Step 2: Process uncached files in parallel.
-        let processed_results: Vec<(usize, Vec<Finding>, Option<FileMetricsData>)> = pool.install(|| {
+        let processed_results: Vec<(usize, Vec<Finding>, Option<FileMetricsData>, u32)> = pool.install(|| {
             uncached_files
                 .par_iter()
                 .map(|(idx, _cache_key)| {
                     let discovered = &discovery.files[*idx];
-                    let (findings, file_metrics) = self.process_file(
+                    let (findings, file_metrics, suppressed) = self.process_file(
                         discovered,
                         max_file_bytes,
                         &query_cache,
@@ -482,8 +497,9 @@ impl ScanEngine {
                         diff_ctx,
                         analysis_level,
                         metrics_engine.as_ref(),
+                        options.min_confidence,
                     );
-                    (*idx, findings, file_metrics)
+                    (*idx, findings, file_metrics, suppressed)
                 })
                 .collect()
         });
@@ -494,7 +510,7 @@ impl ScanEngine {
                 .iter()
                 .map(|(idx, key)| (*idx, key.as_str()))
                 .collect();
-            for (idx, findings, _) in &processed_results {
+            for (idx, findings, _, _) in &processed_results {
                 if let Some(cache_key) = uncached_map.get(idx) {
                     if !cache_key.is_empty() {
                         if let Ok(data) = serde_json::to_vec(findings) {
@@ -510,8 +526,10 @@ impl ScanEngine {
         // 合併 cached + processed findings 並收集 per-file metrics。
         let mut all_findings = cached_findings;
         let mut all_file_metrics: Vec<FileMetricsData> = Vec::new();
-        for (_idx, findings, file_metrics) in processed_results {
+        let mut total_inline_suppressed: u32 = 0;
+        for (_idx, findings, file_metrics, suppressed) in processed_results {
             all_findings.extend(findings);
+            total_inline_suppressed += suppressed;
             if let Some(fm) = file_metrics {
                 all_file_metrics.push(fm);
             }
@@ -620,8 +638,10 @@ impl ScanEngine {
             all_findings.extend(l3_findings);
         }
 
-        // Step 3: Sort findings deterministically.
+        // Step 3: Sort findings deterministically，並以 fingerprint 去重
+        // （同一匹配可能因多個 capture 產生重複 finding）
         all_findings.sort();
+        all_findings.dedup_by(|a, b| a.fingerprint == b.fingerprint);
 
         let scanned = files_scanned.load(Ordering::Relaxed);
         let skipped = files_skipped.load(Ordering::Relaxed);
@@ -648,7 +668,8 @@ impl ScanEngine {
         );
 
         // Step 6: Compute summary and stats.
-        let summary = FindingsSummary::from_findings(&all_findings);
+        let mut summary = FindingsSummary::from_findings(&all_findings);
+        summary.inline_suppressed = total_inline_suppressed;
         let duration_ms = scan_start.elapsed().as_millis() as u64;
         let stats = ScanStats {
             duration_ms,
@@ -666,6 +687,7 @@ impl ScanEngine {
             stats,
             file_metrics: all_file_metrics,
             duplication: duplication_result,
+            inline_suppressed: total_inline_suppressed,
         })
     }
 
@@ -853,7 +875,8 @@ impl ScanEngine {
         diff_context: Option<&DiffContext>,
         analysis_level: AnalysisLevel,
         metrics_engine: Option<&MetricsEngine>,
-    ) -> (Vec<Finding>, Option<FileMetricsData>) {
+        min_confidence: Option<Confidence>,
+    ) -> (Vec<Finding>, Option<FileMetricsData>, u32) {
         // 2a. Look up adapter by language.
         let adapter = match self.adapter_registry.get_by_language(discovered.language) {
             Some(a) => a,
@@ -864,7 +887,7 @@ impl ScanEngine {
                     "no adapter registered for language; skipping"
                 );
                 files_skipped.fetch_add(1, Ordering::Relaxed);
-                return (Vec::new(), None);
+                return (Vec::new(), None, 0);
             }
         };
 
@@ -878,7 +901,7 @@ impl ScanEngine {
                     "failed to read file; skipping"
                 );
                 files_skipped.fetch_add(1, Ordering::Relaxed);
-                return (Vec::new(), None);
+                return (Vec::new(), None, 0);
             }
         };
 
@@ -891,7 +914,7 @@ impl ScanEngine {
                 "file exceeds max size; skipping"
             );
             files_skipped.fetch_add(1, Ordering::Relaxed);
-            return (Vec::new(), None);
+            return (Vec::new(), None, 0);
         }
 
         // T091: Warn for files exceeding 1 MiB that still pass the limit.
@@ -912,7 +935,7 @@ impl ScanEngine {
             );
             files_skipped.fetch_add(1, Ordering::Relaxed);
             parse_failures.fetch_add(1, Ordering::Relaxed);
-            return (Vec::new(), None);
+            return (Vec::new(), None, 0);
         }
 
         // 2c. Parse with adapter.
@@ -926,7 +949,7 @@ impl ScanEngine {
                 );
                 files_skipped.fetch_add(1, Ordering::Relaxed);
                 parse_failures.fetch_add(1, Ordering::Relaxed);
-                return (Vec::new(), None);
+                return (Vec::new(), None, 0);
             }
         };
 
@@ -946,6 +969,16 @@ impl ScanEngine {
                     rule_id = %rule.id,
                     file = %discovered.relative_path,
                     "skipping secrets rule for excluded file"
+                );
+                continue;
+            }
+
+            // 跳過測試檔案（若規則啟用 skip_test_files）
+            if rule.skip_test_files && discovered.is_test_file {
+                debug!(
+                    rule_id = %rule.id,
+                    file = %discovered.relative_path,
+                    "skipping rule for test file"
                 );
                 continue;
             }
@@ -984,6 +1017,36 @@ impl ScanEngine {
             findings.extend(rule_findings);
         }
 
+        // Confidence cap：根據規則的 confidence 等級限制 findings 的最大 severity。
+        // 例如 low-confidence 規則的 findings 最高只能是 medium severity。
+        for finding in &mut findings {
+            finding.severity = finding.severity.cap_by_confidence(finding.confidence);
+        }
+
+        // Inline suppression：解析 atlas-ignore 指令，過濾 L1 findings
+        let source_str = std::str::from_utf8(&source).unwrap_or("");
+        let inline_suppressions =
+            atlas_analysis::inline_suppression::parse_inline_suppressions(source_str);
+        let inline_suppressed_count;
+        if !inline_suppressions.is_empty() {
+            let (retained, suppressed) =
+                atlas_analysis::inline_suppression::apply_inline_suppressions(
+                    findings,
+                    &inline_suppressions,
+                );
+            inline_suppressed_count = suppressed.len() as u32;
+            findings = retained;
+        } else {
+            inline_suppressed_count = 0;
+        }
+
+        // Min-confidence 過濾：低於閾值的 findings 直接移除。
+        if let Some(min_conf) = min_confidence {
+            // Confidence: High(0) < Medium(1) < Low(2)
+            // 保留 confidence <= min_conf 的（即信心度 ≥ 門檻）
+            findings.retain(|f| f.confidence <= min_conf);
+        }
+
         // L2: intra-procedural data-flow analysis（若啟用）
         if analysis_level.depth() >= 2 {
             match L2Engine::new(discovered.language) {
@@ -1010,7 +1073,6 @@ impl ScanEngine {
         }
 
         // Metrics：計算 per-file 品質指標（複用已解析的 AST）
-        let source_str = std::str::from_utf8(&source).unwrap_or("");
         let file_metrics = if let Some(me) = metrics_engine {
             let fm = me.compute_file_metrics(
                 &tree,
@@ -1056,7 +1118,7 @@ impl ScanEngine {
         }
 
         files_scanned.fetch_add(1, Ordering::Relaxed);
-        (findings, file_metrics)
+        (findings, file_metrics, inline_suppressed_count)
     }
 }
 
@@ -1180,6 +1242,7 @@ mod tests {
             tags: vec![],
             version: "1.0.0".to_owned(),
             metadata: std::collections::BTreeMap::new(),
+            skip_test_files: false,
         };
 
         engine.add_rules(vec![rule]);

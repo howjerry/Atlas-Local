@@ -23,6 +23,7 @@ metadata:
     - framework: hipaa-security
       requirement: "164.312(a)(1)"
       description: Access Control
+skip_test_files: true
 pattern: |
   [
     (call_expression

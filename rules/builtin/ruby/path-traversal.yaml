@@ -10,6 +10,7 @@ severity: high
 category: security
 language: Ruby
 cwe_id: CWE-22
+skip_test_files: true
 pattern: |
   (call
     receiver: (constant) @receiver

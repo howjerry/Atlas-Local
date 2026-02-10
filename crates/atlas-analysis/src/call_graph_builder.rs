@@ -102,12 +102,14 @@ impl<'a> CallGraphBuilder<'a> {
     fn extract_function_def(&self, node: Node<'_>) -> Option<FunctionRef> {
         let name = self.config.extract_function_name(node, self.source)?;
         let parameters = self.config.extract_parameters(node, self.source);
+        let return_var_names = extract_return_var_names(node, self.config, self.source);
 
         Some(FunctionRef {
             file_path: self.file_path.to_string(),
             name: name.to_string(),
             line: node.start_position().row as u32 + 1,
             parameters,
+            return_var_names,
         })
     }
 
@@ -156,11 +158,15 @@ impl<'a> CallGraphBuilder<'a> {
         // 提取引數表達式
         let argument_expressions = self.extract_arguments(node);
 
+        // 提取 return receiver（接收呼叫結果的變數名）
+        let return_receiver = extract_return_receiver(node, self.config, self.source);
+
         Some(CallSite {
             callee,
             line: node.start_position().row as u32 + 1,
             tainted_args: Vec::new(), // L3 engine 將在 Phase 2 填入
             argument_expressions,
+            return_receiver,
         })
     }
 
@@ -207,6 +213,120 @@ impl<'a> CallGraphBuilder<'a> {
 // ---------------------------------------------------------------------------
 // 輔助函式
 // ---------------------------------------------------------------------------
+
+/// 從 call_expression 向上走 parent 鏈，找到接收 return value 的變數名。
+///
+/// 支援 `const x = foo()` 和 `x = foo()` 兩種形式。
+fn extract_return_receiver<'a>(
+    call_node: Node<'a>,
+    config: &dyn L3LanguageConfig,
+    source: &'a [u8],
+) -> Option<String> {
+    let var_decl_kinds = config.variable_declaration_kinds();
+    let assignment_kinds = config.assignment_kinds();
+    let id_kind = config.identifier_kind();
+
+    // 向上走 parent 鏈（最多 3 層）
+    let mut current = call_node;
+    for _ in 0..3 {
+        let parent = current.parent()?;
+        let kind = parent.kind();
+
+        // 變數宣告：const x = foo()
+        if var_decl_kinds.contains(&kind) {
+            // 透過 config 提取變數名
+            return config.extract_var_name(parent, source).map(|s| s.to_string());
+        }
+
+        // variable_declarator: 中間層（如 TypeScript 的 variable_declarator）
+        if kind == "variable_declarator" {
+            if let Some(name_node) = parent.child_by_field_name("name") {
+                if name_node.kind() == id_kind {
+                    return node_text(name_node, source).map(|s| s.to_string());
+                }
+            }
+        }
+
+        // 賦值表達式：x = foo()
+        if assignment_kinds.contains(&kind) {
+            if let Some(left) = parent.child_by_field_name("left") {
+                if left.kind() == id_kind {
+                    return node_text(left, source).map(|s| s.to_string());
+                }
+            }
+        }
+
+        current = parent;
+    }
+
+    None
+}
+
+/// 遞迴走訪函數體，提取 return 語句中的變數名及行號。
+///
+/// 跳過巢狀函數定義，避免提取內部函數的 return。
+fn extract_return_var_names(
+    func_node: Node<'_>,
+    config: &dyn L3LanguageConfig,
+    source: &[u8],
+) -> Vec<(String, u32)> {
+    let return_kind = config.return_statement_kind();
+    let func_kinds = config.function_node_kinds();
+    let id_kind = config.identifier_kind();
+    let mut results = Vec::new();
+    collect_return_vars(func_node, return_kind, func_kinds, id_kind, source, &mut results, true);
+    results
+}
+
+/// 遞迴收集 return 語句中的 identifier。
+fn collect_return_vars(
+    node: Node<'_>,
+    return_kind: &str,
+    func_kinds: &[&str],
+    id_kind: &str,
+    source: &[u8],
+    results: &mut Vec<(String, u32)>,
+    is_root: bool,
+) {
+    // 跳過巢狀函數（但不跳過根節點自己）
+    if !is_root && func_kinds.contains(&node.kind()) {
+        return;
+    }
+
+    if node.kind() == return_kind {
+        // 從 return 的子表達式中收集 identifier
+        let mut cursor = node.walk();
+        for child in node.children(&mut cursor) {
+            collect_identifiers_in_expr(child, id_kind, source, results);
+        }
+        return;
+    }
+
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_return_vars(child, return_kind, func_kinds, id_kind, source, results, false);
+    }
+}
+
+/// 從表達式中收集所有 identifier 節點。
+fn collect_identifiers_in_expr(
+    node: Node<'_>,
+    id_kind: &str,
+    source: &[u8],
+    results: &mut Vec<(String, u32)>,
+) {
+    if node.kind() == id_kind {
+        if let Some(text) = node_text(node, source) {
+            let line = node.start_position().row as u32 + 1;
+            results.push((text.to_string(), line));
+        }
+        return;
+    }
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_identifiers_in_expr(child, id_kind, source, results);
+    }
+}
 
 /// 解析呼叫名稱 — 處理 this/self 前綴。
 fn resolve_callee_name(raw_name: &str, current_class: Option<&str>) -> String {
@@ -360,6 +480,66 @@ function handler(req) {
                 .any(|(_, cs)| cs.callee.contains("doSomething")),
             "External call should still be extracted, got: {:?}",
             handler_calls
+        );
+    }
+
+    #[test]
+    fn extract_return_receiver_from_var_decl() {
+        // `const x = foo()` → return_receiver = Some("x")
+        let source = r#"
+function wrapper() {
+    const x = foo();
+}
+function foo() {
+    return 42;
+}
+"#;
+        let tree = parse_ts(source);
+        let config = get_l3_config(atlas_lang::Language::TypeScript).unwrap();
+        let builder = CallGraphBuilder::new(config, source.as_bytes(), "app.ts");
+        let (_functions, calls) = builder.build_file(&tree);
+
+        let foo_calls: Vec<_> = calls
+            .iter()
+            .filter(|(_, cs)| cs.callee == "foo")
+            .collect();
+        assert!(
+            !foo_calls.is_empty(),
+            "Should find foo() call"
+        );
+        assert_eq!(
+            foo_calls[0].1.return_receiver,
+            Some("x".to_string()),
+            "return_receiver should be 'x', got: {:?}",
+            foo_calls[0].1.return_receiver
+        );
+    }
+
+    #[test]
+    fn extract_return_var_names_simple() {
+        // `function f(x) { return x; }` → return_var_names = [("x", line)]
+        let source = r#"
+function f(x) {
+    return x;
+}
+"#;
+        let tree = parse_ts(source);
+        let config = get_l3_config(atlas_lang::Language::TypeScript).unwrap();
+        let builder = CallGraphBuilder::new(config, source.as_bytes(), "app.ts");
+        let (functions, _calls) = builder.build_file(&tree);
+
+        let func_f = functions.iter().find(|f| f.name == "f");
+        assert!(func_f.is_some(), "Should find function f");
+        let func_f = func_f.unwrap();
+
+        assert!(
+            !func_f.return_var_names.is_empty(),
+            "return_var_names should not be empty"
+        );
+        assert_eq!(
+            func_f.return_var_names[0].0, "x",
+            "return var should be 'x', got: {:?}",
+            func_f.return_var_names
         );
     }
 }

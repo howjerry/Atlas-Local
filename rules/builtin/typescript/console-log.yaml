@@ -14,7 +14,7 @@ pattern: |
       object: (identifier) @obj
       property: (property_identifier) @prop
       (#eq? @obj "console")
-      (#match? @prop "^(log|warn|error|debug|info|trace|dir)$")))
+      (#match? @prop "^(log|warn|debug|info|trace|dir)$")))
   @match
 remediation: >
   Remove console output statements or replace them with a structured logging

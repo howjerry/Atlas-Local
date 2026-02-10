@@ -10,9 +10,7 @@ language: Ruby
 confidence: high
 pattern: |
   (if
-    consequence: (then
-      .
-      .))
+    !consequence)
   @match
 remediation: >
   Implement the conditional block body or remove the empty conditional

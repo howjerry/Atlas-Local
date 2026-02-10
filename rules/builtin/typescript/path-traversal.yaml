@@ -12,6 +12,7 @@ severity: high
 category: security
 language: TypeScript
 cwe_id: CWE-22
+skip_test_files: true
 pattern: |
   (call_expression
     function: (member_expression

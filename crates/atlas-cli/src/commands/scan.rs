@@ -9,7 +9,7 @@ use tracing::info;
 use atlas_analysis::DiffStatus;
 use atlas_core::diff;
 use atlas_core::engine::{ScanEngine, ScanOptions};
-use atlas_core::{AnalysisLevel, Category, GateResult, Language, Severity};
+use atlas_core::{AnalysisLevel, Category, Confidence, GateResult, Language, Severity};
 use atlas_policy::baseline;
 use atlas_policy::gate::{self, GateFinding};
 use atlas_report::{
@@ -89,6 +89,15 @@ pub struct ScanArgs {
     #[arg(long)]
     pub metrics: bool,
 
+    /// 最低信心等級過濾。低於此閾值的 findings 會被過濾掉。
+    /// 例如 `--min-confidence medium` 會過濾掉所有 confidence=low 的 findings。
+    #[arg(long = "min-confidence", value_parser = parse_confidence)]
+    pub min_confidence: Option<Confidence>,
+
+    /// 停用自動報告儲存到 report 目錄。
+    #[arg(long)]
+    pub no_report: bool,
+
     /// 停用 SCA 依賴漏洞掃描。
     #[arg(long)]
     pub no_sca: bool,
@@ -142,6 +151,16 @@ fn parse_analysis_level(s: &str) -> Result<AnalysisLevel, String> {
         "L2" => Ok(AnalysisLevel::L2),
         "L3" => Ok(AnalysisLevel::L3),
         other => Err(format!("invalid analysis level '{other}'. Valid values: L1, L2, L3")),
+    }
+}
+
+/// 解析 `--min-confidence` 旗標值。
+fn parse_confidence(s: &str) -> Result<Confidence, String> {
+    match s.to_lowercase().as_str() {
+        "high" => Ok(Confidence::High),
+        "medium" => Ok(Confidence::Medium),
+        "low" => Ok(Confidence::Low),
+        other => Err(format!("invalid confidence '{other}'. Valid values: high, medium, low")),
     }
 }
 
@@ -416,6 +435,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         } else {
             None
         },
+        min_confidence: args.min_confidence,
     };
 
     // 7. Show progress spinner (unless --quiet).
@@ -732,11 +752,125 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         println!("{}", reports[0].content);
     }
 
+    // 11b. Auto-save reports to report_dir（按 severity 拆分）。
+    if !args.no_report {
+        if let Some(ref report_dir_name) = config.reporting.report_dir {
+            let report_base = PathBuf::from(report_dir_name);
+
+            // 避免重複寫入：如果 -o 已經指向 report_dir 內部，則跳過
+            let already_in_report_dir = args.output.as_ref().is_some_and(|o| {
+                o.starts_with(&report_base)
+            });
+
+            if !already_in_report_dir {
+                let final_dir = resolve_output_dir(&report_base, &args.target);
+                std::fs::create_dir_all(&final_dir).with_context(|| {
+                    format!(
+                        "failed to create report directory '{}'",
+                        final_dir.display()
+                    )
+                })?;
+                for report in &reports {
+                    if report.format == atlas_report::OutputFormat::Json {
+                        // JSON 報告：按 severity 拆分成獨立檔案
+                        split_report_by_severity(&report.content, &final_dir)
+                            .context("failed to split report by severity")?;
+                    } else {
+                        // 非 JSON 格式：直接寫入
+                        let file_path = final_dir.join(report.format.default_filename());
+                        std::fs::write(&file_path, &report.content).with_context(|| {
+                            format!(
+                                "failed to write auto-save report to '{}'",
+                                file_path.display()
+                            )
+                        })?;
+                    }
+                }
+                info!(path = %final_dir.display(), "auto-saved reports (severity-split)");
+            }
+        }
+    }
+
     // 12. Determine exit code from gate result.
     match gate_eval.result {
         GateResult::Fail => Ok(ExitCode::GateFail),
         GateResult::Pass | GateResult::Warn => Ok(ExitCode::Pass),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Severity-split auto-save
+// ---------------------------------------------------------------------------
+
+/// 將 JSON 報告按 severity 拆分成獨立檔案。
+///
+/// 產出：
+/// - `summary.json` — 完整報告但不含 findings 陣列（保留 scan metadata、gate_result、findings_count）
+/// - `{severity}.json` — 只含該 severity 的 findings（附對應的 findings_count）
+///
+/// 只有實際存在 findings 的 severity 才會產生檔案。
+fn split_report_by_severity(
+    json_content: &str,
+    output_dir: &Path,
+) -> Result<(), anyhow::Error> {
+    let mut root: serde_json::Value =
+        serde_json::from_str(json_content).context("failed to parse JSON report for splitting")?;
+
+    // 取出 findings 陣列
+    let findings = root
+        .get("findings")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    // 1. summary.json — 移除 findings，保留其他所有欄位
+    let mut summary = root.clone();
+    if let Some(obj) = summary.as_object_mut() {
+        obj.remove("findings");
+    }
+    let summary_path = output_dir.join("summary.json");
+    std::fs::write(
+        &summary_path,
+        serde_json::to_string_pretty(&summary)?,
+    )
+    .with_context(|| format!("failed to write '{}'", summary_path.display()))?;
+
+    // 2. 按 severity 分組
+    let severities = ["critical", "high", "medium", "low", "info"];
+    for sev in &severities {
+        let filtered: Vec<&serde_json::Value> = findings
+            .iter()
+            .filter(|f| f.get("severity").and_then(|s| s.as_str()) == Some(sev))
+            .collect();
+
+        if filtered.is_empty() {
+            continue;
+        }
+
+        // 建構 per-severity 報告：替換 findings 和 findings_count
+        let count = filtered.len() as u64;
+        if let Some(obj) = root.as_object_mut() {
+            obj.insert("findings".to_string(), serde_json::json!(filtered));
+            obj.insert(
+                "findings_count".to_string(),
+                serde_json::json!({
+                    "total": count,
+                    "critical": if *sev == "critical" { count } else { 0 },
+                    "high": if *sev == "high" { count } else { 0 },
+                    "medium": if *sev == "medium" { count } else { 0 },
+                    "low": if *sev == "low" { count } else { 0 },
+                    "info": if *sev == "info" { count } else { 0 },
+                }),
+            );
+        }
+
+        let file_path = output_dir.join(format!("{sev}.json"));
+        std::fs::write(&file_path, serde_json::to_string_pretty(&root)?).with_context(|| {
+            format!("failed to write '{}'", file_path.display())
+        })?;
+    }
+
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -938,8 +1072,10 @@ mod tests {
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_report: true,
             no_sca: true,
             sca_db: None,
+            min_confidence: None,
         };
         let result = execute(args);
         assert!(result.is_err());
@@ -965,8 +1101,10 @@ mod tests {
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_report: true,
             no_sca: true,
             sca_db: None,
+            min_confidence: None,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -1020,8 +1158,10 @@ fail_on:
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_report: true,
             no_sca: true,
             sca_db: None,
+            min_confidence: None,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -1054,8 +1194,10 @@ fail_on:
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_report: true,
             no_sca: true,
             sca_db: None,
+            min_confidence: None,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -1148,8 +1290,10 @@ fail_on:
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_report: true,
             no_sca: true,
             sca_db: None,
+            min_confidence: None,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -1175,8 +1319,10 @@ fail_on:
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_report: true,
             no_sca: true,
             sca_db: None,
+            min_confidence: None,
         };
         let result = execute(args);
         assert!(result.is_err());

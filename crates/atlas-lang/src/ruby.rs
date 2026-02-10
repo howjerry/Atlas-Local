@@ -128,4 +128,5 @@ end
         let lang = RubyAdapter.tree_sitter_language();
         assert!(lang.node_kind_count() > 0);
     }
+
 }

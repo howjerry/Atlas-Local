@@ -10,14 +10,24 @@ category: quality
 language: CSharp
 confidence: high
 pattern: |
-  (parameter_list
-    (parameter)
-    (parameter)
-    (parameter)
-    (parameter)
-    (parameter)
-    (parameter))
-  @match
+  [
+    (method_declaration
+      (parameter_list
+        (parameter)
+        (parameter)
+        (parameter)
+        (parameter)
+        (parameter)
+        (parameter)) @match)
+    (constructor_declaration
+      (parameter_list
+        (parameter)
+        (parameter)
+        (parameter)
+        (parameter)
+        (parameter)
+        (parameter)) @match)
+  ]
 remediation: >
   Reduce the number of parameters by grouping related values into a
   class or struct (Parameter Object pattern), using a builder pattern,

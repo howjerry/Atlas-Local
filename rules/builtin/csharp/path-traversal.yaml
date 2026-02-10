@@ -9,6 +9,7 @@ description: >
   intended directory. Path utility methods (Combine, GetFullPath, Exists)
   and Stream-based constructors are excluded to reduce false positives.
 severity: high
+confidence: low
 category: security
 language: CSharp
 cwe_id: CWE-22
@@ -26,6 +27,7 @@ metadata:
     - framework: hipaa-security
       requirement: "164.312(a)(1)"
       description: Access Control
+skip_test_files: true
 pattern: |
   [
     (invocation_expression
@@ -36,14 +38,16 @@ pattern: |
         (#match? @method "^(ReadAllText|ReadAllTextAsync|ReadAllBytes|ReadAllBytesAsync|ReadAllLines|ReadAllLinesAsync|WriteAllText|WriteAllTextAsync|WriteAllBytes|WriteAllBytesAsync|Open|OpenRead|OpenWrite|OpenText|Create|Delete|Copy|Move)$"))
       arguments: (argument_list
         (argument
-          [(identifier) (member_access_expression) (invocation_expression) (interpolated_string_expression) (element_access_expression) (binary_expression)] @path_arg)))
+          [(identifier) (member_access_expression) (invocation_expression) (interpolated_string_expression) (element_access_expression) (binary_expression)] @path_arg)
+        (#not-match? @path_arg "Guid\\.NewGuid|Path\\.GetFileName|Path\\.GetExtension|Path\\.GetDirectoryName")))
     @match
 
     (object_creation_expression
       type: (identifier) @type
       arguments: (argument_list
         (argument
-          [(identifier) (member_access_expression) (invocation_expression) (interpolated_string_expression) (element_access_expression) (binary_expression)] @path_arg))
+          [(identifier) (member_access_expression) (invocation_expression) (interpolated_string_expression) (element_access_expression) (binary_expression)] @path_arg)
+        (#not-match? @path_arg "Guid\\.NewGuid|Path\\.GetFileName|Path\\.GetExtension|Path\\.GetDirectoryName"))
       (#match? @type "^(FileStream|FileInfo|DirectoryInfo)$"))
     @match
   ]

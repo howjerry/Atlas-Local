@@ -23,6 +23,9 @@ pub struct FunctionRef {
     /// 函數參數名稱列表。
     #[serde(default)]
     pub parameters: Vec<String>,
+    /// return 表達式中的變數名及行號（用於 return value taint propagation）。
+    #[serde(default)]
+    pub return_var_names: Vec<(String, u32)>,
 }
 
 /// 函數內的呼叫點。
@@ -37,6 +40,9 @@ pub struct CallSite {
     /// 每個引數的原始碼文字。
     #[serde(default)]
     pub argument_expressions: Vec<String>,
+    /// 接收 return value 的變數名（如 `const data = foo()` 中的 `data`）。
+    #[serde(default)]
+    pub return_receiver: Option<String>,
 }
 
 /// Import 條目 — 記錄一個 import 聲明。
@@ -302,12 +308,14 @@ mod tests {
             name: "handleRequest".to_string(),
             line: 10,
             parameters: vec!["req".to_string()],
+            return_var_names: vec![],
         });
         cg.add_function(FunctionRef {
             file_path: "src/db.ts".to_string(),
             name: "queryDb".to_string(),
             line: 5,
             parameters: vec!["sql".to_string()],
+            return_var_names: vec![],
         });
         cg.add_call(
             "src/main.ts::handleRequest",
@@ -316,6 +324,7 @@ mod tests {
                 line: 15,
                 tainted_args: vec![0],
                 argument_expressions: vec!["userInput".to_string()],
+                return_receiver: None,
             },
         );
 
@@ -331,18 +340,21 @@ mod tests {
             name: "a".to_string(),
             line: 1,
             parameters: vec![],
+            return_var_names: vec![],
         });
         cg.add_function(FunctionRef {
             file_path: "b.ts".to_string(),
             name: "b".to_string(),
             line: 1,
             parameters: vec![],
+            return_var_names: vec![],
         });
         cg.add_function(FunctionRef {
             file_path: "c.ts".to_string(),
             name: "c".to_string(),
             line: 1,
             parameters: vec![],
+            return_var_names: vec![],
         });
 
         cg.add_call(
@@ -352,6 +364,7 @@ mod tests {
                 line: 2,
                 tainted_args: vec![],
                 argument_expressions: vec![],
+                return_receiver: None,
             },
         );
         cg.add_call(
@@ -361,6 +374,7 @@ mod tests {
                 line: 2,
                 tainted_args: vec![],
                 argument_expressions: vec![],
+                return_receiver: None,
             },
         );
 
@@ -378,18 +392,21 @@ mod tests {
             name: "a".to_string(),
             line: 1,
             parameters: vec![],
+            return_var_names: vec![],
         });
         cg.add_function(FunctionRef {
             file_path: "b.ts".to_string(),
             name: "b".to_string(),
             line: 1,
             parameters: vec![],
+            return_var_names: vec![],
         });
         cg.add_function(FunctionRef {
             file_path: "c.ts".to_string(),
             name: "c".to_string(),
             line: 1,
             parameters: vec![],
+            return_var_names: vec![],
         });
 
         cg.add_call(
@@ -399,6 +416,7 @@ mod tests {
                 line: 2,
                 tainted_args: vec![],
                 argument_expressions: vec![],
+                return_receiver: None,
             },
         );
         cg.add_call(
@@ -408,6 +426,7 @@ mod tests {
                 line: 2,
                 tainted_args: vec![],
                 argument_expressions: vec![],
+                return_receiver: None,
             },
         );
 
@@ -483,12 +502,14 @@ mod tests {
             name: "handler".to_string(),
             line: 1,
             parameters: vec![],
+            return_var_names: vec![],
         });
         cg.add_function(FunctionRef {
             file_path: "app.ts".to_string(),
             name: "helper".to_string(),
             line: 10,
             parameters: vec![],
+            return_var_names: vec![],
         });
 
         // 同檔案解析
@@ -507,6 +528,7 @@ mod tests {
             name: "findUser".to_string(),
             line: 5,
             parameters: vec!["name".to_string()],
+            return_var_names: vec![],
         });
         cg.imports.add(ImportEntry {
             file_path: "src/controller.ts".to_string(),
@@ -527,6 +549,7 @@ mod tests {
             name: "process".to_string(),
             line: 1,
             parameters: vec!["input".to_string(), "options".to_string()],
+            return_var_names: vec![],
         };
         assert_eq!(func.parameters.len(), 2);
         assert_eq!(func.parameters[0], "input");
@@ -539,6 +562,7 @@ mod tests {
             line: 5,
             tainted_args: vec![0],
             argument_expressions: vec!["userInput".to_string(), "\"safe\"".to_string()],
+            return_receiver: None,
         };
         assert_eq!(cs.argument_expressions.len(), 2);
         assert_eq!(cs.argument_expressions[0], "userInput");

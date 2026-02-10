@@ -11,9 +11,7 @@ language: Ruby
 confidence: high
 pattern: |
   (rescue
-    body: (then
-      .
-      .))
+    !body)
   @match
 remediation: >
   Add error handling logic to the rescue block. At minimum, log the

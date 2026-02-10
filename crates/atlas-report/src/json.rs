@@ -226,6 +226,9 @@ pub struct FindingsSummary {
     pub info: u32,
     /// Total number of findings across all severity levels.
     pub total: u32,
+    /// 被 inline `atlas-ignore` 註解抑制的 findings 數量（向後相容：新增欄位）。
+    #[serde(default, skip_serializing_if = "is_zero_val")]
+    pub suppressed: u32,
 }
 
 /// Gate evaluation result.
@@ -294,6 +297,11 @@ pub struct ScanStats {}
 /// Returns `true` if the optional `u32` is `None` or `Some(0)`.
 fn is_zero(val: &Option<u32>) -> bool {
     matches!(val, None | Some(0))
+}
+
+/// Returns `true` if the `u32` is `0`.
+fn is_zero_val(val: &u32) -> bool {
+    *val == 0
 }
 
 // ---------------------------------------------------------------------------
@@ -386,6 +394,7 @@ pub fn compute_findings_summary(findings: &[Finding]) -> FindingsSummary {
         low,
         info,
         total,
+        suppressed: 0,
     }
 }
 
@@ -485,7 +494,8 @@ pub fn format_report_with_options(
         None
     };
 
-    let findings_count = compute_findings_summary(&scan_result.findings);
+    let mut findings_count = compute_findings_summary(&scan_result.findings);
+    findings_count.suppressed = scan_result.inline_suppressed;
 
     let scan = ScanMetadata {
         id: scan_id,
@@ -559,6 +569,7 @@ mod tests {
             tags: vec![],
             version: version.to_string(),
             metadata: std::collections::BTreeMap::new(),
+            skip_test_files: false,
         }
     }
 
@@ -592,6 +603,7 @@ mod tests {
             stats: atlas_core::engine::ScanStats::default(),
             file_metrics: vec![],
             duplication: None,
+            inline_suppressed: 0,
         }
     }
 
@@ -714,6 +726,7 @@ mod tests {
                 low: 0,
                 info: 0,
                 total: 0,
+                suppressed: 0,
             }
         );
     }
@@ -873,6 +886,7 @@ mod tests {
             stats: atlas_core::engine::ScanStats::default(),
             file_metrics: vec![],
             duplication: None,
+            inline_suppressed: 0,
         };
         let rules: Vec<Rule> = vec![];
         let config = AtlasConfig::default();

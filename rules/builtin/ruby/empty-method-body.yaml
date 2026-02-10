@@ -12,10 +12,7 @@ confidence: medium
 pattern: |
   (method
     name: (identifier)
-    !parameters
-    body: (body_statement
-      .
-      .))
+    !body)
   @match
 remediation: >
   Implement the method body or remove the method if it is no longer needed.

@@ -2,11 +2,18 @@
 # Uses safe subprocess patterns without shell=True
 
 import shlex
+import subprocess
 import pathlib
 
 def safe_commands(user_input):
-    # Using list form with no shell
-    result = ["ls", "-la", user_input]
+    # subprocess list form（無 shell=True）— 安全用法
+    subprocess.run(["ls", "-la", user_input])
+
+    subprocess.call(["grep", user_input, "/var/log/app.log"])
+
+    subprocess.check_output(["echo", user_input])
+
+    subprocess.Popen(["cat", user_input], stdout=subprocess.PIPE)
 
     # Using pathlib for file operations
     path = pathlib.Path(user_input)
