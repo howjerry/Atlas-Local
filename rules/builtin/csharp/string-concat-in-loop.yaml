@@ -27,7 +27,7 @@ pattern: |
             right: (_) @value))))
     @match
 
-    (for_each_statement
+    (foreach_statement
       body: (block
         (expression_statement
           (assignment_expression

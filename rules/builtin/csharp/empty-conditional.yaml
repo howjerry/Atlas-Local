@@ -9,16 +9,9 @@ category: quality
 language: CSharp
 confidence: high
 pattern: |
-  [
-    (if_statement
-      consequence: (block . "}"))
-    @match
-
-    (if_statement
-      alternative: (else_clause
-        (block . "}")))
-    @match
-  ]
+  (if_statement
+    consequence: (block . "}"))
+  @match
 remediation: >
   Implement the conditional block body, remove the empty block, or add
   a comment explaining why it is intentionally empty. If the condition

@@ -10,7 +10,7 @@ category: quality
 language: Php
 confidence: high
 pattern: |
-  (exit_expression) @match
+  (exit_statement) @match
 remediation: >
   Replace exit()/die() with exceptions that can be caught and handled
   by the calling code. Use proper HTTP response codes and return

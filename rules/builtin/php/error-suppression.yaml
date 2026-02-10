@@ -9,9 +9,7 @@ category: quality
 language: Php
 confidence: high
 pattern: |
-  (unary_op_expression
-    operator: "@")
-  @match
+  (error_suppression_expression) @match
 remediation: >
   Remove the @ operator and handle errors explicitly. Use try-catch
   blocks for operations that may throw exceptions. Use error_reporting()

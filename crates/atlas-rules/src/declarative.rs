@@ -809,7 +809,7 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Java rules should load successfully");
 
-        assert_eq!(rules.len(), 25, "expected exactly 25 Java rules");
+        assert_eq!(rules.len(), 24, "expected exactly 24 Java rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
@@ -822,7 +822,6 @@ version: 0.1.0
                 "atlas/quality/java/empty-method-body",
                 "atlas/quality/java/excessive-parameters",
                 "atlas/quality/java/magic-number",
-                "atlas/quality/java/missing-default-case",
                 "atlas/quality/java/nested-ternary",
                 "atlas/quality/java/raw-type-usage",
                 "atlas/quality/java/redundant-boolean",
@@ -931,7 +930,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Quality)
             .collect();
-        assert_eq!(quality_rules.len(), 15, "expected 15 quality rules");
+        assert_eq!(quality_rules.len(), 14, "expected 14 quality rules");
 
         let empty_catch = rules
             .iter()
@@ -1043,13 +1042,6 @@ version: 0.1.0
         assert_eq!(sys_exit.severity, Severity::Medium);
         assert_eq!(sys_exit.category, Category::Quality);
         assert_eq!(sys_exit.confidence, crate::Confidence::High);
-
-        let missing_default = rules
-            .iter()
-            .find(|r| r.id.contains("missing-default-case"))
-            .unwrap();
-        assert_eq!(missing_default.severity, Severity::Low);
-        assert_eq!(missing_default.category, Category::Quality);
 
         let thread_sleep = rules
             .iter()

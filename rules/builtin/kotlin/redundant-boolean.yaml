@@ -10,9 +10,10 @@ language: Kotlin
 confidence: high
 pattern: |
   (if_expression
-    (block
+    (control_structure_body
       (return_expression
-        (boolean_literal))))
+        ((identifier) @bool_val
+          (#match? @bool_val "^(true|false)$")))))
   @match
 remediation: >
   Simplify the conditional by returning the boolean expression directly.

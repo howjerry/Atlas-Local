@@ -11,11 +11,11 @@ category: quality
 language: Java
 confidence: medium
 pattern: |
-  (method_declaration
+  ((method_declaration
     type: (boolean_type)
     name: (identifier) @method_name
-    (#match? @method_name "^(?!(is|has|can|should|will|was|are|contains|exists|matches|equals|needs|requires|supports|allows|enables|includes|accepts))[a-z]"))
-  @match
+    (#not-match? @method_name "^(is|has|can|should|will|was|are|contains|exists|matches|equals|needs|requires|supports|allows|enables|includes|accepts)"))
+  @match)
 remediation: >
   Rename the method to follow the boolean naming convention by adding
   an appropriate prefix. For example, rename `boolean valid()` to
