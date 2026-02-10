@@ -81,13 +81,13 @@
 
 ## 8. CLI 與掃描管線整合
 
-- [ ] 8.1 修改 `parse_analysis_level()` — 移除 L3 錯誤訊息，新增 `"L3" => Ok(AnalysisLevel::L3)` 分支
-- [ ] 8.2 修改 `engine.rs` scan pipeline — 在 L1+L2 per-file 處理中加入 Phase 1 call graph 資料收集
-- [ ] 8.3 修改 `engine.rs` scan pipeline — 所有檔案處理完畢後，若 `analysis_level >= L3` 則執行 Phase 2 L3 分析
-- [ ] 8.4 整合自訂 taint config — 在 scan 初始化時載入 `atlas-taint.yaml`（若存在），合併到 L2/L3 taint config
-- [ ] 8.5 L3 findings 合併到最終結果 — append 到 L1+L2 findings 後排序輸出
-- [ ] 8.6 單元測試：L2 模式下不產生 L3 findings
-- [ ] 8.7 單元測試：L3 模式下同時產生 L1+L2+L3 findings
+- [x] 8.1 修改 `parse_analysis_level()` — 移除 L3 錯誤訊息，新增 `"L3" => Ok(AnalysisLevel::L3)` 分支
+- [x] 8.2 修改 `engine.rs` scan pipeline — 在 L1+L2 per-file 處理中加入 Phase 1 call graph 資料收集
+- [x] 8.3 修改 `engine.rs` scan pipeline — 所有檔案處理完畢後，若 `analysis_level >= L3` 則執行 Phase 2 L3 分析
+- [x] 8.4 整合自訂 taint config — 在 scan 初始化時載入 `atlas-taint.yaml`（若存在），合併到 L2/L3 taint config
+- [x] 8.5 L3 findings 合併到最終結果 — append 到 L1+L2 findings 後排序輸出
+- [x] 8.6 單元測試：L2 模式下不產生 L3 findings
+- [x] 8.7 單元測試：L3 模式下同時產生 L1+L2+L3 findings
 
 ## 9. 測試夾具
 

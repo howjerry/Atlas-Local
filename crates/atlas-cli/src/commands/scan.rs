@@ -135,13 +135,13 @@ impl GateFinding for FindingAdapter<'_> {
 
 /// 解析 `--analysis-level` 旗標值。
 ///
-/// 接受 `L1` 或 `L2`。`L3` 尚未實作，將被拒絕並顯示描述性錯誤訊息。
+/// 接受 `L1`、`L2` 或 `L3`。
 fn parse_analysis_level(s: &str) -> Result<AnalysisLevel, String> {
     match s.to_uppercase().as_str() {
         "L1" => Ok(AnalysisLevel::L1),
         "L2" => Ok(AnalysisLevel::L2),
-        "L3" => Err("L3 analysis (inter-procedural taint tracking) is not yet implemented. Use L1 or L2.".to_string()),
-        other => Err(format!("invalid analysis level '{other}'. Valid values: L1, L2")),
+        "L3" => Ok(AnalysisLevel::L3),
+        other => Err(format!("invalid analysis level '{other}'. Valid values: L1, L2, L3")),
     }
 }
 

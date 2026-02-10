@@ -35,6 +35,9 @@ use tracing::{debug, info, warn};
 
 use atlas_analysis::{DiffStatus, Finding, FindingBuilder, L1PatternEngine, LineRange, RuleMatchMetadata};
 use atlas_analysis::l2_engine::L2Engine;
+use atlas_analysis::l2_taint_config::{load_custom_taint_config, load_taint_config, merge_taint_config};
+use atlas_analysis::l3_engine::{L3Engine, ParsedFile};
+use atlas_analysis::l3_lang_config::get_l3_config;
 use atlas_analysis::metrics::{FileMetricsData, MetricsConfig, MetricsEngine};
 use atlas_analysis::duplication::{DuplicationDetector, DuplicationResult, TokenizedFile};
 use atlas_cache::cache::{CacheConfig, ResultCache};
@@ -608,6 +611,15 @@ impl ScanEngine {
             }
         }
 
+        // Step 2d: L3 inter-procedural taint analysis（跨函數分析，需所有檔案處理完畢後執行）
+        if analysis_level.depth() >= 3 {
+            let l3_findings = self.run_l3_analysis(&discovery, target);
+            if !l3_findings.is_empty() {
+                info!(count = l3_findings.len(), "L3 inter-procedural findings");
+            }
+            all_findings.extend(l3_findings);
+        }
+
         // Step 3: Sort findings deterministically.
         all_findings.sort();
 
@@ -655,6 +667,97 @@ impl ScanEngine {
             file_metrics: all_file_metrics,
             duplication: duplication_result,
         })
+    }
+
+    /// L3 跨函數污染分析 — 按語言分組，重新解析檔案並執行 L3 引擎。
+    fn run_l3_analysis(
+        &self,
+        discovery: &crate::scanner::DiscoveryResult,
+        scan_dir: &Path,
+    ) -> Vec<Finding> {
+        let mut all_findings = Vec::new();
+
+        // 載入自訂 taint config（若存在）
+        let custom_config = match load_custom_taint_config(scan_dir) {
+            Ok(c) => c,
+            Err(e) => {
+                warn!(error = %e, "failed to load custom taint config");
+                None
+            }
+        };
+
+        // 按語言分組檔案
+        let mut files_by_lang: HashMap<Language, Vec<&crate::scanner::DiscoveredFile>> =
+            HashMap::new();
+        for file in &discovery.files {
+            // 只處理 L3 支援的語言
+            if get_l3_config(file.language).is_some() {
+                files_by_lang
+                    .entry(file.language)
+                    .or_default()
+                    .push(file);
+            }
+        }
+
+        for (language, lang_files) in &files_by_lang {
+            // 載入 taint config
+            let builtin_config = match load_taint_config(*language) {
+                Ok(c) => c,
+                Err(e) => {
+                    warn!(error = %e, "failed to load taint config for L3");
+                    continue;
+                }
+            };
+
+            // 合併自訂配置
+            let (taint_config, custom_depth) = if let Some(ref custom) = custom_config {
+                merge_taint_config(builtin_config, custom.clone())
+            } else {
+                (builtin_config, None)
+            };
+            let max_depth = custom_depth.unwrap_or(5);
+
+            let engine = L3Engine::new(*language, taint_config, max_depth);
+
+            // 讀取並解析所有檔案
+            let adapter = match self.adapter_registry.get_by_language(*language) {
+                Some(a) => a,
+                None => continue,
+            };
+
+            let mut parsed: Vec<(String, Vec<u8>, tree_sitter::Tree)> = Vec::new();
+            for file in lang_files {
+                let source = match std::fs::read(&file.path) {
+                    Ok(s) => s,
+                    Err(_) => continue,
+                };
+                let tree = match adapter.parse(&source) {
+                    Ok(t) => t,
+                    Err(_) => continue,
+                };
+                parsed.push((file.relative_path.clone(), source, tree));
+            }
+
+            // 建構 ParsedFile 引用
+            let parsed_files: Vec<ParsedFile<'_>> = parsed
+                .iter()
+                .map(|(path, source, tree)| ParsedFile {
+                    file_path: path,
+                    source,
+                    tree,
+                })
+                .collect();
+
+            let findings = engine.analyze_project(&parsed_files);
+            debug!(
+                language = %language,
+                count = findings.len(),
+                "L3 analysis complete"
+            );
+            all_findings.extend(findings);
+        }
+
+        all_findings
     }
 
     /// Pre-compiles tree-sitter queries for all L1 declarative rules.
@@ -1360,5 +1463,118 @@ mod tests {
             result.duplication.is_none(),
             "expected duplication=None when compute_metrics=false",
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Task 8.6 / 8.7: L3 pipeline 整合測試
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn l2_mode_does_not_produce_l3_findings() {
+        // 建立含有跨函數污染模式的 TypeScript 檔案，使用 L2 模式掃描。
+        // L3 引擎不應被執行，因此不應有 l3- 開頭的 rule_id。
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("app.ts"),
+            r#"
+function handleRequest(req) {
+    const input = req.body.name;
+    runQuery(input);
+}
+
+function runQuery(sql) {
+    db.query(sql);
+}
+"#,
+        )
+        .unwrap();
+
+        let engine = ScanEngine::new();
+        let options = ScanOptions {
+            analysis_level: AnalysisLevel::L2,
+            ..Default::default()
+        };
+        let result = engine
+            .scan_with_options(tmp.path(), None, &options)
+            .unwrap();
+
+        assert_eq!(result.files_scanned, 1);
+        // L2 模式下不應產生 L3 findings
+        let l3_count = result
+            .findings
+            .iter()
+            .filter(|f| f.rule_id.contains("l3-"))
+            .count();
+        assert_eq!(
+            l3_count, 0,
+            "L2 模式不應產生 L3 findings，但找到 {l3_count} 個"
+        );
+    }
+
+    #[test]
+    fn l3_mode_produces_l2_and_l3_findings() {
+        // 建立含有 (1) 直接 intraprocedural 和 (2) 跨函數 interprocedural
+        // 污染流的 TypeScript 檔案，使用 L3 模式掃描。
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("app.ts"),
+            r#"
+function directFlow(req) {
+    const data = req.body.name;
+    db.query(data);
+}
+
+function indirectFlow(req) {
+    const input = req.body.name;
+    runQuery(input);
+}
+
+function runQuery(sql) {
+    db.query(sql);
+}
+"#,
+        )
+        .unwrap();
+
+        let engine = ScanEngine::new();
+        let options = ScanOptions {
+            analysis_level: AnalysisLevel::L3,
+            ..Default::default()
+        };
+        let result = engine
+            .scan_with_options(tmp.path(), None, &options)
+            .unwrap();
+
+        assert_eq!(result.files_scanned, 1);
+
+        let l2_findings: Vec<_> = result
+            .findings
+            .iter()
+            .filter(|f| f.rule_id.contains("l2-"))
+            .collect();
+        let l3_findings: Vec<_> = result
+            .findings
+            .iter()
+            .filter(|f| f.rule_id.contains("l3-"))
+            .collect();
+
+        // L3 模式應同時產生 L2（intraprocedural）和 L3（interprocedural）findings
+        assert!(
+            !l2_findings.is_empty(),
+            "L3 模式應包含 L2 findings（intraprocedural flow）"
+        );
+        assert!(
+            !l3_findings.is_empty(),
+            "L3 模式應包含 L3 findings（interprocedural flow）"
+        );
+
+        // L3 findings 的 analysis_level 應為 L3
+        for f in &l3_findings {
+            assert_eq!(
+                f.analysis_level,
+                AnalysisLevel::L3,
+                "L3 finding 的 analysis_level 應為 L3"
+            );
+        }
     }
 }
