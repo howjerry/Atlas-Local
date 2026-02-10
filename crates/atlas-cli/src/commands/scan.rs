@@ -13,7 +13,8 @@ use atlas_core::{AnalysisLevel, Category, GateResult, Language, Severity};
 use atlas_policy::baseline;
 use atlas_policy::gate::{self, GateFinding};
 use atlas_report::{
-    BaselineDiff, DiffContextReport, GateBreachedThreshold, GateDetails, ReportOptions,
+    BaselineDiff, DiffContextReport, DuplicateBlock, FileMetrics, FunctionMetrics,
+    GateBreachedThreshold, GateDetails, MetricsReport, ProjectMetrics, ReportOptions,
     generate_reports, parse_formats,
 };
 
@@ -83,6 +84,10 @@ pub struct ScanArgs {
     /// Analysis depth level: L1 (AST pattern matching, default) or L2 (data-flow analysis).
     #[arg(long = "analysis-level", default_value = "L1", value_parser = parse_analysis_level)]
     pub analysis_level: AnalysisLevel,
+
+    /// 啟用程式碼品質度量計算（cyclomatic/cognitive complexity、code duplication、LOC 統計）。
+    #[arg(long)]
+    pub metrics: bool,
 }
 
 /// Gate evaluation mode for diff-aware scans.
@@ -373,6 +378,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         analysis_level: args.analysis_level,
         exclude_patterns: config.scan.exclude_patterns.clone(),
         follow_symlinks: config.scan.follow_symlinks,
+        compute_metrics: args.metrics,
         cache_dir: if config.cache.enabled {
             config
                 .cache
@@ -585,6 +591,13 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
     // 10b. Build compliance summary from findings + framework definitions.
     let compliance_summary = build_compliance_summary(&result.findings, engine.rules());
 
+    // 10c. 將 ScanResult 中的 metrics 資料轉換為 report 格式。
+    let metrics_report = if !result.file_metrics.is_empty() {
+        Some(build_metrics_report(&result))
+    } else {
+        None
+    };
+
     let report_options = ReportOptions {
         include_timestamp: args.timestamp,
         gate_status: Some(&gate_status),
@@ -594,6 +607,7 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
         baseline_diff: report_baseline_diff,
         diff_context: report_diff_context,
         compliance_summary,
+        metrics_report,
     };
 
     let reports = generate_reports(
@@ -653,6 +667,114 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
     match gate_eval.result {
         GateResult::Fail => Ok(ExitCode::GateFail),
         GateResult::Pass | GateResult::Warn => Ok(ExitCode::Pass),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Metrics report builder
+// ---------------------------------------------------------------------------
+
+/// 將 `ScanResult` 中的 per-file metrics 和 duplication 資料轉換為 `MetricsReport`。
+fn build_metrics_report(result: &atlas_core::engine::ScanResult) -> MetricsReport {
+    use std::collections::BTreeMap;
+
+    let files: Vec<FileMetrics> = result
+        .file_metrics
+        .iter()
+        .map(|fm| {
+            let functions: Vec<FunctionMetrics> = fm
+                .functions
+                .iter()
+                .map(|f| FunctionMetrics {
+                    name: f.name.clone(),
+                    start_line: f.start_line,
+                    end_line: f.end_line,
+                    loc: f.loc,
+                    cyclomatic_complexity: f.cyclomatic_complexity,
+                    cognitive_complexity: f.cognitive_complexity,
+                    parameter_count: f.parameter_count,
+                })
+                .collect();
+
+            let max_cyclomatic = functions.iter().map(|f| f.cyclomatic_complexity).max().unwrap_or(0);
+            let max_cognitive = functions.iter().map(|f| f.cognitive_complexity).max().unwrap_or(0);
+
+            FileMetrics {
+                path: fm.path.clone(),
+                total_lines: fm.total_lines,
+                code_lines: fm.code_lines,
+                blank_lines: fm.blank_lines,
+                comment_lines: fm.comment_lines,
+                functions,
+                max_cyclomatic,
+                max_cognitive,
+            }
+        })
+        .collect();
+
+    // 聚合 project-level metrics
+    let total_files = files.len() as u32;
+    let total_loc: u32 = files.iter().map(|f| f.code_lines).sum();
+
+    // 按語言統計 LOC（從 Language extension 推斷）
+    let mut loc_by_language: BTreeMap<String, u32> = BTreeMap::new();
+    for fm in &files {
+        let ext = std::path::Path::new(&fm.path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("unknown");
+        let lang_name = match ext {
+            "ts" | "tsx" => "typescript",
+            "js" | "jsx" | "mjs" | "cjs" => "javascript",
+            "java" => "java",
+            "py" | "pyi" => "python",
+            "go" => "go",
+            "cs" => "csharp",
+            "rb" => "ruby",
+            "php" => "php",
+            "kt" | "kts" => "kotlin",
+            _ => "other",
+        };
+        *loc_by_language.entry(lang_name.to_string()).or_insert(0) += fm.code_lines;
+    }
+
+    // 計算平均函數 LOC
+    let all_func_locs: Vec<u32> = files.iter().flat_map(|f| f.functions.iter().map(|fn_m| fn_m.loc)).collect();
+    let avg_function_loc = if all_func_locs.is_empty() {
+        0.0
+    } else {
+        all_func_locs.iter().map(|&v| v as f64).sum::<f64>() / all_func_locs.len() as f64
+    };
+
+    // Duplication 資料
+    let (duplication_percentage, duplicate_blocks) = if let Some(ref dup) = result.duplication {
+        let blocks: Vec<DuplicateBlock> = dup
+            .blocks
+            .iter()
+            .map(|b| DuplicateBlock {
+                file_a: b.file_a.clone(),
+                line_range_a: [b.line_range_a.0 as u32, b.line_range_a.1 as u32],
+                file_b: b.file_b.clone(),
+                line_range_b: [b.line_range_b.0 as u32, b.line_range_b.1 as u32],
+                token_count: b.token_count as u32,
+                line_count: b.line_count as u32,
+            })
+            .collect();
+        (dup.duplication_percentage, blocks)
+    } else {
+        (0.0, Vec::new())
+    };
+
+    MetricsReport {
+        files,
+        project: ProjectMetrics {
+            total_files,
+            total_loc,
+            loc_by_language,
+            avg_function_loc,
+            duplication_percentage,
+            duplicate_blocks,
+        },
     }
 }
 
@@ -746,6 +868,7 @@ mod tests {
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
+            metrics: false,
         };
         let result = execute(args);
         assert!(result.is_err());
@@ -770,6 +893,7 @@ mod tests {
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
+            metrics: false,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -822,6 +946,7 @@ fail_on:
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
+            metrics: false,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -853,6 +978,7 @@ fail_on:
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
+            metrics: false,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -944,6 +1070,7 @@ fail_on:
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
+            metrics: false,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -968,6 +1095,7 @@ fail_on:
             diff_ref: None,
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
+            metrics: false,
         };
         let result = execute(args);
         assert!(result.is_err());
