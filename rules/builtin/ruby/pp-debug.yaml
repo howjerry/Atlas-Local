@@ -10,8 +10,8 @@ category: quality
 language: Ruby
 confidence: medium
 pattern: |
-  ((command
-    name: (identifier) @method
+  ((call
+    method: (identifier) @method
     (#eq? @method "pp"))
   @match)
 remediation: >

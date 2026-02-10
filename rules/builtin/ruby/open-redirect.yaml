@@ -16,8 +16,8 @@ pattern: |
       (#eq? @method "redirect_to")
       arguments: (argument_list))
     @match)
-    ((command
-      name: (identifier) @cmd_name
+    ((call
+      method: (identifier) @cmd_name
       (#eq? @cmd_name "redirect_to"))
     @match)
   ]

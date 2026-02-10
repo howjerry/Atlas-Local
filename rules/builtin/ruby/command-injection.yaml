@@ -17,8 +17,8 @@ pattern: |
       arguments: (argument_list
         (string
           (interpolation)) @cmd_arg))
-    (command
-      name: (identifier) @cmd_name
+    (call
+      method: (identifier) @cmd_name
       (#match? @cmd_name "^(system|exec|spawn)$")
       arguments: (argument_list
         (string
