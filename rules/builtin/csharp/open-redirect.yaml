@@ -1,10 +1,11 @@
 id: atlas/security/csharp/open-redirect
 name: Open Redirect via Redirect Methods
 description: >
-  Detects calls to Redirect(), RedirectToAction(), and RedirectPermanent()
-  where the URL argument may come from user input. An attacker can craft
-  a malicious URL to redirect users to a phishing site or other malicious
-  destination after authentication.
+  Detects calls to Redirect() and RedirectPermanent() where the URL argument
+  may come from user input. An attacker can craft a malicious URL to redirect
+  users to a phishing site or other malicious destination after authentication.
+  Note: RedirectToAction is excluded because its first argument is an action
+  name routed by the framework, not a raw URL.
 severity: medium
 category: security
 language: CSharp
@@ -26,7 +27,7 @@ pattern: |
     arguments: (argument_list
       (argument
         [(identifier) (member_access_expression) (invocation_expression) (element_access_expression)] @url_arg))
-    (#match? @method "^(Redirect|RedirectToAction|RedirectPermanent)$"))
+    (#match? @method "^(Redirect|RedirectPermanent)$"))
   @match
 remediation: >
   Validate redirect URLs against an allowlist of trusted domains or

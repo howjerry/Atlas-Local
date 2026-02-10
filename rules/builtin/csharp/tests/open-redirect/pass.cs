@@ -19,4 +19,10 @@ public class OpenRedirectPass : Controller
     {
         return Redirect("/dashboard");
     }
+
+    public IActionResult GoToAction(string action)
+    {
+        // RedirectToAction 的第一個參數是 action name，由框架路由，非 open redirect
+        return RedirectToAction(nameof(GoHome));
+    }
 }

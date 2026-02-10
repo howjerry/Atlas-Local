@@ -6,10 +6,11 @@ description: >
   for security-sensitive purposes such as token generation, session IDs, or
   passwords, an attacker can predict the generated values and compromise the
   application.
-severity: medium
+severity: low
 category: security
 language: TypeScript
 cwe_id: CWE-330
+confidence: low
 pattern: |
   (call_expression
     function: (member_expression
