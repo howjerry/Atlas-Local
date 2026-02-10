@@ -8,6 +8,12 @@ pub mod l2_intraprocedural;
 pub mod l2_taint_config;
 pub mod l3_interprocedural;
 pub mod secrets;
+pub mod duplication;
+pub mod metrics;
 
 pub use finding::{AnalysisError, DiffStatus, Finding, FindingBuilder, LineRange};
 pub use l1_pattern::{L1Error, L1PatternEngine, RuleMatchMetadata};
+pub use metrics::{FileMetricsData, FunctionMetricsData, MetricsConfig, MetricsEngine};
+pub use duplication::{
+    DuplicateBlockData, DuplicationDetector, DuplicationResult, NormalizedToken, TokenizedFile,
+};
