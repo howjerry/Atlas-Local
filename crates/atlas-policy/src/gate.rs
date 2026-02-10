@@ -235,6 +235,7 @@ struct CategoryCounts {
     security: SeverityCounts,
     quality: SeverityCounts,
     secrets: SeverityCounts,
+    metrics: SeverityCounts,
 }
 
 impl CategoryCounts {
@@ -243,6 +244,7 @@ impl CategoryCounts {
             Category::Security => &self.security,
             Category::Quality => &self.quality,
             Category::Secrets => &self.secrets,
+            Category::Metrics => &self.metrics,
         }
     }
 }
@@ -253,12 +255,14 @@ fn count_by_category<F: GateFinding>(findings: &[F]) -> CategoryCounts {
         security: SeverityCounts::default(),
         quality: SeverityCounts::default(),
         secrets: SeverityCounts::default(),
+        metrics: SeverityCounts::default(),
     };
     for finding in findings {
         let bucket = match finding.category() {
             Category::Security => &mut counts.security,
             Category::Quality => &mut counts.quality,
             Category::Secrets => &mut counts.secrets,
+            Category::Metrics => &mut counts.metrics,
         };
         bucket.increment(finding.severity());
     }
@@ -343,6 +347,15 @@ fn check_category_overrides(
             cat_counts.get(Category::Secrets),
             secrets,
             Some("secrets"),
+            level,
+            breached,
+        );
+    }
+    if let Some(ref metrics) = overrides.metrics {
+        check_thresholds(
+            cat_counts.get(Category::Metrics),
+            metrics,
+            Some("metrics"),
             level,
             breached,
         );
@@ -602,6 +615,7 @@ mod tests {
             }),
             quality: None,
             secrets: None,
+            metrics: None,
         };
 
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
@@ -743,6 +757,7 @@ mod tests {
                 ..empty_thresholds()
             }),
             secrets: None,
+            metrics: None,
         };
 
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
@@ -769,6 +784,7 @@ mod tests {
                 critical: Some(0),
                 ..empty_thresholds()
             }),
+            metrics: None,
         };
 
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
@@ -804,6 +820,7 @@ mod tests {
                 ..empty_thresholds()
             }),
             secrets: None,
+            metrics: None,
         };
 
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
@@ -884,6 +901,64 @@ mod tests {
         };
 
         let details = evaluate_gate(&findings, &fail_on, None, None);
+        assert_eq!(details.result, GateResult::Pass);
+        assert!(details.breached_thresholds.is_empty());
+    }
+
+    // -- Test: Category override (metrics) triggers FAIL --------------------
+
+    #[test]
+    fn gate_category_override_metrics() {
+        // 3 個 Metrics findings（medium severity）。
+        // Category override: metrics.medium = 2 → FAIL（3 > 2）。
+        let findings = vec![
+            finding(Severity::Medium, Category::Metrics),
+            finding(Severity::Medium, Category::Metrics),
+            finding(Severity::Medium, Category::Metrics),
+        ];
+        let fail_on = empty_thresholds();
+        let overrides = CategoryOverrides {
+            security: None,
+            quality: None,
+            secrets: None,
+            metrics: Some(Thresholds {
+                medium: Some(2),
+                ..empty_thresholds()
+            }),
+        };
+
+        let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
+        assert_eq!(details.result, GateResult::Fail);
+        assert_eq!(details.breached_thresholds.len(), 1);
+        assert_eq!(
+            details.breached_thresholds[0].category.as_deref(),
+            Some("metrics")
+        );
+        assert_eq!(details.breached_thresholds[0].severity, "medium");
+        assert_eq!(details.breached_thresholds[0].actual, 3);
+        assert_eq!(details.breached_thresholds[0].threshold, 2);
+    }
+
+    #[test]
+    fn gate_metrics_pass_when_below_threshold() {
+        // 2 個 Metrics findings。
+        // Category override: metrics.medium = 5 → PASS（2 <= 5）。
+        let findings = vec![
+            finding(Severity::Medium, Category::Metrics),
+            finding(Severity::Medium, Category::Metrics),
+        ];
+        let fail_on = empty_thresholds();
+        let overrides = CategoryOverrides {
+            security: None,
+            quality: None,
+            secrets: None,
+            metrics: Some(Thresholds {
+                medium: Some(5),
+                ..empty_thresholds()
+            }),
+        };
+
+        let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
         assert_eq!(details.result, GateResult::Pass);
         assert!(details.breached_thresholds.is_empty());
     }
