@@ -3,9 +3,13 @@
 //! 提供鎖檔解析、離線漏洞資料庫查詢、版本匹配引擎，
 //! 以及 SCA finding 產生功能。
 
+pub mod cyclonedx;
 pub mod database;
 pub mod lockfile;
 pub mod matcher;
+pub mod purl;
+pub mod sbom;
+pub mod spdx;
 pub mod update;
 
 use std::path::Path;

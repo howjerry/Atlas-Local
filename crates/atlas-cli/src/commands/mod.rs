@@ -5,5 +5,6 @@ pub mod config;
 pub mod diag;
 pub mod license;
 pub mod rulepack;
+pub mod sbom;
 pub mod scan;
 pub mod sca;
