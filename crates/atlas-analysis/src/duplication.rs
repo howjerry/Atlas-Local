@@ -229,8 +229,8 @@ impl DuplicationDetector {
         let mut current_hash = 0u64;
         let mut power = 1u64;
 
-        for i in 0..window_size {
-            let token_hash = self.token_hash(&tokens[i]);
+        for (i, token) in tokens.iter().enumerate().take(window_size) {
+            let token_hash = self.token_hash(token);
             current_hash = self.add_mod(
                 current_hash,
                 self.mul_mod(token_hash, power)
@@ -241,7 +241,7 @@ impl DuplicationDetector {
         }
 
         hash_map.entry(current_hash)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push((file_idx, 0));
 
         // Rolling hash: 移除最左邊的 token，加入新的 token
@@ -262,7 +262,7 @@ impl DuplicationDetector {
             current_hash = self.add_mod(current_hash, new_token_hash);
 
             hash_map.entry(current_hash)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push((file_idx, i - window_size + 1));
         }
     }
@@ -283,8 +283,7 @@ impl DuplicationDetector {
     /// 模運算加法
     #[inline]
     fn add_mod(&self, a: u64, b: u64) -> u64 {
-        let sum = (a + b) % self.hash_modulus;
-        sum
+        (a + b) % self.hash_modulus
     }
 
     /// 模運算減法

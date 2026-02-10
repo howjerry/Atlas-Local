@@ -372,7 +372,7 @@ fn parse_hunk_header(line: &str) -> Option<HunkRange> {
 
     // Find the end of the range (next space or @@).
     let end = after_plus
-        .find(|c: char| c == ' ' || c == '@')
+        .find([' ', '@'])
         .unwrap_or(after_plus.len());
     let range_str = &after_plus[..end];
 
