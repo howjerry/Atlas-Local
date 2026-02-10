@@ -1,0 +1,52 @@
+id: atlas/security/csharp/viewstate-insecure
+name: ASP.NET ViewState MAC Validation Disabled
+description: >
+  Detects ASP.NET configurations where ViewState MAC validation is
+  disabled by setting EnableViewStateMac to false or ViewStateEncryptionMode
+  to Never. Without MAC validation, an attacker can tamper with ViewState
+  data to inject malicious values, potentially leading to deserialization
+  attacks or parameter manipulation.
+severity: high
+category: security
+language: CSharp
+cwe_id: CWE-642
+pattern: |
+  [
+    (assignment_expression
+      left: (member_access_expression
+        name: (identifier) @prop
+        (#eq? @prop "EnableViewStateMac"))
+      right: (boolean_literal) @value
+      (#eq? @value "false"))
+    @match
+
+    (assignment_expression
+      left: (member_access_expression
+        name: (identifier) @prop
+        (#eq? @prop "ViewStateEncryptionMode"))
+      right: (member_access_expression
+        name: (identifier) @value
+        (#eq? @value "Never")))
+    @match
+  ]
+remediation: >
+  Never disable ViewState MAC validation. Ensure EnableViewStateMac is
+  true (default in .NET 4.5.2+). Set ViewStateEncryptionMode to Always.
+  For new applications, consider migrating to ASP.NET Core which does not
+  use ViewState. If ViewState is needed, ensure MachineKey is properly
+  configured with strong keys.
+references:
+  - https://cwe.mitre.org/data/definitions/642.html
+  - https://learn.microsoft.com/en-us/previous-versions/dotnet/articles/ms972427(v=msdn.10)
+tags:
+  - viewstate
+  - aspnet
+  - owasp-top-10
+  - a08-software-data-integrity-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A08:2021"
+      description: Software and Data Integrity Failures
+version: 1.0.0
+

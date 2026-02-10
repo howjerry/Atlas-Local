@@ -1,0 +1,53 @@
+id: atlas/security/go/template-injection
+name: Server-Side Template Injection via html/template or text/template
+description: >
+  Detects usage of template.New().Parse() where the template string is a
+  variable rather than a hardcoded string. If user-controlled input is used
+  as a template, an attacker can inject Go template directives to execute
+  arbitrary functions, access internal data structures, or cause denial of
+  service. text/template is especially dangerous as it lacks HTML escaping.
+severity: critical
+category: security
+language: Go
+cwe_id: CWE-1336
+pattern: |
+  [
+    (call_expression
+      function: (selector_expression
+        operand: (_)
+        field: (field_identifier) @method
+        (#eq? @method "Parse"))
+      arguments: (argument_list
+        (identifier) @template_arg))
+    @match
+
+    (call_expression
+      function: (selector_expression
+        operand: (_)
+        field: (field_identifier) @method
+        (#eq? @method "ParseGlob"))
+      arguments: (argument_list
+        (identifier) @pattern_arg))
+    @match
+  ]
+remediation: >
+  Never pass user-controlled input as a template string. Load templates from
+  trusted files using template.ParseFiles() or template.ParseGlob() with
+  known paths. Pass user data as template context variables. Use html/template
+  instead of text/template for web output, as it provides auto-escaping.
+references:
+  - https://cwe.mitre.org/data/definitions/1336.html
+  - https://pkg.go.dev/html/template
+  - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Template_Injection_Prevention_Cheat_Sheet.html
+tags:
+  - ssti
+  - template-injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

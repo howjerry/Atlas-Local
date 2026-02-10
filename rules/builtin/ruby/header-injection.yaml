@@ -1,0 +1,51 @@
+id: atlas/security/ruby/header-injection
+name: HTTP Header Injection via response.headers
+description: >
+  Detects setting HTTP response headers using string interpolation
+  with potentially user-controlled variables. An attacker can inject
+  CRLF characters to add additional headers or control the response
+  body, enabling cache poisoning, session fixation, or XSS attacks.
+severity: high
+category: security
+language: Ruby
+cwe_id: CWE-113
+pattern: |
+  [
+    ((assignment
+      left: (element_reference
+        (call
+          method: (identifier) @prop
+          (#eq? @prop "headers")))
+      right: (string
+        (interpolation)))
+    @match)
+
+    ((call
+      method: (identifier) @method
+      (#eq? @method "add_header")
+      arguments: (argument_list
+        (_)
+        (string
+          (interpolation)) @header_val))
+    @match)
+  ]
+remediation: >
+  Sanitize all user input before including in HTTP headers. Strip
+  carriage return and newline characters. Use framework-provided
+  methods that automatically encode header values. Example:
+  `response.headers['X-Custom'] = sanitize_header(user_input)`.
+references:
+  - https://cwe.mitre.org/data/definitions/113.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html
+tags:
+  - header-injection
+  - http
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

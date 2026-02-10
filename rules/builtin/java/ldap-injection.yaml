@@ -1,0 +1,49 @@
+id: atlas/security/java/ldap-injection
+name: LDAP Injection via String Concatenation
+description: >
+  Detects potential LDAP injection vulnerabilities where LDAP filter strings
+  are constructed using string concatenation and passed to search methods.
+  An attacker can inject LDAP filter operators to modify the query logic,
+  potentially bypassing authentication, extracting directory information,
+  or performing unauthorized operations.
+severity: critical
+category: security
+language: Java
+cwe_id: CWE-90
+pattern: |
+  (method_invocation
+    object: (_) @obj
+    name: (identifier) @method
+    arguments: (argument_list
+      (binary_expression
+        left: (string_literal) @filter_str
+        right: (_) @concat_arg))
+    (#match? @method "^(search|list|listBindings)$"))
+  @match
+remediation: >
+  Use parameterized LDAP queries or escape special characters in user input
+  before constructing LDAP filter strings. Use frameworks like Spring LDAP's
+  LdapQueryBuilder or Apache Directory API's FilterBuilder. For manual
+  escaping, sanitize characters: *, (, ), \, NUL, /, using RFC 4515 encoding.
+references:
+  - https://cwe.mitre.org/data/definitions/90.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/LDAP_Injection_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/LDAP_Injection
+tags:
+  - ldap-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0
+

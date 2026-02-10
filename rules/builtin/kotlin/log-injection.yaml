@@ -1,0 +1,45 @@
+id: atlas/security/kotlin/log-injection
+name: Log Injection via String Template
+description: >
+  Detects usage of SLF4J/Logback/Log4j logger methods (debug, info, warn,
+  error) with Kotlin string templates that may include user-controlled
+  variables. An attacker can inject newline characters to forge log entries
+  or exploit log processing systems.
+severity: medium
+category: security
+language: Kotlin
+cwe_id: CWE-117
+pattern: |
+  [
+    (call_expression
+      (navigation_expression
+        (identifier) @receiver
+        (#match? @receiver "^(logger|log|LOG)$")
+        (identifier) @method)
+      (value_arguments
+        (value_argument
+          (string_literal
+            (interpolation)) @log_msg))
+      (#match? @method "^(debug|info|warn|error|fatal|trace)$"))
+    @match
+  ]
+remediation: >
+  Use SLF4J parameterized logging instead of string templates:
+  `logger.info("User login: {}", username)`. This avoids both log
+  injection and unnecessary string allocation when the log level is
+  disabled. For structured logging, use MDC or markers.
+references:
+  - https://cwe.mitre.org/data/definitions/117.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+tags:
+  - log-injection
+  - logging
+  - owasp-top-10
+  - a09-security-logging-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A09:2021"
+      description: Security Logging and Monitoring Failures
+version: 1.0.0
+

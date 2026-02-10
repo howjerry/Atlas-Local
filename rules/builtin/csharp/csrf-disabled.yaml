@@ -1,0 +1,47 @@
+id: atlas/security/csharp/csrf-disabled
+name: ASP.NET CSRF Protection Disabled
+description: >
+  Detects ASP.NET configurations where CSRF (anti-forgery) protection is
+  disabled by setting IgnoreAntiforgeryToken or setting ValidateAntiForgeryToken
+  attribute exclusions. Also detects [IgnoreAntiforgeryToken] attribute usage.
+  Without CSRF protection, attackers can trick authenticated users into
+  performing unintended actions.
+severity: high
+category: security
+language: CSharp
+cwe_id: CWE-352
+pattern: |
+  [
+    (attribute
+      name: (identifier) @attr_name
+      (#eq? @attr_name "IgnoreAntiforgeryToken"))
+    @match
+
+    (assignment_expression
+      left: (member_access_expression
+        name: (identifier) @prop
+        (#eq? @prop "SuppressAntiforgeryToken"))
+      right: (boolean_literal) @value
+      (#eq? @value "true"))
+    @match
+  ]
+remediation: >
+  Remove [IgnoreAntiforgeryToken] attributes from controllers and actions.
+  Ensure all state-changing endpoints have [ValidateAntiForgeryToken] or
+  use the global AutoValidateAntiforgeryTokenAttribute filter. In Razor
+  Pages, anti-forgery is enabled by default. For APIs using JWT, CSRF
+  tokens may not be needed but ensure proper CORS configuration.
+references:
+  - https://cwe.mitre.org/data/definitions/352.html
+  - https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery
+tags:
+  - csrf
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+version: 1.0.0
+

@@ -1,0 +1,47 @@
+id: atlas/security/python/flask-debug-mode
+name: Flask Application Running in Debug Mode
+description: >
+  Detects Flask applications configured to run with debug=True. Debug mode
+  enables the interactive debugger (Werkzeug debugger) which allows arbitrary
+  code execution through the browser. If the application is accessible on a
+  network, an attacker can use the debugger PIN bypass or console to execute
+  arbitrary Python code on the server.
+severity: high
+category: security
+language: Python
+cwe_id: CWE-489
+pattern: |
+  (call
+    function: (attribute
+      object: (_)
+      attribute: (identifier) @method
+      (#eq? @method "run"))
+    arguments: (argument_list
+      (keyword_argument
+        name: (identifier) @kwname
+        value: (true) @kwval
+        (#eq? @kwname "debug"))))
+  @match
+remediation: >
+  Never enable debug mode in production. Use environment variables to control
+  debug mode: `app.run(debug=os.environ.get('FLASK_DEBUG', False))`. For
+  development, use `flask run --debug` instead of `app.run(debug=True)`.
+  In production, use a WSGI server like gunicorn or uWSGI instead of the
+  built-in development server.
+references:
+  - https://cwe.mitre.org/data/definitions/489.html
+  - https://flask.palletsprojects.com/en/3.0.x/debugging/
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/08-Testing_for_Error_Handling/01-Testing_For_Improper_Error_Handling
+tags:
+  - flask
+  - debug
+  - misconfiguration
+  - owasp-top-10
+  - a05-security-misconfiguration
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A05:2021"
+      description: Security Misconfiguration
+version: 1.0.0
+

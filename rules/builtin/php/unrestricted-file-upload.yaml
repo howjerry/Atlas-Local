@@ -1,0 +1,42 @@
+id: atlas/security/php/unrestricted-file-upload
+name: Unrestricted File Upload
+description: >
+  Detects usage of move_uploaded_file() which moves uploaded files to a
+  target directory. Without proper validation of file type, size, and
+  content, an attacker can upload malicious files such as PHP webshells,
+  leading to remote code execution on the server.
+severity: high
+category: security
+language: Php
+cwe_id: CWE-434
+pattern: |
+  ((function_call_expression
+    function: (name) @func_name
+    arguments: (arguments
+      (argument (_) @tmp_file)
+      (argument (_) @dest_path)))
+    (#eq? @func_name "move_uploaded_file"))
+  @match
+remediation: >
+  Validate uploaded files before moving them: check MIME type using
+  finfo_file(), restrict allowed extensions with an allowlist, enforce
+  file size limits, and store files outside the web root with randomized
+  names. Example:
+  `$finfo = finfo_open(FILEINFO_MIME_TYPE);
+  $mime = finfo_file($finfo, $_FILES['file']['tmp_name']);
+  if (in_array($mime, ['image/jpeg', 'image/png'])) { ... }`.
+references:
+  - https://cwe.mitre.org/data/definitions/434.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+  - https://www.php.net/manual/en/function.move-uploaded-file.php
+tags:
+  - file-upload
+  - owasp-top-10
+  - a04-insecure-design
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A04:2021"
+      description: Insecure Design
+version: 1.0.0
+

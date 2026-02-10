@@ -1,0 +1,57 @@
+id: atlas/security/csharp/insecure-tls
+name: Insecure TLS Protocol Version
+description: >
+  Detects usage of deprecated TLS/SSL protocol versions (SSL3, TLS 1.0,
+  TLS 1.1) in ServicePointManager.SecurityProtocol or SslStream
+  AuthenticateAsClient. Older protocol versions have known vulnerabilities
+  (POODLE, BEAST) that allow attackers to decrypt traffic.
+severity: high
+category: security
+language: CSharp
+cwe_id: CWE-295
+pattern: |
+  [
+    (assignment_expression
+      left: (member_access_expression
+        name: (identifier) @prop
+        (#eq? @prop "SecurityProtocol"))
+      right: (member_access_expression
+        name: (identifier) @value
+        (#match? @value "^(Ssl3|Tls|Tls11)$")))
+    @match
+
+    (invocation_expression
+      function: (member_access_expression
+        name: (identifier) @method
+        (#eq? @method "AuthenticateAsClient"))
+      arguments: (argument_list
+        (argument
+          (_) @host)
+        (argument
+          (_))
+        (argument
+          (member_access_expression
+            name: (identifier) @proto
+            (#match? @proto "^(Ssl3|Tls|Tls11)$")))))
+    @match
+  ]
+remediation: >
+  Use TLS 1.2 or TLS 1.3 as the minimum protocol version. Set
+  `ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 |
+  SecurityProtocolType.Tls13;` or use HttpClientHandler with
+  SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13.
+references:
+  - https://cwe.mitre.org/data/definitions/295.html
+  - https://learn.microsoft.com/en-us/dotnet/framework/network-programming/tls
+tags:
+  - tls
+  - ssl
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+version: 1.0.0
+

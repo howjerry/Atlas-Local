@@ -1,0 +1,42 @@
+id: atlas/security/csharp/unrestricted-file-upload
+name: Unrestricted File Upload Without Validation
+description: >
+  Detects usage of IFormFile.CopyToAsync or SaveAs without proper
+  file type validation. Without checking file extensions, MIME types,
+  and content, attackers can upload web shells, malicious executables,
+  or polyglot files that may execute on the server.
+severity: high
+category: security
+language: CSharp
+cwe_id: CWE-434
+pattern: |
+  [
+    (invocation_expression
+      function: (member_access_expression
+        name: (identifier) @method
+        (#match? @method "^(CopyToAsync|CopyTo|SaveAs)$"))
+      arguments: (argument_list
+        (argument
+          (_) @dest)))
+    @match
+  ]
+remediation: >
+  Validate uploaded files before saving: check file extension against an
+  allowlist, verify content type, enforce maximum file size, and generate
+  a random filename. Use Path.GetExtension() to check extensions. Store
+  files outside the web root. Example: validate `.ContentType` and
+  `.FileName` before calling CopyToAsync.
+references:
+  - https://cwe.mitre.org/data/definitions/434.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+tags:
+  - file-upload
+  - owasp-top-10
+  - a04-insecure-design
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A04:2021"
+      description: Insecure Design
+version: 1.0.0
+

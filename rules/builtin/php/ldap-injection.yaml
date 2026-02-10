@@ -1,0 +1,53 @@
+id: atlas/security/php/ldap-injection
+name: LDAP Injection via String Concatenation
+description: >
+  Detects LDAP search or bind operations where filter strings are
+  constructed using string concatenation or interpolation with variables.
+  An attacker can inject LDAP filter operators to bypass authentication,
+  enumerate directory entries, or extract sensitive data from LDAP.
+severity: critical
+category: security
+language: Php
+cwe_id: CWE-90
+pattern: |
+  [
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument (_))
+        (argument (_))
+        (argument
+          [(encapsed_string) (binary_expression)] @filter_arg)))
+      (#match? @func_name "^(ldap_search|ldap_list|ldap_read)$"))
+    @match
+
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument (_))
+        (argument
+          [(encapsed_string) (binary_expression)] @dn_arg)))
+      (#eq? @func_name "ldap_bind"))
+    @match
+  ]
+remediation: >
+  Escape user input before embedding in LDAP filters using
+  ldap_escape($input, '', LDAP_ESCAPE_FILTER) for filter values or
+  ldap_escape($input, '', LDAP_ESCAPE_DN) for DN components. Never
+  concatenate user input directly into LDAP filter strings.
+references:
+  - https://cwe.mitre.org/data/definitions/90.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/LDAP_Injection_Prevention_Cheat_Sheet.html
+  - https://www.php.net/manual/en/function.ldap-escape.php
+tags:
+  - ldap-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

@@ -1,0 +1,53 @@
+id: atlas/security/php/xxe
+name: XML External Entity (XXE) Injection
+description: >
+  Detects calls to libxml_disable_entity_loader(false) which explicitly
+  enables external entity loading, and usage of simplexml_load_string or
+  DOMDocument::loadXML with LIBXML_NOENT flag which resolves external
+  entities. These patterns allow attackers to read local files, perform
+  SSRF, or cause denial of service via entity expansion.
+severity: high
+category: security
+language: Php
+cwe_id: CWE-611
+pattern: |
+  [
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          (boolean) @value)))
+      (#eq? @func_name "libxml_disable_entity_loader")
+      (#eq? @value "false"))
+    @match
+
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument (_))
+        (argument
+          (name) @flag
+          (#eq? @flag "LIBXML_NOENT"))))
+      (#match? @func_name "^(simplexml_load_string|simplexml_load_file)$"))
+    @match
+  ]
+remediation: >
+  Call libxml_disable_entity_loader(true) before parsing XML (PHP < 8.0).
+  For PHP 8.0+, external entities are disabled by default. Avoid using
+  LIBXML_NOENT flag. Use XMLReader with proper settings or the libxml
+  options LIBXML_NONET | LIBXML_DTDLOAD disabled.
+references:
+  - https://cwe.mitre.org/data/definitions/611.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html
+tags:
+  - xxe
+  - xml
+  - owasp-top-10
+  - a05-security-misconfiguration
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A05:2021"
+      description: Security Misconfiguration
+version: 1.0.0
+

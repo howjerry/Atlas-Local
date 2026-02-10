@@ -1,0 +1,52 @@
+id: atlas/security/csharp/log-injection
+name: Log Injection via Unsanitized User Input
+description: >
+  Detects usage of ILogger or Console logging methods with string
+  interpolation that includes user-controlled variables. An attacker can
+  inject newline characters or log formatting sequences to forge log
+  entries, corrupt log analysis, or exploit SIEM systems.
+severity: medium
+category: security
+language: CSharp
+cwe_id: CWE-117
+pattern: |
+  [
+    (invocation_expression
+      function: (member_access_expression
+        name: (identifier) @method
+        (#match? @method "^(LogInformation|LogWarning|LogError|LogCritical|LogDebug)$"))
+      arguments: (argument_list
+        (argument
+          (interpolated_string_expression) @log_msg)))
+    @match
+
+    (invocation_expression
+      function: (member_access_expression
+        name: (identifier) @method
+        (#eq? @method "WriteLine"))
+      arguments: (argument_list
+        (argument
+          (interpolated_string_expression) @log_msg)))
+    @match
+  ]
+remediation: >
+  Use structured logging with message templates instead of string
+  interpolation. ILogger supports structured logging natively:
+  `logger.LogInformation("User login: {Username}", username)` instead of
+  `logger.LogInformation($"User login: {username}")`. This ensures proper
+  encoding and enables structured log analysis.
+references:
+  - https://cwe.mitre.org/data/definitions/117.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+tags:
+  - log-injection
+  - logging
+  - owasp-top-10
+  - a09-security-logging-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A09:2021"
+      description: Security Logging and Monitoring Failures
+version: 1.0.0
+

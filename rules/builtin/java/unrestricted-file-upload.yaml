@@ -1,0 +1,49 @@
+id: atlas/security/java/unrestricted-file-upload
+name: Unrestricted File Upload via MultipartFile
+description: >
+  Detects usage of MultipartFile.transferTo() or getInputStream() where
+  uploaded file content may be saved without proper validation of file
+  type, size, or content. An attacker can upload malicious files such as
+  web shells, executables, or polyglot files that execute on the server
+  or are served to other users, leading to remote code execution, XSS,
+  or denial of service.
+severity: high
+category: security
+language: Java
+cwe_id: CWE-434
+pattern: |
+  [
+    (method_invocation
+      object: (_) @file_obj
+      name: (identifier) @method
+      (#match? @method "^(transferTo|getBytes|getInputStream)$"))
+    @match
+  ]
+remediation: >
+  Validate uploaded files before processing: check file extension against an
+  allowlist, verify MIME type using content inspection (not just Content-Type
+  header), enforce maximum file size, generate a random filename instead of
+  using the original, and store files outside the web root. Use Spring's
+  `MultipartResolver` configuration to set size limits. Scan uploaded files
+  with antivirus when possible.
+references:
+  - https://cwe.mitre.org/data/definitions/434.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+  - https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload
+tags:
+  - file-upload
+  - owasp-top-10
+  - a04-insecure-design
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A04:2021"
+      description: Insecure Design
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0
+

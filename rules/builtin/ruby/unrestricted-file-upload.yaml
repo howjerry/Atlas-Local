@@ -1,0 +1,55 @@
+id: atlas/security/ruby/unrestricted-file-upload
+name: Unrestricted File Upload
+description: >
+  Detects file upload handling using File.open or FileUtils.cp with
+  original_filename from uploaded files without content type or extension
+  validation. An attacker can upload malicious files such as executable
+  scripts to achieve remote code execution on the server.
+severity: high
+category: security
+language: Ruby
+cwe_id: CWE-434
+pattern: |
+  [
+    ((call
+      receiver: (constant) @receiver
+      (#eq? @receiver "File")
+      method: (identifier) @method
+      (#match? @method "^(open|write|binwrite)$")
+      arguments: (argument_list
+        (call
+          method: (identifier) @inner_method
+          (#eq? @inner_method "original_filename"))))
+    @match)
+
+    ((call
+      receiver: (constant) @receiver
+      (#eq? @receiver "FileUtils")
+      method: (identifier) @method
+      (#match? @method "^(cp|mv|copy)$")
+      arguments: (argument_list
+        (call
+          method: (identifier) @inner_method
+          (#eq? @inner_method "tempfile"))))
+    @match)
+  ]
+remediation: >
+  Validate uploaded files before saving: check content_type against an
+  allowlist, validate file extension, enforce size limits, and generate
+  random filenames. Use Active Storage or Shrine with built-in
+  validations. Example:
+  `validates :avatar, content_type: ['image/jpeg', 'image/png']`.
+references:
+  - https://cwe.mitre.org/data/definitions/434.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+tags:
+  - file-upload
+  - owasp-top-10
+  - a04-insecure-design
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A04:2021"
+      description: Insecure Design
+version: 1.0.0
+

@@ -1,0 +1,62 @@
+id: atlas/security/java/xpath-injection
+name: XPath Injection via String Concatenation
+description: >
+  Detects potential XPath injection vulnerabilities where XPath expressions
+  are constructed using string concatenation and passed to compile() or
+  evaluate() methods. An attacker can inject XPath operators to alter the
+  query logic, potentially bypassing authentication or extracting sensitive
+  XML data from the document.
+severity: critical
+category: security
+language: Java
+cwe_id: CWE-643
+pattern: |
+  [
+    (method_invocation
+      object: (_) @obj
+      name: (identifier) @method
+      arguments: (argument_list
+        (binary_expression
+          left: (string_literal) @xpath_str
+          right: (_) @concat_arg))
+      (#match? @method "^(compile|evaluate|selectNodes|selectSingleNode)$"))
+    @match
+
+    (method_invocation
+      name: (identifier) @method
+      arguments: (argument_list
+        (binary_expression
+          left: (string_literal) @xpath_str
+          right: (_) @concat_arg))
+      (#match? @method "^(compile|evaluate|selectNodes|selectSingleNode)$"))
+    @match
+  ]
+remediation: >
+  Use parameterized XPath queries with XPathVariableResolver instead of
+  string concatenation. For example, implement a custom XPathVariableResolver
+  and use $variable references in XPath expressions. Alternatively, validate
+  and sanitize user input by escaping special XPath characters before
+  embedding them in queries.
+references:
+  - https://cwe.mitre.org/data/definitions/643.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/XPATH_Injection
+tags:
+  - xpath-injection
+  - injection
+  - xml
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0
+

@@ -1,0 +1,46 @@
+id: atlas/security/typescript/dangerouslysetinnerhtml
+name: React dangerouslySetInnerHTML Usage
+description: >
+  Detects usage of React's dangerouslySetInnerHTML prop which bypasses
+  React's built-in XSS protections. If the HTML content includes
+  user-controlled input without proper sanitization, an attacker can inject
+  malicious scripts that execute in the context of the application, leading
+  to session hijacking, data theft, or account takeover.
+severity: high
+category: security
+language: TypeScript
+cwe_id: CWE-79
+pattern: |
+  (jsx_attribute
+    (property_identifier) @attr
+    (#eq? @attr "dangerouslySetInnerHTML"))
+  @match
+remediation: >
+  Avoid using dangerouslySetInnerHTML whenever possible. For plain text
+  content, use regular JSX text nodes or textContent. If HTML rendering is
+  required, sanitize the HTML using DOMPurify before passing it to
+  dangerouslySetInnerHTML: `<div dangerouslySetInnerHTML={{ __html:
+  DOMPurify.sanitize(userContent) }} />`. Consider using a markdown renderer
+  with sanitization for user-generated content.
+references:
+  - https://cwe.mitre.org/data/definitions/79.html
+  - https://react.dev/reference/react-dom/components/common#dangerously-setting-the-inner-html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+tags:
+  - xss
+  - react
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0
+

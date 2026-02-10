@@ -1,0 +1,57 @@
+id: atlas/security/go/hardcoded-tls-key
+name: Hardcoded TLS Certificate or Private Key Path
+description: >
+  Detects usage of tls.LoadX509KeyPair() or tls.X509KeyPair() with
+  hardcoded string literal paths or PEM data. Hardcoded certificate paths
+  or key material in source code cannot be rotated without redeployment
+  and may be exposed through version control. Private key material in
+  source code is a critical secret leak.
+severity: high
+category: security
+language: Go
+cwe_id: CWE-798
+pattern: |
+  [
+    (call_expression
+      function: (selector_expression
+        operand: (identifier) @pkg
+        field: (field_identifier) @func
+        (#eq? @pkg "tls")
+        (#eq? @func "LoadX509KeyPair"))
+      arguments: (argument_list
+        (interpreted_string_literal) @cert_path
+        (interpreted_string_literal) @key_path))
+    @match
+
+    (call_expression
+      function: (selector_expression
+        operand: (identifier) @pkg
+        field: (field_identifier) @func
+        (#eq? @pkg "tls")
+        (#eq? @func "X509KeyPair"))
+      arguments: (argument_list
+        (_) @cert_data
+        (_) @key_data))
+    @match
+  ]
+remediation: >
+  Load TLS certificate and key paths from environment variables or
+  configuration files. Never embed private key material in source code.
+  Use a secrets manager (HashiCorp Vault, AWS Secrets Manager) for
+  production deployments. Example:
+  `tls.LoadX509KeyPair(os.Getenv("TLS_CERT"), os.Getenv("TLS_KEY"))`
+references:
+  - https://cwe.mitre.org/data/definitions/798.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Key_Management_Cheat_Sheet.html
+tags:
+  - hardcoded-credentials
+  - tls
+  - owasp-top-10
+  - a07-identification-authentication-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A07:2021"
+      description: Identification and Authentication Failures
+version: 1.0.0
+

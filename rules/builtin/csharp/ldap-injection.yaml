@@ -1,0 +1,50 @@
+id: atlas/security/csharp/ldap-injection
+name: LDAP Injection via String Concatenation
+description: >
+  Detects LDAP search operations where filter strings are constructed
+  using string concatenation or interpolation with user-controlled input.
+  An attacker can inject LDAP filter operators to bypass authentication,
+  enumerate directory entries, or extract sensitive LDAP data.
+severity: critical
+category: security
+language: CSharp
+cwe_id: CWE-90
+pattern: |
+  [
+    (invocation_expression
+      function: (member_access_expression
+        name: (identifier) @method
+        (#match? @method "^(FindAll|FindOne)$"))
+      arguments: (argument_list
+        (argument
+          (interpolated_string_expression) @filter_expr)))
+    @match
+
+    (object_creation_expression
+      type: (identifier) @type
+      arguments: (argument_list
+        (argument
+          (interpolated_string_expression) @filter_expr))
+      (#eq? @type "DirectorySearcher"))
+    @match
+  ]
+remediation: >
+  Use parameterized LDAP filters or escape user input before embedding
+  in LDAP queries. Use the LdapFilterEncoder.FilterEncode() method or
+  implement proper escaping of LDAP special characters (*, (, ), \, NUL).
+  Example: `new DirectorySearcher($"(uid={LdapEncoder.FilterEncode(input)})")`
+references:
+  - https://cwe.mitre.org/data/definitions/90.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/LDAP_Injection_Prevention_Cheat_Sheet.html
+tags:
+  - ldap-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

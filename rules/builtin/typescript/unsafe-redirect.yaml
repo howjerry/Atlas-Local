@@ -1,0 +1,55 @@
+id: atlas/security/typescript/unsafe-redirect
+name: Unsafe Redirect via Express res.redirect
+description: >
+  Detects calls to Express res.redirect() where the URL argument is a
+  variable or template string rather than a hardcoded safe path. If the
+  redirect destination is user-controlled, an attacker can redirect users
+  to malicious websites for phishing, credential theft, or malware delivery.
+severity: high
+category: security
+language: TypeScript
+cwe_id: CWE-601
+pattern: |
+  [
+    (call_expression
+      function: (member_expression
+        object: (_)
+        property: (property_identifier) @method
+        (#eq? @method "redirect"))
+      arguments: (arguments
+        (identifier) @url_arg))
+    @match
+
+    (call_expression
+      function: (member_expression
+        object: (_)
+        property: (property_identifier) @method
+        (#eq? @method "redirect"))
+      arguments: (arguments
+        (template_string) @url_arg))
+    @match
+  ]
+remediation: >
+  Validate redirect URLs against an allowlist of trusted paths or domains.
+  Use relative paths instead of absolute URLs. Parse user input with
+  `new URL()` and check the hostname. For Express apps, consider using a
+  helper function: `const safeRedirect = (url) => allowedPaths.includes(url)
+  ? url : '/default'`.
+references:
+  - https://cwe.mitre.org/data/definitions/601.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+tags:
+  - open-redirect
+  - express
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+version: 1.0.0
+

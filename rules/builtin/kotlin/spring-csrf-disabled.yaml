@@ -1,0 +1,42 @@
+id: atlas/security/kotlin/spring-csrf-disabled
+name: Spring Security CSRF Protection Disabled
+description: >
+  Detects disabling of CSRF protection in Spring Security configuration
+  via csrf().disable() or csrf { disable() }. Disabling CSRF protection
+  exposes the application to cross-site request forgery attacks where
+  malicious sites can perform actions on behalf of authenticated users.
+severity: high
+category: security
+language: Kotlin
+cwe_id: CWE-352
+pattern: |
+  (call_expression
+    (navigation_expression
+      (call_expression
+        (navigation_expression
+          (_)
+          (identifier) @csrf_method)
+        (#eq? @csrf_method "csrf"))
+      (identifier) @disable_method)
+    (#eq? @disable_method "disable"))
+  @match
+remediation: >
+  Do not disable CSRF protection for web-facing endpoints. For REST APIs
+  using stateless token-based authentication (JWT, OAuth2), CSRF protection
+  may be safely disabled since the authentication token must be explicitly
+  included in each request. Document the rationale for any CSRF exemption.
+references:
+  - https://cwe.mitre.org/data/definitions/352.html
+  - https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html
+tags:
+  - csrf
+  - spring-security
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+version: 1.0.0
+

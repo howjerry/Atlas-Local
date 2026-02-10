@@ -1,0 +1,47 @@
+id: atlas/security/typescript/insecure-cookie
+name: Cookie Set Without Security Attributes
+description: >
+  Detects cookie configuration objects that explicitly set security
+  attributes to false (secure: false, httpOnly: false). Cookies without
+  the Secure flag can be transmitted over unencrypted HTTP connections,
+  and cookies without HttpOnly can be accessed by client-side JavaScript,
+  making them vulnerable to interception and XSS-based theft.
+severity: medium
+category: security
+language: TypeScript
+cwe_id: CWE-614
+pattern: |
+  (pair
+    key: (_) @key
+    value: (false) @value
+    (#match? @key "^(secure|httpOnly|httponly)$"))
+  @match
+remediation: >
+  Always set security attributes on cookies that contain sensitive data.
+  Set `secure: true` to ensure the cookie is only sent over HTTPS.
+  Set `httpOnly: true` to prevent JavaScript access to the cookie.
+  Set `sameSite: 'strict'` or `sameSite: 'lax'` to prevent CSRF attacks.
+  For example: `res.cookie('session', token, { secure: true, httpOnly: true,
+  sameSite: 'strict' })`.
+references:
+  - https://cwe.mitre.org/data/definitions/614.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+  - https://owasp.org/www-community/controls/SecureCookieAttribute
+tags:
+  - cookie
+  - session
+  - owasp-top-10
+  - a05-security-misconfiguration
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A05:2021"
+      description: Security Misconfiguration
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-23
+      description: Session Authenticity
+version: 1.0.0
+

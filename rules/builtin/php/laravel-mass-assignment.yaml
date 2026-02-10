@@ -1,0 +1,54 @@
+id: atlas/security/php/laravel-mass-assignment
+name: Laravel Mass Assignment Vulnerability
+description: >
+  Detects usage of Eloquent Model::create() or Model::update() with
+  request()->all() or $request->all() which passes all user input fields
+  to mass assignment without filtering. An attacker can include unexpected
+  fields (e.g., is_admin, role) to escalate privileges or modify protected
+  attributes.
+severity: high
+category: security
+language: Php
+cwe_id: CWE-915
+pattern: |
+  [
+    (member_call_expression
+      name: (name) @method
+      arguments: (arguments
+        (argument
+          (member_call_expression
+            name: (name) @inner_method
+            (#eq? @inner_method "all"))))
+      (#match? @method "^(create|update|fill|insert)$"))
+    @match
+
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          (member_call_expression
+            name: (name) @inner_method
+            (#eq? @inner_method "all")))))
+      (#match? @func_name "^(create|update|fill|insert)$"))
+    @match
+  ]
+remediation: >
+  Use $request->only(['field1', 'field2']) or $request->validated() instead
+  of $request->all(). Define $fillable or $guarded properties on Eloquent
+  models. Use Form Request validation classes with explicit field rules.
+  Example: `User::create($request->only(['name', 'email']))`.
+references:
+  - https://cwe.mitre.org/data/definitions/915.html
+  - https://laravel.com/docs/eloquent#mass-assignment
+tags:
+  - mass-assignment
+  - laravel
+  - owasp-top-10
+  - a04-insecure-design
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A04:2021"
+      description: Insecure Design
+version: 1.0.0
+

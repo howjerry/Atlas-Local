@@ -1,0 +1,49 @@
+id: atlas/security/java/insecure-object-reference
+name: Insecure Direct Object Reference (IDOR)
+description: >
+  Detects patterns where database entities are accessed directly using
+  identifiers from request parameters without authorization checks. When
+  a repository's findById(), getOne(), or getReferenceById() receives an ID
+  directly from the request, an attacker can enumerate or access other users'
+  data by modifying the ID parameter, bypassing access control.
+severity: high
+category: security
+language: Java
+cwe_id: CWE-639
+pattern: |
+  (method_invocation
+    object: (_) @repo
+    name: (identifier) @method
+    arguments: (argument_list
+      (identifier) @id_param)
+    (#match? @method "^(findById|getOne|getReferenceById|getById|findOne)$"))
+  @match
+remediation: >
+  Always verify that the authenticated user has permission to access the
+  requested resource. Implement authorization checks using Spring Security's
+  @PreAuthorize or @PostAuthorize annotations, or verify ownership in the
+  service layer before returning data. Use indirect references (mapping
+  user-visible IDs to internal IDs) or implement object-level access control
+  policies. Example: `@PreAuthorize("@authz.canAccess(#id, authentication)")`.
+references:
+  - https://cwe.mitre.org/data/definitions/639.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/04-Testing_for_Insecure_Direct_Object_References
+tags:
+  - idor
+  - authorization
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: AC-3
+      description: Access Enforcement
+version: 1.0.0
+

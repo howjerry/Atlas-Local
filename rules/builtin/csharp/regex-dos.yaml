@@ -1,0 +1,42 @@
+id: atlas/security/csharp/regex-dos
+name: Regular Expression Denial of Service (ReDoS)
+description: >
+  Detects creation of Regex objects without specifying a timeout. .NET
+  Regex without a timeout can be exploited with crafted input strings
+  that cause catastrophic backtracking, resulting in CPU exhaustion and
+  denial of service. The default Regex constructor has no timeout,
+  making it vulnerable to ReDoS attacks.
+severity: medium
+category: security
+language: CSharp
+cwe_id: CWE-1333
+pattern: |
+  (object_creation_expression
+    type: (identifier) @type
+    arguments: (argument_list
+      (argument
+        (string_literal) @pattern))
+    (#eq? @type "Regex"))
+  @match
+remediation: >
+  Always specify a timeout when creating Regex objects with user-controlled
+  patterns or when matching user input. Use the RegexOptions.MatchTimeout
+  option or pass a TimeSpan. Example:
+  `new Regex(pattern, RegexOptions.None, TimeSpan.FromSeconds(1))`.
+  In .NET 7+, consider using [GeneratedRegex] for compile-time safety.
+references:
+  - https://cwe.mitre.org/data/definitions/1333.html
+  - https://learn.microsoft.com/en-us/dotnet/standard/base-types/best-practices
+  - https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+tags:
+  - regex
+  - dos
+  - owasp-top-10
+  - a05-security-misconfiguration
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A05:2021"
+      description: Security Misconfiguration
+version: 1.0.0
+

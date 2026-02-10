@@ -1,0 +1,58 @@
+id: atlas/security/java/spring-csrf-disabled
+name: Spring Security CSRF Protection Disabled
+description: >
+  Detects Spring Security configuration where CSRF protection is explicitly
+  disabled by calling csrf().disable() or csrf(csrf -> csrf.disable()) in
+  the security filter chain. Disabling CSRF protection allows attackers to
+  perform cross-site request forgery attacks, tricking authenticated users
+  into executing unwanted actions such as changing passwords, making
+  transfers, or modifying account settings.
+severity: high
+category: security
+language: Java
+cwe_id: CWE-352
+pattern: |
+  [
+    (method_invocation
+      object: (method_invocation
+        name: (identifier) @csrf_method)
+      name: (identifier) @disable_method
+      (#eq? @csrf_method "csrf")
+      (#eq? @disable_method "disable"))
+    @match
+
+    (method_invocation
+      name: (identifier) @method
+      arguments: (argument_list)
+      (#eq? @method "disable"))
+    @match
+  ]
+remediation: >
+  Do not disable CSRF protection unless the application is a stateless REST
+  API that only uses token-based authentication (e.g., JWT in Authorization
+  header). For session-based applications, keep CSRF protection enabled. If
+  you need to customize CSRF, use `csrf(csrf -> csrf.csrfTokenRepository(
+  CookieCsrfTokenRepository.withHttpOnlyFalse()))` for SPA applications
+  instead of disabling it entirely.
+references:
+  - https://cwe.mitre.org/data/definitions/352.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
+  - https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html
+tags:
+  - csrf
+  - spring-security
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SC-23
+      description: Session Authenticity
+version: 1.0.0
+

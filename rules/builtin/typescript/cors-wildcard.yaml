@@ -1,0 +1,50 @@
+id: atlas/security/typescript/cors-wildcard
+name: CORS Allows Wildcard Origin
+description: >
+  Detects CORS configuration that allows any origin using the wildcard '*'.
+  This effectively disables the same-origin policy protection, allowing any
+  website to make cross-origin requests to the application. An attacker can
+  exploit this to steal sensitive data, perform unauthorized actions, or
+  launch CSRF attacks from any domain.
+severity: high
+category: security
+language: TypeScript
+cwe_id: CWE-942
+pattern: |
+  (call_expression
+    function: (_) @fn
+    arguments: (arguments
+      (object
+        (pair
+          key: (_) @key
+          value: (string) @value
+          (#match? @key "^(origin|Origin)$")
+          (#match? @value "^['\"]\\*['\"]$")))))
+  @match
+remediation: >
+  Replace the wildcard '*' with a specific list of allowed origins. Use an
+  allowlist approach where only trusted domains are permitted. For Express
+  apps, configure cors() with `origin: ['https://app.example.com']` or use
+  a callback function to dynamically validate origins against your allowlist.
+references:
+  - https://cwe.mitre.org/data/definitions/942.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
+  - https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+tags:
+  - cors
+  - access-control
+  - owasp-top-10
+  - a05-security-misconfiguration
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A05:2021"
+      description: Security Misconfiguration
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: AC-3
+      description: Access Enforcement
+version: 1.0.0
+

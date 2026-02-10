@@ -1,0 +1,44 @@
+id: atlas/security/kotlin/ldap-injection
+name: LDAP Injection via String Template
+description: >
+  Detects LDAP search or lookup operations where filter strings are
+  constructed using Kotlin string templates. An attacker can inject LDAP
+  filter operators to bypass authentication, enumerate directory entries,
+  or extract sensitive data from the LDAP directory.
+severity: critical
+category: security
+language: Kotlin
+cwe_id: CWE-90
+pattern: |
+  [
+    (call_expression
+      (navigation_expression
+        (_) @obj
+        (identifier) @method)
+      (value_arguments
+        (value_argument
+          (string_literal
+            (interpolation)) @filter_arg))
+      (#match? @method "^(search|list|listBindings)$"))
+    @match
+  ]
+remediation: >
+  Use parameterized LDAP filters or escape user input with proper LDAP
+  encoding. With UnboundID SDK, use Filter.createEqualityFilter() or
+  Filter.create() with escaped values. Never embed user input directly
+  in LDAP filter strings via string templates.
+references:
+  - https://cwe.mitre.org/data/definitions/90.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/LDAP_Injection_Prevention_Cheat_Sheet.html
+tags:
+  - ldap-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

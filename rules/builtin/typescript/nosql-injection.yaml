@@ -1,0 +1,62 @@
+id: atlas/security/typescript/nosql-injection
+name: NoSQL Injection via MongoDB Query Operators
+description: >
+  Detects potential NoSQL injection vulnerabilities where MongoDB query
+  methods receive variable arguments that may contain user-controlled input.
+  An attacker can inject query operators ($gt, $ne, $where, $regex) to
+  bypass authentication, extract data, or modify query logic. This is
+  especially dangerous with $where which allows arbitrary JavaScript execution.
+severity: critical
+category: security
+language: TypeScript
+cwe_id: CWE-943
+pattern: |
+  [
+    (call_expression
+      function: (member_expression
+        object: (_)
+        property: (property_identifier) @method
+        (#match? @method "^(find|findOne|findOneAndUpdate|findOneAndDelete|updateOne|updateMany|deleteOne|deleteMany|aggregate|countDocuments)$"))
+      arguments: (arguments
+        (identifier) @query_arg))
+    @match
+
+    (call_expression
+      function: (member_expression
+        object: (_)
+        property: (property_identifier) @method
+        (#match? @method "^(find|findOne|findOneAndUpdate|findOneAndDelete|updateOne|updateMany|deleteOne|deleteMany|aggregate|countDocuments)$"))
+      arguments: (arguments
+        (template_string) @query_arg))
+    @match
+  ]
+remediation: >
+  Sanitize all user input before using it in MongoDB queries. Use explicit
+  field validation and type checking. Replace dynamic queries with
+  mongo-sanitize or express-mongo-sanitize middleware to strip query
+  operators from user input. For example:
+  `const sanitized = mongoSanitize(req.body); db.users.findOne(sanitized)`.
+  Avoid using $where operator entirely.
+references:
+  - https://cwe.mitre.org/data/definitions/943.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/05.6-Testing_for_NoSQL_Injection
+tags:
+  - nosql-injection
+  - mongodb
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0
+

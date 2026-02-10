@@ -1,0 +1,41 @@
+id: atlas/security/python/log-injection
+name: Log Injection via String Formatting
+description: >
+  Detects logging calls where the message is constructed using f-strings
+  or percent formatting with variables. An attacker can inject forged log
+  entries, CRLF sequences, or ANSI escape codes to manipulate log output,
+  potentially hiding malicious activity or exploiting log analysis tools.
+severity: medium
+category: security
+language: Python
+cwe_id: CWE-117
+pattern: |
+  (call
+    function: (attribute
+      object: (_)
+      attribute: (identifier) @method
+      (#match? @method "^(info|warning|error|debug|critical|fatal|exception)$"))
+    arguments: (argument_list
+      (binary_operator) @log_msg))
+  @match
+remediation: >
+  Use parameterized logging with the % operator in the logging call:
+  `logger.info("User login: %s", username)` instead of f-strings or
+  string concatenation. The logging module delays string formatting until
+  the message is actually emitted, and structured logging makes log
+  injection harder. Strip newline characters from user input.
+references:
+  - https://cwe.mitre.org/data/definitions/117.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+tags:
+  - log-injection
+  - logging
+  - owasp-top-10
+  - a09-security-logging-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A09:2021"
+      description: Security Logging and Monitoring Failures
+version: 1.0.0
+

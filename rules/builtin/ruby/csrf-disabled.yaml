@@ -1,0 +1,55 @@
+id: atlas/security/ruby/csrf-disabled
+name: CSRF Protection Disabled in Rails Controller
+description: >
+  Detects Rails controllers that skip or disable CSRF protection using
+  skip_before_action :verify_authenticity_token or
+  protect_from_forgery with: :null_session without proper justification.
+  Disabling CSRF protection exposes users to cross-site request forgery
+  attacks where malicious sites can execute actions on behalf of
+  authenticated users.
+severity: high
+category: security
+language: Ruby
+cwe_id: CWE-352
+pattern: |
+  [
+    ((call
+      method: (identifier) @method
+      (#eq? @method "skip_before_action")
+      arguments: (argument_list
+        (simple_symbol) @action
+        (#match? @action "^:verify_authenticity_token$")))
+    @match)
+
+    ((call
+      method: (identifier) @method
+      (#eq? @method "protect_from_forgery")
+      arguments: (argument_list
+        (pair
+          key: [(symbol) (hash_key_symbol)] @key
+          (#match? @key "^:?with$")
+          value: (simple_symbol) @value
+          (#eq? @value ":null_session"))))
+    @match)
+  ]
+remediation: >
+  Do not skip CSRF protection for web-facing controllers. For API
+  controllers that use token-based authentication, ensure proper
+  alternative authentication mechanisms are in place. Use
+  `protect_from_forgery with: :exception` for web controllers.
+  For APIs, use `protect_from_forgery with: :null_session` only with
+  proper API authentication (Bearer tokens, API keys).
+references:
+  - https://cwe.mitre.org/data/definitions/352.html
+  - https://guides.rubyonrails.org/security.html#csrf-countermeasures
+tags:
+  - csrf
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+version: 1.0.0
+

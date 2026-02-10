@@ -1,0 +1,47 @@
+id: atlas/security/go/file-permission-too-broad
+name: Overly Permissive File Permissions
+description: >
+  Detects usage of os.OpenFile, os.Chmod, os.MkdirAll, or os.WriteFile
+  with overly permissive file modes such as 0777, 0766, 0666. Setting
+  world-readable or world-writable permissions allows any user on the
+  system to read, modify, or execute the file, which can lead to
+  information disclosure, tampering, or privilege escalation.
+severity: medium
+category: security
+language: Go
+cwe_id: CWE-732
+pattern: |
+  [
+    (call_expression
+      function: (selector_expression
+        operand: (identifier) @pkg
+        field: (field_identifier) @func
+        (#eq? @pkg "os")
+        (#match? @func "^(OpenFile|Chmod|MkdirAll|WriteFile)$"))
+      arguments: (argument_list
+        (_)*
+        (int_literal) @perm
+        (#match? @perm "^0o?[67][67][67]$")))
+    @match
+  ]
+remediation: >
+  Use the principle of least privilege for file permissions. For regular
+  files, use 0600 (owner read/write) or 0644 (owner read/write, group/other
+  read-only). For directories, use 0700 or 0755. For executable files, use
+  0700 or 0755. Never use 0777 in production code. Example:
+  `os.OpenFile("data.txt", os.O_CREATE|os.O_WRONLY, 0600)`
+references:
+  - https://cwe.mitre.org/data/definitions/732.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+tags:
+  - file-permissions
+  - privilege-escalation
+  - owasp-top-10
+  - a01-broken-access-control
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A01:2021"
+      description: Broken Access Control
+version: 1.0.0
+

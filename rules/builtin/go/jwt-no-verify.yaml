@@ -1,0 +1,54 @@
+id: atlas/security/go/jwt-no-verify
+name: JWT Token Parsed Without Signature Verification
+description: >
+  Detects usage of JWT parsing methods that skip signature verification,
+  such as jwt.Parse with jwt.WithoutClaimsValidation or parsing the token
+  string manually without calling Valid(). If a JWT is parsed without
+  verifying its signature, an attacker can forge tokens with arbitrary
+  claims to bypass authentication.
+severity: critical
+category: security
+language: Go
+cwe_id: CWE-345
+pattern: |
+  [
+    (call_expression
+      function: (selector_expression
+        operand: (identifier) @pkg
+        field: (field_identifier) @func
+        (#eq? @pkg "jwt")
+        (#match? @func "^(ParseUnverified|ParseWithoutVerification)$"))
+      arguments: (argument_list
+        (_) @token_arg))
+    @match
+
+    (call_expression
+      function: (selector_expression
+        operand: (identifier) @pkg
+        field: (field_identifier) @func
+        (#eq? @pkg "jwt")
+        (#eq? @func "DecodeSegment"))
+      arguments: (argument_list
+        (_) @segment_arg))
+    @match
+  ]
+remediation: >
+  Always verify JWT signatures using Parse() with a proper key function:
+  `jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+  return secretKey, nil })`. Validate the signing method before returning
+  the key. Use golang-jwt/jwt/v5 library's built-in validation.
+references:
+  - https://cwe.mitre.org/data/definitions/345.html
+  - https://pkg.go.dev/github.com/golang-jwt/jwt/v5
+tags:
+  - jwt
+  - authentication
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+version: 1.0.0
+

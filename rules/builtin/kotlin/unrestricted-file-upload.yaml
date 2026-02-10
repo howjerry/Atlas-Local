@@ -1,0 +1,41 @@
+id: atlas/security/kotlin/unrestricted-file-upload
+name: Unrestricted File Upload via MultipartFile
+description: >
+  Detects usage of Spring MultipartFile.transferTo(), getBytes(), or
+  getInputStream() for file upload handling. Without proper validation of
+  file type, size, and content, an attacker can upload malicious files
+  such as web shells or executables to achieve remote code execution.
+severity: high
+category: security
+language: Kotlin
+cwe_id: CWE-434
+pattern: |
+  [
+    (call_expression
+      (navigation_expression
+        (_) @obj
+        (identifier) @method)
+      (value_arguments)
+      (#match? @method "^(transferTo|getBytes|getInputStream)$"))
+    @match
+  ]
+remediation: >
+  Validate uploaded files before processing: check contentType against an
+  allowlist, validate file extension, enforce file size limits via
+  Spring's MultipartResolver config, and scan file content. Store files
+  outside the web root with randomized names. Example:
+  `if (file.contentType in listOf("image/jpeg", "image/png")) { ... }`.
+references:
+  - https://cwe.mitre.org/data/definitions/434.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+tags:
+  - file-upload
+  - owasp-top-10
+  - a04-insecure-design
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A04:2021"
+      description: Insecure Design
+version: 1.0.0
+

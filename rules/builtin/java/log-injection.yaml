@@ -1,0 +1,47 @@
+id: atlas/security/java/log-injection
+name: Log Injection via String Concatenation
+description: >
+  Detects logging calls (log4j, slf4j, java.util.logging) where the message
+  argument is constructed using string concatenation with variables. An
+  attacker can inject forged log entries, CRLF sequences to split log lines,
+  or ANSI escape codes to manipulate log output, potentially hiding malicious
+  activity or exploiting log analysis tools.
+severity: medium
+category: security
+language: Java
+cwe_id: CWE-117
+pattern: |
+  (method_invocation
+    object: (_) @logger_obj
+    name: (identifier) @method
+    arguments: (argument_list
+      (binary_expression
+        left: (string_literal) @log_str
+        right: (_) @concat_arg))
+    (#match? @method "^(info|warn|error|debug|log|trace|fatal|severe|warning|fine|finer|finest)$"))
+  @match
+remediation: >
+  Use parameterized logging with placeholders instead of string concatenation.
+  For SLF4J/Logback: `logger.info("User login: {}", username)`.
+  For Log4j2: `logger.info("User login: {}", username)`.
+  For java.util.logging: `logger.log(Level.INFO, "User login: {0}", username)`.
+  Sanitize user input by stripping newline characters before logging.
+references:
+  - https://cwe.mitre.org/data/definitions/117.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Log_Injection
+tags:
+  - log-injection
+  - logging
+  - owasp-top-10
+  - a09-security-logging-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A09:2021"
+      description: Security Logging and Monitoring Failures
+    - framework: nist-800-53
+      requirement: AU-3
+      description: Content of Audit Records
+version: 1.0.0
+

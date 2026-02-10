@@ -1,0 +1,60 @@
+id: atlas/security/csharp/xxe
+name: XML External Entity (XXE) Injection
+description: >
+  Detects creation of XmlReaderSettings, XmlDocument, or XmlTextReader
+  with DtdProcessing enabled or without explicitly disabling external
+  entity resolution. .NET XML parsers can be vulnerable to XXE attacks
+  when DTD processing is not properly restricted, allowing attackers to
+  read local files, perform SSRF, or cause denial of service.
+severity: high
+category: security
+language: CSharp
+cwe_id: CWE-611
+pattern: |
+  [
+    (assignment_expression
+      left: (member_access_expression
+        name: (identifier) @prop
+        (#eq? @prop "DtdProcessing"))
+      right: (member_access_expression
+        name: (identifier) @value
+        (#eq? @value "Parse")))
+    @match
+
+    (assignment_expression
+      left: (member_access_expression
+        name: (identifier) @prop
+        (#eq? @prop "ProhibitDtd"))
+      right: (boolean_literal) @value
+      (#eq? @value "false"))
+    @match
+
+    (assignment_expression
+      left: (member_access_expression
+        name: (identifier) @prop
+        (#eq? @prop "XmlResolver"))
+      right: (object_creation_expression
+        type: (identifier) @type
+        (#eq? @type "XmlUrlResolver")))
+    @match
+  ]
+remediation: >
+  Set DtdProcessing = DtdProcessing.Prohibit and XmlResolver = null on
+  XmlReaderSettings. For XmlDocument, set XmlResolver = null before loading
+  any XML. Example: `var settings = new XmlReaderSettings {
+  DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };`
+references:
+  - https://cwe.mitre.org/data/definitions/611.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html
+tags:
+  - xxe
+  - xml
+  - owasp-top-10
+  - a05-security-misconfiguration
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A05:2021"
+      description: Security Misconfiguration
+version: 1.0.0
+

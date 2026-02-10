@@ -1,0 +1,53 @@
+id: atlas/security/go/unsafe-reflect
+name: Unsafe Reflection with Dynamic Method Invocation
+description: >
+  Detects usage of reflect.ValueOf().MethodByName() or reflect.ValueOf().Call()
+  patterns that may allow an attacker to invoke arbitrary methods via
+  user-controlled input. Dynamic reflection enables code execution attacks
+  where an attacker provides a method name to execute unintended functions
+  on objects, bypassing normal control flow.
+severity: medium
+category: security
+language: Go
+cwe_id: CWE-470
+pattern: |
+  [
+    (call_expression
+      function: (selector_expression
+        operand: (_)
+        field: (field_identifier) @method
+        (#eq? @method "MethodByName"))
+      arguments: (argument_list
+        (identifier) @method_name))
+    @match
+
+    (call_expression
+      function: (selector_expression
+        operand: (_)
+        field: (field_identifier) @method
+        (#eq? @method "FieldByName"))
+      arguments: (argument_list
+        (identifier) @field_name))
+    @match
+  ]
+remediation: >
+  Avoid using reflect.MethodByName() or reflect.FieldByName() with
+  user-controlled input. Use a switch statement or map of allowed
+  method/field names instead. If reflection is necessary, validate the
+  method/field name against a strict allowlist before invocation.
+  Example: `allowedMethods := map[string]bool{"Get": true, "Set": true}`
+references:
+  - https://cwe.mitre.org/data/definitions/470.html
+  - https://pkg.go.dev/reflect
+tags:
+  - reflection
+  - code-execution
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

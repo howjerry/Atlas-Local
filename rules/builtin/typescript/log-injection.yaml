@@ -1,0 +1,46 @@
+id: atlas/security/typescript/log-injection
+name: Log Injection via Unsanitized User Input
+description: >
+  Detects logging calls (logger.info, logger.warn, logger.error, etc.) where
+  the message argument is a template string that may include user-controlled
+  input. An attacker can inject forged log entries, CRLF characters to split
+  log lines, or ANSI escape sequences to manipulate log output, potentially
+  hiding malicious activity or exploiting log analysis tools.
+severity: medium
+category: security
+language: TypeScript
+cwe_id: CWE-117
+pattern: |
+  (call_expression
+    function: (member_expression
+      object: (_)
+      property: (property_identifier) @method
+      (#match? @method "^(info|warn|error|debug|log|fatal|trace)$"))
+    arguments: (arguments
+      (template_string) @log_msg))
+  @match
+remediation: >
+  Use structured logging with parameterized messages instead of string
+  interpolation. For example, replace `logger.info(\`User login: ${username}\`)`
+  with `logger.info('User login', { username })`. Sanitize user input before
+  logging by stripping newline characters (\n, \r) and ANSI escape sequences.
+  Use a structured logging library (winston, pino) with JSON output format.
+references:
+  - https://cwe.mitre.org/data/definitions/117.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+  - https://owasp.org/www-community/attacks/Log_Injection
+tags:
+  - log-injection
+  - logging
+  - owasp-top-10
+  - a09-security-logging-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A09:2021"
+      description: Security Logging and Monitoring Failures
+    - framework: nist-800-53
+      requirement: AU-3
+      description: Content of Audit Records
+version: 1.0.0
+

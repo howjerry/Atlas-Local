@@ -1,0 +1,50 @@
+id: atlas/security/java/jndi-injection
+name: JNDI Injection via Dynamic Lookup
+description: >
+  Detects JNDI lookup calls (InitialContext.lookup, Context.lookup) where the
+  name argument is a variable rather than a hardcoded string. If user-controlled
+  input reaches a JNDI lookup, an attacker can specify a malicious LDAP, RMI,
+  or DNS URL that triggers remote class loading, leading to remote code execution.
+  This is the attack vector exploited by Log4Shell (CVE-2021-44228).
+severity: critical
+category: security
+language: Java
+cwe_id: CWE-074
+pattern: |
+  (method_invocation
+    object: (_) @ctx
+    name: (identifier) @method
+    arguments: (argument_list
+      (identifier) @lookup_name)
+    (#eq? @method "lookup"))
+  @match
+remediation: >
+  Never pass user-controlled input to JNDI lookup methods. If JNDI lookups
+  are required, use a strict allowlist of permitted JNDI names. Disable remote
+  class loading by setting `com.sun.jndi.ldap.object.trustURLCodebase=false`
+  and `com.sun.jndi.rmi.object.trustURLCodebase=false`. Upgrade to Java 8u191+
+  which disables remote class loading by default. Consider using Spring's
+  @Resource annotation instead of programmatic JNDI lookups.
+references:
+  - https://cwe.mitre.org/data/definitions/74.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html
+  - https://logging.apache.org/log4j/2.x/security.html
+tags:
+  - jndi-injection
+  - rce
+  - log4shell
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0
+

@@ -1,0 +1,51 @@
+id: atlas/security/java/jwt-no-verify
+name: JWT Token Parsed Without Signature Verification
+description: >
+  Detects usage of JWT parsing methods that skip signature verification,
+  such as JJWT's parseClaimsJwt() or parseClaimsJws() preceded by
+  signingKey(null), or Auth0's decode() without verification. If a JWT
+  is parsed without verifying its signature, an attacker can forge tokens
+  with arbitrary claims, bypassing authentication and authorization controls.
+severity: critical
+category: security
+language: Java
+cwe_id: CWE-345
+pattern: |
+  [
+    (method_invocation
+      object: (_) @obj
+      name: (identifier) @method
+      (#match? @method "^(parseClaimsJwt|parsePlaintextJwt)$"))
+    @match
+
+    (method_invocation
+      object: (_) @obj
+      name: (identifier) @method
+      (#eq? @method "decode"))
+    @match
+  ]
+remediation: >
+  Always verify JWT signatures before trusting token claims. Use JJWT's
+  parseClaimsJws() with a valid signing key:
+  `Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token)`.
+  For Auth0 java-jwt, use `JWT.require(algorithm).build().verify(token)`
+  instead of `JWT.decode(token)`.
+references:
+  - https://cwe.mitre.org/data/definitions/345.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html
+  - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management_Testing/10-Testing_JSON_Web_Tokens
+tags:
+  - jwt
+  - authentication
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+version: 1.0.0
+

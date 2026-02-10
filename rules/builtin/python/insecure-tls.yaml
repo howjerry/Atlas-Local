@@ -1,0 +1,62 @@
+id: atlas/security/python/insecure-tls
+name: Insecure TLS/SSL Configuration
+description: >
+  Detects usage of ssl module with disabled certificate verification or
+  deprecated protocol versions. Setting verify=False in requests, creating
+  unverified SSL contexts, or using deprecated protocols (SSLv2, SSLv3, TLSv1)
+  allows man-in-the-middle attacks where an attacker can intercept and modify
+  encrypted traffic.
+severity: high
+category: security
+language: Python
+cwe_id: CWE-295
+pattern: |
+  [
+    (call
+      function: (attribute
+        object: (identifier) @mod
+        attribute: (identifier) @method
+        (#eq? @mod "ssl")
+        (#match? @method "^(_create_unverified_context|create_default_context)$"))
+      arguments: (argument_list))
+    @match
+
+    (call
+      function: (attribute
+        object: (identifier) @mod2
+        attribute: (identifier) @method2
+        (#eq? @mod2 "requests")
+        (#match? @method2 "^(get|post|put|delete|patch)$"))
+      arguments: (argument_list
+        (_)
+        (keyword_argument
+          name: (identifier) @kwname
+          value: (false) @kwval
+          (#eq? @kwname "verify"))))
+    @match
+  ]
+remediation: >
+  Always verify TLS certificates. For the requests library, do not set
+  verify=False. Use ssl.create_default_context() with proper CA certificates.
+  Never use ssl._create_unverified_context(). For development/testing, use
+  self-signed certificates with proper CA bundle instead of disabling
+  verification entirely.
+references:
+  - https://cwe.mitre.org/data/definitions/295.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html
+tags:
+  - tls
+  - ssl
+  - certificate
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "4.2.1"
+      description: Strong Cryptography for Transmission
+version: 1.0.0
+

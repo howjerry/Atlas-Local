@@ -1,0 +1,44 @@
+id: atlas/security/ruby/log-injection
+name: Log Injection via String Interpolation
+description: >
+  Detects usage of Ruby Logger methods (debug, info, warn, error, fatal)
+  with string interpolation that may include user-controlled variables.
+  An attacker can inject newline characters to forge log entries, pollute
+  log analysis systems, or exploit log processing pipelines.
+severity: medium
+category: security
+language: Ruby
+cwe_id: CWE-117
+pattern: |
+  [
+    ((call
+      receiver: (identifier) @receiver
+      (#match? @receiver "^(logger|log|Rails)$")
+      method: (identifier) @method
+      (#match? @method "^(debug|info|warn|error|fatal)$")
+      arguments: (argument_list
+        (string
+          (interpolation)) @log_msg))
+    @match)
+  ]
+remediation: >
+  Sanitize user input before including in log messages. Use structured
+  logging with tagged logging or JSON formatters. Strip newline and
+  carriage return characters from user input. Example:
+  `logger.info("User login: #{username.gsub(/[\r\n]/, '')}")` or use
+  Rails tagged logging: `Rails.logger.tagged("auth") { |l| l.info(username) }`.
+references:
+  - https://cwe.mitre.org/data/definitions/117.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+tags:
+  - log-injection
+  - logging
+  - owasp-top-10
+  - a09-security-logging-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A09:2021"
+      description: Security Logging and Monitoring Failures
+version: 1.0.0
+

@@ -1,0 +1,57 @@
+id: atlas/security/python/xml-bomb
+name: XML Entity Expansion (Billion Laughs) Attack
+description: >
+  Detects usage of Python's xml.etree.ElementTree or xml.dom.minidom
+  parse/fromstring functions which are vulnerable to XML entity expansion
+  (Billion Laughs) and XXE attacks by default. These parsers do not disable
+  external entity processing, allowing an attacker to cause denial of service
+  via exponential entity expansion or read local files via external entities.
+severity: high
+category: security
+language: Python
+cwe_id: CWE-776
+pattern: |
+  [
+    (call
+      function: (attribute
+        object: (identifier) @mod
+        attribute: (identifier) @method
+        (#match? @mod "^(ET|ElementTree|etree)$")
+        (#match? @method "^(parse|fromstring|iterparse|XML)$"))
+      arguments: (argument_list
+        (_) @xml_input))
+    @match
+
+    (call
+      function: (attribute
+        object: (identifier) @mod2
+        attribute: (identifier) @method2
+        (#eq? @mod2 "minidom")
+        (#match? @method2 "^(parse|parseString)$"))
+      arguments: (argument_list
+        (_) @xml_input2))
+    @match
+  ]
+remediation: >
+  Use defusedxml library instead of standard library XML parsers:
+  `import defusedxml.ElementTree as ET` or `from defusedxml.minidom import
+  parse`. defusedxml disables entity expansion and external entity processing
+  by default. Alternatively, use lxml with `resolve_entities=False` in the
+  parser configuration.
+references:
+  - https://cwe.mitre.org/data/definitions/776.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html
+  - https://pypi.org/project/defusedxml/
+tags:
+  - xxe
+  - xml-bomb
+  - dos
+  - owasp-top-10
+  - a05-security-misconfiguration
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A05:2021"
+      description: Security Misconfiguration
+version: 1.0.0
+

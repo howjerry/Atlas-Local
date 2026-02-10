@@ -1,0 +1,66 @@
+id: atlas/security/ruby/xxe
+name: XML External Entity (XXE) Injection
+description: >
+  Detects Nokogiri XML parsing with NOENT option or DTD loading enabled.
+  When external entity resolution is enabled, attackers can read local
+  files, perform SSRF, or cause denial of service via entity expansion
+  (Billion Laughs attack). Nokogiri defaults to safe parsing since v1.5.5
+  but explicit NOENT usage is still dangerous.
+severity: high
+category: security
+language: Ruby
+cwe_id: CWE-611
+pattern: |
+  [
+    ((call
+      receiver: (scope_resolution
+        scope: (constant) @mod
+        name: (constant) @cls
+        (#eq? @mod "Nokogiri")
+        (#eq? @cls "XML"))
+      method: (identifier) @method
+      (#eq? @method "parse")
+      arguments: (argument_list
+        (_)
+        (_)
+        (constant) @flag
+        (#eq? @flag "NOENT")))
+    @match)
+
+    ((call
+      receiver: (scope_resolution
+        scope: (constant) @mod
+        name: (constant) @cls
+        (#eq? @mod "Nokogiri")
+        (#eq? @cls "XML"))
+      method: (identifier) @method
+      (#eq? @method "parse")
+      arguments: (argument_list
+        (_)
+        (_)
+        (scope_resolution
+          name: (constant) @flag
+          (#eq? @flag "NOENT"))))
+    @match)
+  ]
+remediation: >
+  Do not use the NOENT option when parsing XML with Nokogiri. The default
+  parsing behavior is safe. If you need to process external entities,
+  validate and sanitize the XML input first. Use
+  `Nokogiri::XML(xml_string)` without additional flags.
+references:
+  - https://cwe.mitre.org/data/definitions/611.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html
+  - https://nokogiri.org/
+tags:
+  - xxe
+  - xml
+  - owasp-top-10
+  - a05-security-misconfiguration
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A05:2021"
+      description: Security Misconfiguration
+version: 1.0.0
+

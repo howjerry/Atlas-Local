@@ -1,0 +1,45 @@
+id: atlas/security/ruby/ldap-injection
+name: LDAP Injection via String Interpolation
+description: >
+  Detects LDAP search or bind operations using net-ldap where filter
+  strings are constructed with string interpolation. An attacker can
+  inject LDAP filter operators to bypass authentication, enumerate
+  directory entries, or extract sensitive data from the LDAP directory.
+severity: critical
+category: security
+language: Ruby
+cwe_id: CWE-90
+pattern: |
+  [
+    ((call
+      method: (identifier) @method
+      (#match? @method "^(search|bind_as)$")
+      arguments: (argument_list
+        (pair
+          key: [(symbol) (hash_key_symbol)] @key
+          (#match? @key "^:?filter$")
+          value: (string
+            (interpolation)))))
+    @match)
+  ]
+remediation: >
+  Use the Net::LDAP::Filter class to construct LDAP filters safely.
+  Example: `Net::LDAP::Filter.eq("uid", username)` instead of
+  `"(uid=#{username})"`. Never interpolate user input directly into
+  LDAP filter strings.
+references:
+  - https://cwe.mitre.org/data/definitions/90.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/LDAP_Injection_Prevention_Cheat_Sheet.html
+  - https://github.com/ruby-ldap/ruby-net-ldap
+tags:
+  - ldap-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

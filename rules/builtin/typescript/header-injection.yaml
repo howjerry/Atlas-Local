@@ -1,0 +1,57 @@
+id: atlas/security/typescript/header-injection
+name: HTTP Response Header Injection
+description: >
+  Detects calls to res.setHeader() or res.set() where the header value
+  is a variable or template string that may contain user-controlled input.
+  An attacker can inject CRLF characters to add arbitrary headers or split
+  the HTTP response, leading to XSS, cache poisoning, or session fixation.
+severity: high
+category: security
+language: TypeScript
+cwe_id: CWE-113
+pattern: |
+  [
+    (call_expression
+      function: (member_expression
+        object: (_)
+        property: (property_identifier) @method
+        (#match? @method "^(setHeader|set|header|writeHead)$"))
+      arguments: (arguments
+        (_)
+        (identifier) @header_value))
+    @match
+
+    (call_expression
+      function: (member_expression
+        object: (_)
+        property: (property_identifier) @method
+        (#match? @method "^(setHeader|set|header|writeHead)$"))
+      arguments: (arguments
+        (_)
+        (template_string) @header_value))
+    @match
+  ]
+remediation: >
+  Sanitize all user input before using it in HTTP response headers. Strip
+  or reject any input containing carriage return (\r) or line feed (\n)
+  characters. Use a well-tested framework's built-in header sanitization.
+  For Express apps, most modern versions automatically prevent CRLF
+  injection, but always validate input as defense-in-depth.
+references:
+  - https://cwe.mitre.org/data/definitions/113.html
+  - https://owasp.org/www-community/attacks/HTTP_Response_Splitting
+tags:
+  - header-injection
+  - http
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+version: 1.0.0
+

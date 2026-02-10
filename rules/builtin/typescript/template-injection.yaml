@@ -1,0 +1,61 @@
+id: atlas/security/typescript/template-injection
+name: Server-Side Template Injection (SSTI)
+description: >
+  Detects usage of server-side template rendering functions (compile, render,
+  renderString, renderFile) where the template content is provided as a
+  variable rather than a static string. If user-controlled input is used as
+  a template, an attacker can execute arbitrary code on the server through
+  template expressions, leading to full server compromise.
+severity: critical
+category: security
+language: TypeScript
+cwe_id: CWE-1336
+pattern: |
+  [
+    (call_expression
+      function: (member_expression
+        object: (_)
+        property: (property_identifier) @method
+        (#match? @method "^(compile|render|renderString|renderFile)$"))
+      arguments: (arguments
+        (identifier) @template_arg))
+    @match
+
+    (call_expression
+      function: (member_expression
+        object: (_)
+        property: (property_identifier) @method
+        (#match? @method "^(compile|render|renderString|renderFile)$"))
+      arguments: (arguments
+        (template_string) @template_arg))
+    @match
+  ]
+remediation: >
+  Never pass user-controlled input as a template. Use templates from trusted
+  sources (files, hardcoded strings). If dynamic content is needed, use the
+  template engine's variable interpolation (`{{ variable }}`) with proper
+  auto-escaping enabled. For Pug/EJS/Handlebars/Nunjucks, always load
+  templates from the file system and pass user data as context variables.
+references:
+  - https://cwe.mitre.org/data/definitions/1336.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Template_Injection_Prevention_Cheat_Sheet.html
+  - https://portswigger.net/web-security/server-side-template-injection
+tags:
+  - ssti
+  - template-injection
+  - rce
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0
+

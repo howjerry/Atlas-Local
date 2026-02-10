@@ -1,0 +1,56 @@
+id: atlas/security/python/template-injection
+name: Server-Side Template Injection (SSTI)
+description: >
+  Detects usage of Jinja2 Template() constructor or Environment methods where
+  the template string is a variable rather than a hardcoded string. If user
+  input is passed as a template, an attacker can inject template expressions
+  like {{ config }} or {{ ''.__class__.__mro__ }} to execute arbitrary Python
+  code on the server, leading to full system compromise.
+severity: critical
+category: security
+language: Python
+cwe_id: CWE-1336
+pattern: |
+  [
+    (call
+      function: (identifier) @func
+      arguments: (argument_list
+        (identifier) @template_arg)
+      (#eq? @func "Template"))
+    @match
+
+    (call
+      function: (attribute
+        object: (_)
+        attribute: (identifier) @method
+        (#match? @method "^(from_string|render_template_string)$"))
+      arguments: (argument_list
+        (identifier) @template_arg))
+    @match
+  ]
+remediation: >
+  Never pass user-controlled input as a template string. Load templates from
+  trusted files using Environment.get_template() or render_template() with
+  user data as context variables. Enable Jinja2's sandboxed environment
+  (SandboxedEnvironment) if dynamic templates are absolutely necessary. For
+  Flask, use render_template() instead of render_template_string().
+references:
+  - https://cwe.mitre.org/data/definitions/1336.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Template_Injection_Prevention_Cheat_Sheet.html
+  - https://portswigger.net/web-security/server-side-template-injection
+tags:
+  - ssti
+  - template-injection
+  - jinja2
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+version: 1.0.0
+

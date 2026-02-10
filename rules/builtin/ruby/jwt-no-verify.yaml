@@ -1,0 +1,41 @@
+id: atlas/security/ruby/jwt-no-verify
+name: JWT Token Decoded Without Signature Verification
+description: >
+  Detects usage of JWT.decode with verification disabled by passing
+  false as the second argument. Without signature verification, an
+  attacker can forge JWT tokens with arbitrary claims, bypassing
+  authentication and authorization controls.
+severity: critical
+category: security
+language: Ruby
+cwe_id: CWE-345
+pattern: |
+  (call
+    receiver: (constant) @receiver
+    (#eq? @receiver "JWT")
+    method: (identifier) @method
+    (#eq? @method "decode")
+    arguments: (argument_list
+      (_)
+      (false)))
+  @match
+remediation: >
+  Always verify JWT signatures. Use JWT.decode with a valid secret key
+  and specify the algorithm: `JWT.decode(token, secret_key, true,
+  algorithm: 'HS256')`. The second argument should be the secret key,
+  and the third argument (verify) should be true.
+references:
+  - https://cwe.mitre.org/data/definitions/345.html
+  - https://github.com/jwt/ruby-jwt
+tags:
+  - jwt
+  - authentication
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+version: 1.0.0
+

@@ -1,0 +1,42 @@
+id: atlas/security/python/ldap-injection
+name: LDAP Injection via String Formatting
+description: >
+  Detects LDAP search or bind calls where filter strings are constructed
+  using string concatenation or formatting with user-controlled variables.
+  An attacker can inject LDAP filter operators to bypass authentication,
+  enumerate directory entries, or extract sensitive information from the
+  LDAP directory.
+severity: critical
+category: security
+language: Python
+cwe_id: CWE-90
+pattern: |
+  (call
+    function: (attribute
+      object: (_)
+      attribute: (identifier) @method
+      (#match? @method "^(search|search_s|search_st|search_ext|search_ext_s|simple_bind_s)$"))
+    arguments: (argument_list
+      (_)
+      (binary_operator) @filter_expr))
+  @match
+remediation: >
+  Use parameterized LDAP filters with ldap3 library or escape user input
+  using ldap.filter.escape_filter_chars() before embedding in LDAP filters.
+  For python-ldap: `ldap.filter.filter_format("(uid=%s)", [username])`.
+  For ldap3: use the `Connection.search()` with proper filter escaping.
+references:
+  - https://cwe.mitre.org/data/definitions/90.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/LDAP_Injection_Prevention_Cheat_Sheet.html
+tags:
+  - ldap-injection
+  - injection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

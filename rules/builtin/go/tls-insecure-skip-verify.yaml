@@ -1,0 +1,42 @@
+id: atlas/security/go/tls-insecure-skip-verify
+name: TLS Certificate Verification Disabled
+description: >
+  Detects TLS configurations where InsecureSkipVerify is set to true,
+  which disables certificate verification. This allows man-in-the-middle
+  attacks where an attacker can intercept, read, and modify encrypted
+  traffic between the application and remote servers.
+severity: high
+category: security
+language: Go
+cwe_id: CWE-295
+pattern: |
+  (keyed_element
+    (field_identifier) @field
+    (true) @value
+    (#eq? @field "InsecureSkipVerify"))
+  @match
+remediation: >
+  Never set InsecureSkipVerify to true in production. Use proper CA
+  certificates for verification. For self-signed certificates in testing,
+  add the CA to a custom cert pool: `tls.Config{RootCAs: customCertPool}`.
+  For mutual TLS, configure both RootCAs and Certificates fields.
+references:
+  - https://cwe.mitre.org/data/definitions/295.html
+  - https://pkg.go.dev/crypto/tls#Config
+  - https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html
+tags:
+  - tls
+  - ssl
+  - certificate
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "4.2.1"
+      description: Strong Cryptography for Transmission
+version: 1.0.0
+

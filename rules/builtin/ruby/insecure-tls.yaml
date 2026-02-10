@@ -1,0 +1,41 @@
+id: atlas/security/ruby/insecure-tls
+name: Insecure TLS/SSL Certificate Verification Disabled
+description: >
+  Detects setting OpenSSL verify_mode to VERIFY_NONE which disables
+  SSL certificate verification. This allows man-in-the-middle attacks
+  where an attacker can intercept encrypted communications by presenting
+  a fraudulent certificate.
+severity: high
+category: security
+language: Ruby
+cwe_id: CWE-295
+pattern: |
+  ((assignment
+    left: (call
+      method: (identifier) @prop
+      (#eq? @prop "verify_mode"))
+    right: (scope_resolution
+      name: (constant) @value
+      (#eq? @value "VERIFY_NONE")))
+  @match)
+remediation: >
+  Always verify SSL certificates. Set verify_mode to
+  OpenSSL::SSL::VERIFY_PEER. For Net::HTTP, use
+  `http.verify_mode = OpenSSL::SSL::VERIFY_PEER`. If using self-signed
+  certificates in development, configure a custom CA store instead of
+  disabling verification entirely.
+references:
+  - https://cwe.mitre.org/data/definitions/295.html
+  - https://ruby-doc.org/stdlib/libdoc/openssl/rdoc/OpenSSL/SSL.html
+tags:
+  - tls
+  - ssl
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+version: 1.0.0
+

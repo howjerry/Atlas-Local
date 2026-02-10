@@ -1,0 +1,52 @@
+id: atlas/security/kotlin/insecure-tls
+name: Insecure TLS/SSL Configuration
+description: >
+  Detects SSLContext initialization with insecure protocols or
+  TrustManager implementations that accept all certificates. Using
+  deprecated protocols like SSLv3 or TLS 1.0 exposes connections to
+  known vulnerabilities. Custom TrustManagers that trust all certificates
+  enable man-in-the-middle attacks.
+severity: high
+category: security
+language: Kotlin
+cwe_id: CWE-295
+pattern: |
+  [
+    (call_expression
+      (navigation_expression
+        (identifier) @cls
+        (identifier) @method)
+      (value_arguments
+        (value_argument
+          (string_literal) @protocol))
+      (#eq? @cls "SSLContext")
+      (#eq? @method "getInstance")
+      (#match? @protocol "(SSL|SSLv3|TLS|TLSv1|TLSv1\\.1)"))
+    @match
+
+    (call_expression
+      (identifier) @type
+      (value_arguments)
+      (#match? @type "^(TrustAllCerts|InsecureTrustManager|NaiveTrustManager)$"))
+    @match
+  ]
+remediation: >
+  Use TLSv1.2 or TLSv1.3 for SSLContext initialization:
+  `SSLContext.getInstance("TLSv1.3")`. Never implement custom TrustManagers
+  that accept all certificates. Use the default TrustManager or configure
+  a custom one with specific trusted CA certificates.
+references:
+  - https://cwe.mitre.org/data/definitions/295.html
+  - https://developer.android.com/privacy-and-security/security-ssl
+tags:
+  - tls
+  - ssl
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+version: 1.0.0
+

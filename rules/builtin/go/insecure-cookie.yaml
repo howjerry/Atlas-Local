@@ -1,0 +1,48 @@
+id: atlas/security/go/insecure-cookie
+name: Insecure Cookie Configuration
+description: >
+  Detects http.Cookie structs where security attributes Secure or HttpOnly
+  are explicitly set to false. Cookies without the Secure flag can be
+  transmitted over unencrypted HTTP connections, allowing network attackers
+  to intercept session tokens. Cookies without HttpOnly can be accessed via
+  JavaScript, enabling XSS-based session hijacking.
+severity: medium
+category: security
+language: Go
+cwe_id: CWE-614
+pattern: |
+  [
+    (keyed_element
+      (field_identifier) @field
+      (false) @value
+      (#eq? @field "Secure"))
+    @match
+
+    (keyed_element
+      (field_identifier) @field
+      (false) @value
+      (#eq? @field "HttpOnly"))
+    @match
+  ]
+remediation: >
+  Always set Secure: true and HttpOnly: true on session cookies and any
+  cookie containing sensitive data. Also set SameSite to http.SameSiteStrictMode
+  or http.SameSiteLaxMode to prevent CSRF attacks. Example:
+  `http.Cookie{Name: "session", Secure: true, HttpOnly: true,
+  SameSite: http.SameSiteStrictMode}`
+references:
+  - https://cwe.mitre.org/data/definitions/614.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+  - https://pkg.go.dev/net/http#Cookie
+tags:
+  - cookie
+  - session
+  - owasp-top-10
+  - a05-security-misconfiguration
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A05:2021"
+      description: Security Misconfiguration
+version: 1.0.0
+

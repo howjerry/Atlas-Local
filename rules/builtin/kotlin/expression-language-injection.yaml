@@ -1,0 +1,64 @@
+id: atlas/security/kotlin/expression-language-injection
+name: Expression Language Injection (EL/SpEL/OGNL)
+description: >
+  Detects usage of expression evaluation methods (Spring SpEL, OGNL, MVEL,
+  or standard EL) where the expression string is a variable that may
+  contain user-controlled input. An attacker can inject malicious
+  expressions to execute arbitrary code, access internal objects, or read
+  system properties, leading to remote code execution or information
+  disclosure.
+severity: critical
+category: security
+language: Kotlin
+cwe_id: CWE-917
+pattern: |
+  [
+    (call_expression
+      (navigation_expression
+        (_) @parser
+        (identifier) @method)
+      (value_arguments
+        (value_argument
+          (simple_identifier) @expr_arg))
+      (#match? @method "^(parseExpression|getValue|evaluate|setValue)$"))
+    @match
+
+    (call_expression
+      (simple_identifier) @method
+      (value_arguments
+        (value_argument
+          (simple_identifier) @expr_arg))
+      (#match? @method "^(parseExpression|getValue|evaluate|setValue)$"))
+    @match
+  ]
+remediation: >
+  Never pass user-controlled input to expression evaluation methods. If
+  dynamic expressions are required, use a sandboxed evaluation context
+  with Spring's SimpleEvaluationContext instead of
+  StandardEvaluationContext. Alternatively, use a template engine with
+  proper escaping. For OGNL, set `ognl.security.manager` and restrict
+  accessible methods.
+references:
+  - https://cwe.mitre.org/data/definitions/917.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html
+  - https://docs.spring.io/spring-framework/reference/core/expressions.html
+tags:
+  - el-injection
+  - spel
+  - ognl
+  - rce
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: SI-10
+      description: Information Input Validation
+version: 1.0.0
+

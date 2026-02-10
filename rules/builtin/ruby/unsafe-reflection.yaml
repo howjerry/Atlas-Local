@@ -1,0 +1,47 @@
+id: atlas/security/ruby/unsafe-reflection
+name: Unsafe Reflection via send/constantize
+description: >
+  Detects usage of send, public_send, or constantize with variable
+  arguments that may be user-controlled. These methods allow dynamic
+  method invocation or class instantiation, enabling an attacker to
+  call arbitrary methods or instantiate dangerous classes when the
+  input is not properly validated.
+severity: high
+category: security
+language: Ruby
+cwe_id: CWE-470
+pattern: |
+  [
+    ((call
+      method: (identifier) @method
+      (#match? @method "^(send|public_send|__send__)$")
+      arguments: (argument_list
+        (identifier) @arg))
+    @match)
+
+    ((call
+      method: (identifier) @method
+      (#match? @method "^(constantize|safe_constantize)$"))
+    @match)
+  ]
+remediation: >
+  Validate method names and class names against an allowlist before
+  using dynamic dispatch. Replace `send` with explicit case statements
+  or hash lookups. Example:
+  `ALLOWED = { 'create' => :create, 'update' => :update }
+  method = ALLOWED[params[:action]] or raise "Invalid"
+  object.public_send(method)`.
+references:
+  - https://cwe.mitre.org/data/definitions/470.html
+  - https://ruby-doc.org/core/Object.html#method-i-send
+tags:
+  - reflection
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

@@ -1,0 +1,53 @@
+id: atlas/security/php/header-injection
+name: HTTP Header Injection via header() Function
+description: >
+  Detects usage of PHP's header() function with string interpolation or
+  concatenation containing variables. If user-controlled input is included
+  in HTTP headers without sanitization, an attacker can inject additional
+  headers or control the response body, enabling cache poisoning, session
+  fixation, or cross-site scripting attacks.
+severity: high
+category: security
+language: Php
+cwe_id: CWE-113
+pattern: |
+  [
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          (encapsed_string) @header_val)))
+      (#eq? @func_name "header"))
+    @match
+
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          (binary_expression) @header_val)))
+      (#eq? @func_name "header"))
+    @match
+  ]
+remediation: >
+  Sanitize all user input before including in HTTP headers. Remove or
+  encode newline characters (CR/LF). Use framework-provided response
+  methods that handle header encoding automatically. For redirects, use
+  validated URLs. Example:
+  `$safeValue = str_replace(["\r", "\n"], '', $userInput);
+  header('X-Custom: ' . $safeValue);`.
+references:
+  - https://cwe.mitre.org/data/definitions/113.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html
+  - https://www.php.net/manual/en/function.header.php
+tags:
+  - header-injection
+  - http
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

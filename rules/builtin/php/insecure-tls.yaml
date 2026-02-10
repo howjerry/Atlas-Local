@@ -1,0 +1,59 @@
+id: atlas/security/php/insecure-tls
+name: Insecure TLS/SSL Configuration
+description: >
+  Detects curl_setopt calls that disable SSL certificate verification
+  by setting CURLOPT_SSL_VERIFYPEER or CURLOPT_SSL_VERIFYHOST to false/0.
+  Disabling certificate verification allows man-in-the-middle attacks
+  where an attacker can intercept encrypted communications.
+severity: high
+category: security
+language: Php
+cwe_id: CWE-295
+pattern: |
+  [
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument (_))
+        (argument
+          (name) @opt
+          (#eq? @opt "CURLOPT_SSL_VERIFYPEER"))
+        (argument
+          (boolean) @value
+          (#eq? @value "false"))))
+      (#eq? @func_name "curl_setopt"))
+    @match
+
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument (_))
+        (argument
+          (name) @opt
+          (#eq? @opt "CURLOPT_SSL_VERIFYHOST"))
+        (argument
+          (integer) @value
+          (#eq? @value "0"))))
+      (#eq? @func_name "curl_setopt"))
+    @match
+  ]
+remediation: >
+  Always verify SSL certificates. Set CURLOPT_SSL_VERIFYPEER to true and
+  CURLOPT_SSL_VERIFYHOST to 2. For self-signed certificates in development,
+  specify a CA bundle with CURLOPT_CAINFO instead of disabling verification.
+  Use `curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true)`.
+references:
+  - https://cwe.mitre.org/data/definitions/295.html
+  - https://www.php.net/manual/en/function.curl-setopt.php
+tags:
+  - tls
+  - ssl
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+version: 1.0.0
+

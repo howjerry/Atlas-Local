@@ -1,0 +1,47 @@
+id: atlas/security/kotlin/coroutine-unsafe-context
+name: Unsafe Shared Mutable State in Coroutines
+description: >
+  Detects usage of GlobalScope.launch or GlobalScope.async which creates
+  coroutines with no structured concurrency. GlobalScope coroutines run
+  for the lifetime of the application and cannot be cancelled, leading to
+  resource leaks, race conditions on shared mutable state, and difficulty
+  in testing. This is a common source of concurrency bugs in Kotlin
+  coroutine-based applications.
+severity: medium
+category: security
+language: Kotlin
+cwe_id: CWE-362
+pattern: |
+  [
+    (call_expression
+      (navigation_expression
+        (identifier) @scope
+        (identifier) @method)
+      (value_arguments)
+      (#eq? @scope "GlobalScope")
+      (#match? @method "^(launch|async)$"))
+    @match
+  ]
+remediation: >
+  Use structured concurrency instead of GlobalScope. In Android, use
+  viewModelScope or lifecycleScope. In server-side Kotlin, use
+  coroutineScope {} or supervisorScope {} to create structured scopes.
+  For shared mutable state, use Mutex, Atomic types, or Channel to
+  ensure thread-safe access. Example:
+  `coroutineScope { launch { /* safe coroutine */ } }`.
+references:
+  - https://cwe.mitre.org/data/definitions/362.html
+  - https://kotlinlang.org/docs/shared-mutable-state-and-concurrency.html
+  - https://kotlinlang.org/docs/coroutines-basics.html#structured-concurrency
+tags:
+  - coroutine
+  - concurrency
+  - race-condition
+  - kotlin-specific
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A04:2021"
+      description: Insecure Design
+version: 1.0.0
+

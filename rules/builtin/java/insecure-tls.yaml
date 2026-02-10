@@ -1,0 +1,58 @@
+id: atlas/security/java/insecure-tls
+name: Insecure TLS Configuration
+description: >
+  Detects creation of SSLContext or TrustManager implementations that
+  disable certificate verification. Accepting all certificates without
+  validation allows man-in-the-middle attacks, where an attacker can
+  intercept, read, and modify encrypted traffic between the application
+  and remote servers.
+severity: high
+category: security
+language: Java
+cwe_id: CWE-295
+pattern: |
+  [
+    (method_invocation
+      object: (identifier) @cls
+      name: (identifier) @method
+      arguments: (argument_list
+        (string_literal) @protocol)
+      (#eq? @cls "SSLContext")
+      (#eq? @method "getInstance")
+      (#match? @protocol "\"(SSL|SSLv2|SSLv3|TLS|TLSv1|TLSv1\\.0|TLSv1\\.1)\""))
+    @match
+
+    (object_creation_expression
+      type: (type_identifier) @type
+      (#match? @type "^(TrustAllCerts|InsecureTrustManager|NullTrustManager|AllTrustManager)$"))
+    @match
+  ]
+remediation: >
+  Use TLSv1.2 or TLSv1.3 for SSLContext: `SSLContext.getInstance("TLSv1.3")`.
+  Never implement TrustManager that blindly accepts all certificates. Use the
+  default TrustManagerFactory with the system's CA certificates. For testing
+  environments, use certificate pinning or a dedicated test CA instead of
+  disabling verification entirely.
+references:
+  - https://cwe.mitre.org/data/definitions/295.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html
+  - https://owasp.org/www-project-mobile-top-10/2016-risks/m3-insecure-communication
+tags:
+  - tls
+  - ssl
+  - certificate
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+    - framework: pci-dss-4.0
+      requirement: "4.2.1"
+      description: Strong Cryptography for Transmission
+    - framework: nist-800-53
+      requirement: SC-8
+      description: Transmission Confidentiality and Integrity
+version: 1.0.0
+

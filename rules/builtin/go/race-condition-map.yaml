@@ -1,0 +1,45 @@
+id: atlas/security/go/race-condition-map
+name: Concurrent Map Access Without Synchronization
+description: >
+  Detects usage of Go's built-in map within goroutines (go func() blocks)
+  without proper synchronization. Go maps are not safe for concurrent use;
+  concurrent reads and writes to a map cause a fatal runtime panic. This
+  pattern detects direct map index access or assignment inside go func()
+  closures, which indicates a potential data race.
+severity: high
+category: security
+language: Go
+cwe_id: CWE-362
+pattern: |
+  (go_statement
+    (call_expression
+      function: (func_literal
+        body: (block
+          (_
+            (index_expression
+              operand: (identifier) @map_var
+              index: (_) @key)) @map_access))))
+  @match
+remediation: >
+  Use sync.Mutex or sync.RWMutex to protect map access in concurrent code.
+  Alternatively, use sync.Map which is designed for concurrent use. For
+  read-heavy workloads, prefer sync.RWMutex with RLock()/RUnlock() for
+  reads and Lock()/Unlock() for writes. Example:
+  `var mu sync.RWMutex; mu.Lock(); m[key] = value; mu.Unlock()`
+references:
+  - https://cwe.mitre.org/data/definitions/362.html
+  - https://go.dev/doc/faq#atomic_maps
+  - https://pkg.go.dev/sync#Map
+tags:
+  - race-condition
+  - concurrency
+  - data-race
+  - owasp-top-10
+  - a04-insecure-design
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A04:2021"
+      description: Insecure Design
+version: 1.0.0
+

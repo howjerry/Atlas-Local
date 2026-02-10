@@ -1,0 +1,62 @@
+id: atlas/security/python/jwt-no-verify
+name: JWT Token Decoded Without Signature Verification
+description: >
+  Detects usage of PyJWT's jwt.decode() with verify=False or
+  options={"verify_signature": False} which skips signature verification.
+  Also detects jwt.decode() calls with algorithms=["none"]. If a JWT is
+  decoded without verifying its signature, an attacker can forge tokens with
+  arbitrary claims, bypassing authentication and authorization.
+severity: critical
+category: security
+language: Python
+cwe_id: CWE-345
+pattern: |
+  [
+    (call
+      function: (attribute
+        object: (identifier) @module
+        attribute: (identifier) @method
+        (#eq? @module "jwt")
+        (#eq? @method "decode"))
+      arguments: (argument_list
+        (_)
+        (keyword_argument
+          name: (identifier) @kwname
+          value: (_) @kwval
+          (#match? @kwname "^(verify|options)$"))))
+    @match
+
+    (call
+      function: (attribute
+        object: (identifier) @module
+        attribute: (identifier) @method
+        (#eq? @module "jwt")
+        (#eq? @method "decode"))
+      arguments: (argument_list
+        (_)
+        (keyword_argument
+          name: (identifier) @kwname2
+          value: (list) @algo_list
+          (#eq? @kwname2 "algorithms"))))
+    @match
+  ]
+remediation: >
+  Always verify JWT signatures. Use `jwt.decode(token, key, algorithms=["HS256"])`
+  with a proper secret key. Never use `verify=False` or `options={"verify_signature":
+  False}` in production. For RS256 tokens, use the public key for verification.
+references:
+  - https://cwe.mitre.org/data/definitions/345.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html
+  - https://pyjwt.readthedocs.io/en/stable/usage.html
+tags:
+  - jwt
+  - authentication
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+version: 1.0.0
+

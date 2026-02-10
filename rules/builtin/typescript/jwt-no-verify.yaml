@@ -1,0 +1,48 @@
+id: atlas/security/typescript/jwt-no-verify
+name: JWT Token Used Without Signature Verification
+description: >
+  Detects usage of jwt.decode() which does not verify the token signature.
+  An attacker can forge or tamper with JWT tokens to bypass authentication
+  or escalate privileges. Always use jwt.verify() with a secret or public
+  key to ensure the token has not been modified.
+severity: critical
+category: security
+language: TypeScript
+cwe_id: CWE-345
+pattern: |
+  (call_expression
+    function: (member_expression
+      object: (_)
+      property: (property_identifier) @method
+      (#eq? @method "decode"))
+    arguments: (arguments
+      (_) @token_arg))
+  @match
+remediation: >
+  Replace jwt.decode() with jwt.verify() which validates the token signature.
+  For example, replace `const payload = jwt.decode(token)` with
+  `const payload = jwt.verify(token, secretOrPublicKey)`. Always provide a
+  secret key or public key for verification. Consider using asymmetric keys
+  (RS256) for better security.
+references:
+  - https://cwe.mitre.org/data/definitions/345.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html
+  - https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/
+tags:
+  - jwt
+  - authentication
+  - owasp-top-10
+  - a07-identification-and-authentication-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A07:2021"
+      description: Identification and Authentication Failures
+    - framework: pci-dss-4.0
+      requirement: "6.2.4"
+      description: Prevention of Common Software Attacks
+    - framework: nist-800-53
+      requirement: IA-5
+      description: Authenticator Management
+version: 1.0.0
+

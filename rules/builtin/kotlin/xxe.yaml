@@ -1,0 +1,41 @@
+id: atlas/security/kotlin/xxe
+name: XML External Entity (XXE) Injection
+description: >
+  Detects XML parser factory instantiation (DocumentBuilderFactory,
+  SAXParserFactory, XMLInputFactory) that may be vulnerable to XXE attacks.
+  By default, Kotlin/JVM XML parsers process external entities, allowing
+  attackers to read local files, perform SSRF, or cause denial of service
+  via entity expansion (Billion Laughs attack).
+severity: high
+category: security
+language: Kotlin
+cwe_id: CWE-611
+pattern: |
+  (call_expression
+    (navigation_expression
+      (identifier) @factory
+      (identifier) @method)
+    (value_arguments)
+    (#match? @factory "^(DocumentBuilderFactory|SAXParserFactory|XMLInputFactory|TransformerFactory|SchemaFactory)$")
+    (#eq? @method "newInstance"))
+  @match
+remediation: >
+  Disable external entity processing after creating the factory:
+  `factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)`
+  and `factory.setFeature("http://xml.org/sax/features/external-general-entities", false)`.
+  For XMLInputFactory, set `XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES` to false.
+references:
+  - https://cwe.mitre.org/data/definitions/611.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html
+tags:
+  - xxe
+  - xml
+  - owasp-top-10
+  - a05-security-misconfiguration
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A05:2021"
+      description: Security Misconfiguration
+version: 1.0.0
+

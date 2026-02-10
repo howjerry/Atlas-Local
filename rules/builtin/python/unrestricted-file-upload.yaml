@@ -1,0 +1,43 @@
+id: atlas/security/python/unrestricted-file-upload
+name: Unrestricted File Upload Without Validation
+description: >
+  Detects usage of file save/write operations on uploaded file objects
+  (Django UploadedFile, Flask FileStorage) where the file is saved without
+  proper validation of type, size, or content. An attacker can upload
+  malicious files like web shells or polyglot files that execute on the
+  server or are served to other users.
+severity: high
+category: security
+language: Python
+cwe_id: CWE-434
+pattern: |
+  [
+    (call
+      function: (attribute
+        object: (_)
+        attribute: (identifier) @method
+        (#match? @method "^(save|write)$"))
+      arguments: (argument_list
+        (identifier) @file_path))
+    @match
+  ]
+remediation: >
+  Validate uploaded files before saving: check file extension against an
+  allowlist, verify MIME type using python-magic, enforce maximum file size,
+  and generate a random filename. For Django, use FileField validators.
+  For Flask, use werkzeug.utils.secure_filename() and validate content type.
+  Store uploaded files outside the web root.
+references:
+  - https://cwe.mitre.org/data/definitions/434.html
+  - https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+tags:
+  - file-upload
+  - owasp-top-10
+  - a04-insecure-design
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A04:2021"
+      description: Insecure Design
+version: 1.0.0
+

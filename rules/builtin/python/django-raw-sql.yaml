@@ -1,0 +1,53 @@
+id: atlas/security/python/django-raw-sql
+name: Django Raw SQL Query
+description: >
+  Detects usage of Django's raw(), extra(), or RawSQL() methods which execute
+  raw SQL queries. If user input is included in the SQL string without proper
+  parameterization, it leads to SQL injection vulnerabilities. Even with
+  parameterization, raw SQL bypasses Django ORM's built-in protections and
+  should be used with extreme caution.
+severity: high
+category: security
+language: Python
+cwe_id: CWE-89
+pattern: |
+  [
+    (call
+      function: (attribute
+        object: (_)
+        attribute: (identifier) @method
+        (#match? @method "^(raw|extra)$"))
+      arguments: (argument_list
+        (identifier) @sql_arg))
+    @match
+
+    (call
+      function: (identifier) @func
+      arguments: (argument_list
+        (identifier) @sql_arg)
+      (#eq? @func "RawSQL"))
+    @match
+  ]
+remediation: >
+  Use Django ORM query methods (filter, exclude, annotate) instead of raw SQL
+  whenever possible. If raw SQL is necessary, always use parameterized queries:
+  `Model.objects.raw("SELECT * FROM t WHERE id = %s", [user_id])`. Never use
+  string formatting to build SQL. For complex queries, consider using Django's
+  Q objects or Subquery expressions.
+references:
+  - https://cwe.mitre.org/data/definitions/89.html
+  - https://docs.djangoproject.com/en/5.0/topics/db/sql/
+  - https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+tags:
+  - sql-injection
+  - django
+  - orm
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

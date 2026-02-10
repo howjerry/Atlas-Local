@@ -1,0 +1,57 @@
+id: atlas/security/php/preg-eval
+name: Code Execution via preg_replace /e Modifier
+description: >
+  Detects usage of preg_replace() with the deprecated /e modifier or
+  preg_replace_callback_array() with variable replacement patterns. The /e
+  modifier evaluates the replacement string as PHP code, allowing an
+  attacker to execute arbitrary code if the replacement or pattern is
+  user-controlled. This modifier was deprecated in PHP 5.5 and removed
+  in PHP 7.0.
+severity: critical
+category: security
+language: Php
+cwe_id: CWE-94
+pattern: |
+  [
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          (string (string_content) @pattern_str))
+        (argument
+          (_) @replacement)))
+      (#eq? @func_name "preg_replace")
+      (#match? @pattern_str "/e[^a-zA-Z]?$"))
+    @match
+
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          (encapsed_string) @pattern_str)
+        (argument
+          (_) @replacement)))
+      (#eq? @func_name "preg_replace"))
+    @match
+  ]
+remediation: >
+  Replace preg_replace() with the /e modifier with
+  preg_replace_callback(). This avoids code evaluation entirely and
+  provides a safer way to transform matches. Example:
+  `preg_replace_callback('/pattern/', function($m) { return strtoupper($m[1]); }, $input)`.
+references:
+  - https://cwe.mitre.org/data/definitions/94.html
+  - https://www.php.net/manual/en/function.preg-replace.php
+  - https://wiki.php.net/rfc/remove_preg_replace_eval_modifier
+tags:
+  - code-injection
+  - regex
+  - owasp-top-10
+  - a03-injection
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A03:2021"
+      description: Injection
+version: 1.0.0
+

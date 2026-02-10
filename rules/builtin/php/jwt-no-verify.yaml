@@ -1,0 +1,53 @@
+id: atlas/security/php/jwt-no-verify
+name: JWT Token Decoded Without Signature Verification
+description: >
+  Detects usage of JWT decode functions that skip signature verification,
+  such as calling json_decode on base64_decode of JWT segments directly,
+  or using JWT libraries with verification disabled. Without signature
+  verification, attackers can forge JWT tokens with arbitrary claims.
+severity: critical
+category: security
+language: Php
+cwe_id: CWE-345
+pattern: |
+  [
+    ((function_call_expression
+      function: (name) @func_name
+      arguments: (arguments
+        (argument
+          (function_call_expression
+            function: (name) @inner_func
+            (#eq? @inner_func "base64_decode")))))
+      (#eq? @func_name "json_decode"))
+    @match
+
+    (member_call_expression
+      name: (name) @method
+      arguments: (arguments
+        (argument (_))
+        (argument
+          (boolean) @verify_flag))
+      (#eq? @method "decode")
+      (#eq? @verify_flag "false"))
+    @match
+  ]
+remediation: >
+  Always verify JWT signatures using a trusted library like firebase/php-jwt.
+  Use JWT::decode() with a proper key and allowed algorithms:
+  `$decoded = JWT::decode($token, new Key($key, 'HS256'))`. Never manually
+  decode JWT segments without signature verification.
+references:
+  - https://cwe.mitre.org/data/definitions/345.html
+  - https://github.com/firebase/php-jwt
+tags:
+  - jwt
+  - authentication
+  - owasp-top-10
+  - a02-cryptographic-failures
+metadata:
+  compliance:
+    - framework: owasp-top-10-2021
+      requirement: "A02:2021"
+      description: Cryptographic Failures
+version: 1.0.0
+
