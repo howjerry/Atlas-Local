@@ -52,32 +52,32 @@
 
 ## 6. L3 引擎 — 跨函數污染傳播（Phase 2）
 
-- [ ] 6.1 建立 `l3_engine.rs` 模組 — 定義 `L3Engine` struct，持有 `CallGraph`, `TaintConfig`, `Language`, `max_depth`
-- [ ] 6.2 實作入口點辨識 — 掃描 call graph 中含有 taint source 的函數作為分析起點
-- [ ] 6.3 實作 BFS 遍歷框架 — 從入口點 BFS 遍歷 call graph，`visited: HashSet` 循環偵測，`max_depth` 深度限制
-- [ ] 6.4 實作正向污染傳播（caller→callee）— 受污染引數對應 callee 參數標記為 Tainted，按需建構 scope graph 並執行 reaching-definitions
-- [ ] 6.5 實作反向污染傳播（callee→caller）— callee return expression 受污染時，caller 端接收變數標記為 Tainted
-- [ ] 6.6 實作 sanitizer 跨函數支援 — callee 內部 sanitizer 清除污染後，return 值為 Clean
-- [ ] 6.7 實作 sink 偵測 — 在每個 callee 的 scope graph 中偵測受污染變數傳入 sink，產生 L3 finding
-- [ ] 6.8 實作 scope graph 快取 — `HashMap<(file_path, func_name), ScopeGraph>` 避免重複建構
-- [ ] 6.9 實作 `analyze_project(files, taint_config) -> Vec<Finding>` 公開 API — 整合 Phase 1 call graph + Phase 2 污染傳播
-- [ ] 6.10 單元測試：入口點辨識（含 taint source 的函數）
-- [ ] 6.11 單元測試：BFS 深度限制（max_depth=2 阻止第 3 層）
-- [ ] 6.12 單元測試：循環偵測（A→B→A 不無限迴圈）
-- [ ] 6.13 單元測試：正向污染傳播（tainted arg → callee param → sink）
-- [ ] 6.14 單元測試：反向污染傳播（callee return tainted → caller var → sink）
-- [ ] 6.15 單元測試：sanitizer 清除跨函數污染
-- [ ] 6.16 單元測試：菱形呼叫（A→B→D, A→C→D）D 僅分析一次
+- [x] 6.1 建立 `l3_engine.rs` 模組 — 定義 `L3Engine` struct，持有 `CallGraph`, `TaintConfig`, `Language`, `max_depth`
+- [x] 6.2 實作入口點辨識 — 掃描 call graph 中含有 taint source 的函數作為分析起點
+- [x] 6.3 實作 BFS 遍歷框架 — 從入口點 BFS 遍歷 call graph，`visited: HashSet` 循環偵測，`max_depth` 深度限制
+- [x] 6.4 實作正向污染傳播（caller→callee）— 受污染引數對應 callee 參數標記為 Tainted，按需建構 scope graph 並執行 reaching-definitions
+- [x] 6.5 實作反向污染傳播（callee→caller）— callee return expression 受污染時，caller 端接收變數標記為 Tainted
+- [x] 6.6 實作 sanitizer 跨函數支援 — callee 內部 sanitizer 清除污染後，return 值為 Clean
+- [x] 6.7 實作 sink 偵測 — 在每個 callee 的 scope graph 中偵測受污染變數傳入 sink，產生 L3 finding
+- [x] 6.8 實作 scope graph 快取 — `HashMap<(file_path, func_name), ScopeGraph>` 避免重複建構
+- [x] 6.9 實作 `analyze_project(files, taint_config) -> Vec<Finding>` 公開 API — 整合 Phase 1 call graph + Phase 2 污染傳播
+- [x] 6.10 單元測試：入口點辨識（含 taint source 的函數）
+- [x] 6.11 單元測試：BFS 深度限制（max_depth=2 阻止第 3 層）
+- [x] 6.12 單元測試：循環偵測（A→B→A 不無限迴圈）
+- [x] 6.13 單元測試：正向污染傳播（tainted arg → callee param → sink）
+- [x] 6.14 單元測試：反向污染傳播（callee return tainted → caller var → sink）
+- [x] 6.15 單元測試：sanitizer 清除跨函數污染
+- [x] 6.16 單元測試：菱形呼叫（A→B→D, A→C→D）D 僅分析一次
 
 ## 7. L3 Finding 生成
 
-- [ ] 7.1 實作跨函數 `DataFlowStep` — 新增 `Call` 和 `Return` step types，每個 step 含 `file`, `function`, `line`, `column`, `expression`, `description`
-- [ ] 7.2 實作 `build_l3_finding()` — 組裝 rule_id (`atlas/security/{lang}/l3-{vuln}`), severity, CWE, analysis_level=L3, confidence=Medium
-- [ ] 7.3 實作 `metadata.data_flow` 序列化 — 跨檔案多函數的有序步驟陣列（source→propagation→call→return→sink）
-- [ ] 7.4 實作 `metadata.call_depth` — 計算函數呼叫邊界交叉次數
-- [ ] 7.5 單元測試：L3 finding 包含正確 analysis_level 和 confidence
-- [ ] 7.6 單元測試：data_flow 步驟跨越兩個檔案
-- [ ] 7.7 單元測試：call_depth 數值正確
+- [x] 7.1 實作跨函數 `DataFlowStep` — 新增 `Call` 和 `Return` step types，每個 step 含 `file`, `function`, `line`, `column`, `expression`, `description`
+- [x] 7.2 實作 `build_l3_finding()` — 組裝 rule_id (`atlas/security/{lang}/l3-{vuln}`), severity, CWE, analysis_level=L3, confidence=Medium
+- [x] 7.3 實作 `metadata.data_flow` 序列化 — 跨檔案多函數的有序步驟陣列（source→propagation→call→return→sink）
+- [x] 7.4 實作 `metadata.call_depth` — 計算函數呼叫邊界交叉次數
+- [x] 7.5 單元測試：L3 finding 包含正確 analysis_level 和 confidence
+- [x] 7.6 單元測試：data_flow 步驟跨越兩個檔案
+- [x] 7.7 單元測試：call_depth 數值正確
 
 ## 8. CLI 與掃描管線整合
 

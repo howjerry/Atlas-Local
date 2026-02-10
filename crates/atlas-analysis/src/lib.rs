@@ -8,6 +8,7 @@ pub mod l2_intraprocedural;
 pub mod l2_taint_config;
 pub mod call_graph_builder;
 pub mod import_resolver;
+pub mod l3_engine;
 pub mod l3_interprocedural;
 pub mod l3_lang_config;
 pub mod secrets;
