@@ -35,6 +35,8 @@ use tracing::{debug, info, warn};
 
 use atlas_analysis::{DiffStatus, Finding, L1PatternEngine, RuleMatchMetadata};
 use atlas_analysis::l2_engine::L2Engine;
+use atlas_analysis::metrics::{FileMetricsData, MetricsConfig, MetricsEngine};
+use atlas_analysis::duplication::{DuplicationDetector, DuplicationResult, TokenizedFile};
 use atlas_cache::cache::{CacheConfig, ResultCache};
 use atlas_lang::{
     AdapterRegistry, register_csharp_adapter, register_go_adapter, register_java_adapter,
@@ -70,6 +72,10 @@ pub struct ScanResult {
     pub summary: FindingsSummary,
     /// Timing and performance statistics (T089).
     pub stats: ScanStats,
+    /// 每個檔案的品質 metrics 資料（僅在 `--metrics` 啟用時填充）。
+    pub file_metrics: Vec<FileMetricsData>,
+    /// 程式碼重複檢測結果（僅在 `--metrics` 啟用時填充）。
+    pub duplication: Option<DuplicationResult>,
 }
 
 // ---------------------------------------------------------------------------
@@ -149,6 +155,9 @@ pub struct ScanOptions {
     pub follow_symlinks: bool,
     /// 快取資料庫目錄路徑。
     pub cache_dir: Option<std::path::PathBuf>,
+    /// 是否計算程式碼品質 metrics（cyclomatic/cognitive complexity、duplication、LOC）。
+    /// 預設 false（opt-in via `--metrics`）。
+    pub compute_metrics: bool,
 }
 
 impl Default for ScanOptions {
@@ -162,6 +171,7 @@ impl Default for ScanOptions {
             exclude_patterns: Vec::new(),
             follow_symlinks: true,
             cache_dir: None,
+            compute_metrics: false,
         }
     }
 }
@@ -330,6 +340,8 @@ impl ScanEngine {
                             parse_failures: 0,
                             cache_hit_rate: None,
                         },
+                        file_metrics: Vec::new(),
+                        duplication: None,
                     });
                 }
 
@@ -430,13 +442,20 @@ impl ScanEngine {
 
         let analysis_level = options.analysis_level;
 
+        // 建立 Metrics Engine（僅在 --metrics 啟用時）
+        let metrics_engine = if options.compute_metrics {
+            Some(MetricsEngine::new(MetricsConfig::default()))
+        } else {
+            None
+        };
+
         // Step 2: Process uncached files in parallel.
-        let processed_results: Vec<(usize, Vec<Finding>)> = pool.install(|| {
+        let processed_results: Vec<(usize, Vec<Finding>, Option<FileMetricsData>)> = pool.install(|| {
             uncached_files
                 .par_iter()
                 .map(|(idx, _cache_key)| {
                     let discovered = &discovery.files[*idx];
-                    let findings = self.process_file(
+                    let (findings, file_metrics) = self.process_file(
                         discovered,
                         max_file_bytes,
                         &query_cache,
@@ -445,19 +464,20 @@ impl ScanEngine {
                         &parse_failures,
                         diff_ctx,
                         analysis_level,
+                        metrics_engine.as_ref(),
                     );
-                    (*idx, findings)
+                    (*idx, findings, file_metrics)
                 })
                 .collect()
         });
 
-        // 寫入快取（序列操作）。
+        // 寫入快取（序列操作）— 僅快取 findings，metrics 不快取。
         if let Some(ref cache) = result_cache {
             let uncached_map: HashMap<usize, &str> = uncached_files
                 .iter()
                 .map(|(idx, key)| (*idx, key.as_str()))
                 .collect();
-            for (idx, findings) in &processed_results {
+            for (idx, findings, _) in &processed_results {
                 if let Some(cache_key) = uncached_map.get(idx) {
                     if !cache_key.is_empty() {
                         if let Ok(data) = serde_json::to_vec(findings) {
@@ -470,11 +490,52 @@ impl ScanEngine {
             }
         }
 
-        // 合併 cached + processed findings。
+        // 合併 cached + processed findings 並收集 per-file metrics。
         let mut all_findings = cached_findings;
-        for (_idx, findings) in processed_results {
+        let mut all_file_metrics: Vec<FileMetricsData> = Vec::new();
+        for (_idx, findings, file_metrics) in processed_results {
             all_findings.extend(findings);
+            if let Some(fm) = file_metrics {
+                all_file_metrics.push(fm);
+            }
         }
+
+        // Step 2c: Duplication detection（跨檔案比對，需要在所有檔案處理完後執行）
+        // 僅在 --metrics 啟用時執行。
+        let duplication_result = if options.compute_metrics {
+            let tokenized_files: Vec<TokenizedFile> = discovery
+                .files
+                .iter()
+                .filter_map(|discovered| {
+                    let adapter = self.adapter_registry.get_by_language(discovered.language)?;
+                    let source = std::fs::read(&discovered.path).ok()?;
+                    let source_str = std::str::from_utf8(&source).ok()?;
+                    let tree = adapter.parse(&source).ok()?;
+                    Some(DuplicationDetector::tokenize_file(
+                        &tree,
+                        source_str,
+                        &discovered.relative_path,
+                    ))
+                })
+                .collect();
+
+            if !tokenized_files.is_empty() {
+                let detector = DuplicationDetector::new(
+                    metrics_engine.as_ref().map_or(100, |e| e.config().min_tokens),
+                );
+                let dup_result = detector.detect(&tokenized_files);
+                info!(
+                    blocks = dup_result.blocks.len(),
+                    percentage = format!("{:.1}%", dup_result.duplication_percentage),
+                    "duplication detection complete"
+                );
+                Some(dup_result)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
 
         // Step 3: Sort findings deterministically.
         all_findings.sort();
@@ -520,6 +581,8 @@ impl ScanEngine {
             languages_detected,
             summary,
             stats,
+            file_metrics: all_file_metrics,
+            duplication: duplication_result,
         })
     }
 
@@ -615,7 +678,8 @@ impl ScanEngine {
         parse_failures: &AtomicU32,
         diff_context: Option<&DiffContext>,
         analysis_level: AnalysisLevel,
-    ) -> Vec<Finding> {
+        metrics_engine: Option<&MetricsEngine>,
+    ) -> (Vec<Finding>, Option<FileMetricsData>) {
         // 2a. Look up adapter by language.
         let adapter = match self.adapter_registry.get_by_language(discovered.language) {
             Some(a) => a,
@@ -626,7 +690,7 @@ impl ScanEngine {
                     "no adapter registered for language; skipping"
                 );
                 files_skipped.fetch_add(1, Ordering::Relaxed);
-                return Vec::new();
+                return (Vec::new(), None);
             }
         };
 
@@ -640,7 +704,7 @@ impl ScanEngine {
                     "failed to read file; skipping"
                 );
                 files_skipped.fetch_add(1, Ordering::Relaxed);
-                return Vec::new();
+                return (Vec::new(), None);
             }
         };
 
@@ -653,7 +717,7 @@ impl ScanEngine {
                 "file exceeds max size; skipping"
             );
             files_skipped.fetch_add(1, Ordering::Relaxed);
-            return Vec::new();
+            return (Vec::new(), None);
         }
 
         // T091: Warn for files exceeding 1 MiB that still pass the limit.
@@ -674,7 +738,7 @@ impl ScanEngine {
             );
             files_skipped.fetch_add(1, Ordering::Relaxed);
             parse_failures.fetch_add(1, Ordering::Relaxed);
-            return Vec::new();
+            return (Vec::new(), None);
         }
 
         // 2c. Parse with adapter.
@@ -688,7 +752,7 @@ impl ScanEngine {
                 );
                 files_skipped.fetch_add(1, Ordering::Relaxed);
                 parse_failures.fetch_add(1, Ordering::Relaxed);
-                return Vec::new();
+                return (Vec::new(), None);
             }
         };
 
@@ -771,6 +835,29 @@ impl ScanEngine {
             }
         }
 
+        // Metrics：計算 per-file 品質指標（複用已解析的 AST）
+        let source_str = std::str::from_utf8(&source).unwrap_or("");
+        let file_metrics = if let Some(me) = metrics_engine {
+            let fm = me.compute_file_metrics(
+                &tree,
+                source_str,
+                discovered.language,
+                &discovered.relative_path,
+            );
+            // 閾值檢查：產生超過閾值的 findings
+            if let Some(ref metrics_data) = fm {
+                let threshold_findings = me.check_thresholds(
+                    metrics_data,
+                    &discovered.relative_path,
+                    discovered.language,
+                );
+                findings.extend(threshold_findings);
+            }
+            fm
+        } else {
+            None
+        };
+
         // Attribute diff status to each finding.
         if let Some(dc) = diff_context {
             if !dc.is_fallback {
@@ -795,7 +882,7 @@ impl ScanEngine {
         }
 
         files_scanned.fetch_add(1, Ordering::Relaxed);
-        findings
+        (findings, file_metrics)
     }
 }
 
