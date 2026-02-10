@@ -21,6 +21,8 @@ serde_yml = { workspace = true }
 
 [dev-dependencies]
 tree-sitter-typescript = "0.23"
+tree-sitter-python = "0.23"
+tree-sitter-java = "0.23"
 criterion = { workspace = true }
 
 [[bench]]

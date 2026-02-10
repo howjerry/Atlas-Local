@@ -1,16 +1,9 @@
-//! L3 inter-procedural taint analysis (T087).
+//! L3 inter-procedural taint analysis。
 //!
-//! Builds a cross-file call graph, tracks taint sources and sinks across
-//! function boundaries, with a configurable call-depth limit to prevent
-//! explosion in large codebases.
-//!
-//! **Status: NOT YET INTEGRATED.** Type definitions and call-graph builder
-//! are scaffolded here but are not connected to the scan pipeline. No L3 rules
-//! exist yet. This module is retained as a design reference for future work.
+//! 建構跨檔案 call graph，追蹤污染源與接收點跨函數邊界傳播，
+//! 支援可配置的 call-depth 限制以防止大型程式碼庫中的效能爆炸。
 
-#![allow(dead_code)]
-
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use serde::{Deserialize, Serialize};
 
@@ -18,56 +11,119 @@ use serde::{Deserialize, Serialize};
 // Call graph types
 // ---------------------------------------------------------------------------
 
-/// A function declaration with its location.
+/// 函數宣告及其位置資訊。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FunctionRef {
-    /// File containing the function.
+    /// 包含此函數的檔案路徑。
     pub file_path: String,
-    /// Function name.
+    /// 函數名稱。
     pub name: String,
-    /// Line number of the function declaration.
+    /// 函數宣告的行號。
     pub line: u32,
+    /// 函數參數名稱列表。
+    #[serde(default)]
+    pub parameters: Vec<String>,
 }
 
-/// A call site within a function.
+/// 函數內的呼叫點。
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CallSite {
-    /// The function being called.
+    /// 被呼叫的函數名稱。
     pub callee: String,
-    /// Line number of the call.
+    /// 呼叫行號。
     pub line: u32,
-    /// Whether any arguments to the call are tainted.
-    pub tainted_args: Vec<u32>, // argument indices
+    /// 受污染的引數索引。
+    pub tainted_args: Vec<u32>,
+    /// 每個引數的原始碼文字。
+    #[serde(default)]
+    pub argument_expressions: Vec<String>,
 }
 
-/// A taint source (user input, external data).
+/// Import 條目 — 記錄一個 import 聲明。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ImportEntry {
+    /// 進行 import 的檔案路徑。
+    pub file_path: String,
+    /// 被 import 的名稱（本地綁定名稱）。
+    pub imported_name: String,
+    /// 來源模組路徑（如 `./userService`）。
+    pub source_module: String,
+    /// 來源模組中的 exported 名稱。
+    pub exported_name: String,
+}
+
+/// Import 索引 — 解析跨檔案函數呼叫。
+///
+/// key: `(file_path, imported_name)` → value: `(resolved_file_path, exported_name)`
+#[derive(Debug, Clone, Default)]
+pub struct ImportIndex {
+    /// 映射表：(file, local_name) → (source_file, export_name)。
+    entries: HashMap<(String, String), (String, String)>,
+}
+
+impl ImportIndex {
+    /// 建立空的 import index。
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// 註冊一個 import 條目。
+    pub fn add(&mut self, entry: ImportEntry) {
+        self.entries.insert(
+            (entry.file_path, entry.imported_name),
+            (entry.source_module, entry.exported_name),
+        );
+    }
+
+    /// 解析某檔案中的名稱，回傳 `(source_file, exported_name)`。
+    #[must_use]
+    pub fn resolve(&self, file_path: &str, name: &str) -> Option<&(String, String)> {
+        self.entries
+            .get(&(file_path.to_string(), name.to_string()))
+    }
+
+    /// 回傳 import 條目數量。
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// 是否為空。
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+}
+
+/// 污染源（使用者輸入、外部資料）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaintSource {
     pub file_path: String,
     pub function: String,
     pub variable: String,
     pub line: u32,
-    pub source_type: String, // e.g. "user_input", "database", "network"
+    pub source_type: String,
 }
 
-/// A taint sink (dangerous operation).
+/// 污染接收點（危險操作）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaintSink {
     pub file_path: String,
     pub function: String,
     pub variable: String,
     pub line: u32,
-    pub sink_type: String, // e.g. "sql_query", "exec", "innerHTML"
+    pub sink_type: String,
 }
 
-/// A cross-file taint path from source to sink.
+/// 跨檔案的污染路徑（source → sink）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaintPath {
     pub source: TaintSource,
     pub sink: TaintSink,
-    /// Functions traversed in the call chain.
+    /// 呼叫鏈中經過的函數。
     pub call_chain: Vec<FunctionRef>,
-    /// Depth of the call chain.
+    /// 呼叫鏈深度。
     pub depth: u32,
 }
 
@@ -75,46 +131,54 @@ pub struct TaintPath {
 // Call graph
 // ---------------------------------------------------------------------------
 
-/// Configuration for taint analysis.
+/// L3 污染分析配置。
 #[derive(Debug, Clone)]
-pub struct TaintConfig {
-    /// Maximum call-depth to follow.
+pub struct L3TaintConfig {
+    /// 最大呼叫深度。
     pub max_depth: u32,
 }
 
-impl Default for TaintConfig {
+impl Default for L3TaintConfig {
     fn default() -> Self {
         Self { max_depth: 5 }
     }
 }
 
-/// Cross-file call graph for taint analysis.
+/// 跨檔案 call graph。
 #[derive(Debug, Clone, Default)]
 pub struct CallGraph {
-    /// Functions indexed by file_path::function_name.
+    /// 函數索引，key 為 `file_path::function_name`。
     pub functions: BTreeMap<String, FunctionRef>,
-    /// Outgoing calls from each function.
+    /// 每個函數的外出呼叫。
     pub calls: BTreeMap<String, Vec<CallSite>>,
-    /// Known taint sources.
+    /// 已知污染源。
     pub sources: Vec<TaintSource>,
-    /// Known taint sinks.
+    /// 已知污染接收點。
     pub sinks: Vec<TaintSink>,
+    /// Import 索引（跨檔案解析）。
+    pub imports: ImportIndex,
 }
 
 impl CallGraph {
-    /// Creates a new empty call graph.
+    /// 建立空的 call graph。
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Registers a function in the call graph.
+    /// 產生函數的 key（`file_path::name`）。
+    #[must_use]
+    pub fn function_key(file_path: &str, name: &str) -> String {
+        format!("{file_path}::{name}")
+    }
+
+    /// 註冊一個函數。
     pub fn add_function(&mut self, func: FunctionRef) {
-        let key = format!("{}::{}", func.file_path, func.name);
+        let key = Self::function_key(&func.file_path, &func.name);
         self.functions.insert(key, func);
     }
 
-    /// Adds a call site from a function.
+    /// 新增一個呼叫點。
     pub fn add_call(&mut self, caller_key: &str, call: CallSite) {
         self.calls
             .entry(caller_key.to_string())
@@ -122,17 +186,52 @@ impl CallGraph {
             .push(call);
     }
 
-    /// Adds a taint source.
+    /// 新增污染源。
     pub fn add_source(&mut self, source: TaintSource) {
         self.sources.push(source);
     }
 
-    /// Adds a taint sink.
+    /// 新增污染接收點。
     pub fn add_sink(&mut self, sink: TaintSink) {
         self.sinks.push(sink);
     }
 
-    /// Returns the set of functions reachable from a given function within max_depth.
+    /// 解析呼叫目標 — 結合 import index 與 function index。
+    ///
+    /// 優先嘗試：
+    /// 1. 同檔案直接名稱匹配
+    /// 2. 透過 import index 跨檔案解析
+    /// 3. 全域名稱匹配（fallback）
+    #[must_use]
+    pub fn resolve_call(&self, caller_file: &str, callee_name: &str) -> Option<String> {
+        // 1. 同檔案匹配
+        let same_file_key = Self::function_key(caller_file, callee_name);
+        if self.functions.contains_key(&same_file_key) {
+            return Some(same_file_key);
+        }
+
+        // 2. Import index 解析
+        if let Some((source_file, exported_name)) =
+            self.imports.resolve(caller_file, callee_name)
+        {
+            let import_key = Self::function_key(source_file, exported_name);
+            if self.functions.contains_key(&import_key) {
+                return Some(import_key);
+            }
+        }
+
+        // 3. 全域 fallback（名稱結尾匹配）
+        let suffix = format!("::{callee_name}");
+        for key in self.functions.keys() {
+            if key.ends_with(&suffix) {
+                return Some(key.clone());
+            }
+        }
+
+        None
+    }
+
+    /// 回傳從指定函數出發在 max_depth 內可達的所有函數。
     pub fn reachable_from(&self, function_key: &str, max_depth: u32) -> BTreeSet<String> {
         let mut visited = BTreeSet::new();
         let mut queue = vec![(function_key.to_string(), 0u32)];
@@ -143,13 +242,11 @@ impl CallGraph {
             }
             visited.insert(current.clone());
 
+            let caller_file = current.split("::").next().unwrap_or("");
             if let Some(calls) = self.calls.get(&current) {
                 for call in calls {
-                    // Try to resolve the callee to a registered function.
-                    for key in self.functions.keys() {
-                        if key.ends_with(&format!("::{}", call.callee)) {
-                            queue.push((key.clone(), depth + 1));
-                        }
+                    if let Some(resolved) = self.resolve_call(caller_file, &call.callee) {
+                        queue.push((resolved, depth + 1));
                     }
                 }
             }
@@ -158,25 +255,27 @@ impl CallGraph {
         visited
     }
 
-    /// Returns the number of registered functions.
+    /// 回傳已註冊的函數數量。
+    #[must_use]
     pub fn function_count(&self) -> usize {
         self.functions.len()
     }
 
-    /// Returns the total number of call sites.
+    /// 回傳所有呼叫點數量。
+    #[must_use]
     pub fn call_count(&self) -> usize {
         self.calls.values().map(|v| v.len()).sum()
     }
 }
 
-/// L3 analysis result for a project.
+/// L3 分析結果。
 #[derive(Debug, Clone, Default)]
 pub struct L3AnalysisResult {
-    /// Taint paths found.
+    /// 找到的污染路徑。
     pub taint_paths: Vec<TaintPath>,
-    /// Number of functions analyzed.
+    /// 已分析的函數數量。
     pub functions_analyzed: u32,
-    /// Call graph statistics.
+    /// 總呼叫數。
     pub total_calls: u32,
 }
 
@@ -202,11 +301,13 @@ mod tests {
             file_path: "src/main.ts".to_string(),
             name: "handleRequest".to_string(),
             line: 10,
+            parameters: vec!["req".to_string()],
         });
         cg.add_function(FunctionRef {
             file_path: "src/db.ts".to_string(),
             name: "queryDb".to_string(),
             line: 5,
+            parameters: vec!["sql".to_string()],
         });
         cg.add_call(
             "src/main.ts::handleRequest",
@@ -214,6 +315,7 @@ mod tests {
                 callee: "queryDb".to_string(),
                 line: 15,
                 tainted_args: vec![0],
+                argument_expressions: vec!["userInput".to_string()],
             },
         );
 
@@ -228,16 +330,19 @@ mod tests {
             file_path: "a.ts".to_string(),
             name: "a".to_string(),
             line: 1,
+            parameters: vec![],
         });
         cg.add_function(FunctionRef {
             file_path: "b.ts".to_string(),
             name: "b".to_string(),
             line: 1,
+            parameters: vec![],
         });
         cg.add_function(FunctionRef {
             file_path: "c.ts".to_string(),
             name: "c".to_string(),
             line: 1,
+            parameters: vec![],
         });
 
         cg.add_call(
@@ -246,6 +351,7 @@ mod tests {
                 callee: "b".to_string(),
                 line: 2,
                 tainted_args: vec![],
+                argument_expressions: vec![],
             },
         );
         cg.add_call(
@@ -254,6 +360,7 @@ mod tests {
                 callee: "c".to_string(),
                 line: 2,
                 tainted_args: vec![],
+                argument_expressions: vec![],
             },
         );
 
@@ -270,16 +377,19 @@ mod tests {
             file_path: "a.ts".to_string(),
             name: "a".to_string(),
             line: 1,
+            parameters: vec![],
         });
         cg.add_function(FunctionRef {
             file_path: "b.ts".to_string(),
             name: "b".to_string(),
             line: 1,
+            parameters: vec![],
         });
         cg.add_function(FunctionRef {
             file_path: "c.ts".to_string(),
             name: "c".to_string(),
             line: 1,
+            parameters: vec![],
         });
 
         cg.add_call(
@@ -288,6 +398,7 @@ mod tests {
                 callee: "b".to_string(),
                 line: 2,
                 tainted_args: vec![],
+                argument_expressions: vec![],
             },
         );
         cg.add_call(
@@ -296,10 +407,11 @@ mod tests {
                 callee: "c".to_string(),
                 line: 2,
                 tainted_args: vec![],
+                argument_expressions: vec![],
             },
         );
 
-        // Depth 1: only a and b reachable.
+        // 深度 1: 只有 a 和 b 可達。
         let reachable = cg.reachable_from("a.ts::a", 1);
         assert!(reachable.contains("a.ts::a"));
         assert!(reachable.contains("b.ts::b"));
@@ -307,8 +419,8 @@ mod tests {
     }
 
     #[test]
-    fn taint_config_default() {
-        let config = TaintConfig::default();
+    fn l3_taint_config_default() {
+        let config = L3TaintConfig::default();
         assert_eq!(config.max_depth, 5);
     }
 
@@ -340,5 +452,95 @@ mod tests {
 
         assert_eq!(cg.sources.len(), 1);
         assert_eq!(cg.sinks.len(), 1);
+    }
+
+    #[test]
+    fn import_index_resolve() {
+        let mut idx = ImportIndex::new();
+        idx.add(ImportEntry {
+            file_path: "src/controller.ts".to_string(),
+            imported_name: "findUser".to_string(),
+            source_module: "src/userService.ts".to_string(),
+            exported_name: "findUser".to_string(),
+        });
+
+        let result = idx.resolve("src/controller.ts", "findUser");
+        assert!(result.is_some());
+        let (src, name) = result.unwrap();
+        assert_eq!(src, "src/userService.ts");
+        assert_eq!(name, "findUser");
+
+        // 未知的 import 回傳 None
+        assert!(idx.resolve("src/controller.ts", "unknown").is_none());
+        assert!(idx.resolve("other.ts", "findUser").is_none());
+    }
+
+    #[test]
+    fn resolve_call_same_file() {
+        let mut cg = CallGraph::new();
+        cg.add_function(FunctionRef {
+            file_path: "app.ts".to_string(),
+            name: "handler".to_string(),
+            line: 1,
+            parameters: vec![],
+        });
+        cg.add_function(FunctionRef {
+            file_path: "app.ts".to_string(),
+            name: "helper".to_string(),
+            line: 10,
+            parameters: vec![],
+        });
+
+        // 同檔案解析
+        let resolved = cg.resolve_call("app.ts", "helper");
+        assert_eq!(resolved, Some("app.ts::helper".to_string()));
+
+        // 不存在的函數
+        assert!(cg.resolve_call("app.ts", "nonexistent").is_none());
+    }
+
+    #[test]
+    fn resolve_call_via_import() {
+        let mut cg = CallGraph::new();
+        cg.add_function(FunctionRef {
+            file_path: "src/service.ts".to_string(),
+            name: "findUser".to_string(),
+            line: 5,
+            parameters: vec!["name".to_string()],
+        });
+        cg.imports.add(ImportEntry {
+            file_path: "src/controller.ts".to_string(),
+            imported_name: "findUser".to_string(),
+            source_module: "src/service.ts".to_string(),
+            exported_name: "findUser".to_string(),
+        });
+
+        // 透過 import 解析跨檔案呼叫
+        let resolved = cg.resolve_call("src/controller.ts", "findUser");
+        assert_eq!(resolved, Some("src/service.ts::findUser".to_string()));
+    }
+
+    #[test]
+    fn function_ref_parameters() {
+        let func = FunctionRef {
+            file_path: "test.ts".to_string(),
+            name: "process".to_string(),
+            line: 1,
+            parameters: vec!["input".to_string(), "options".to_string()],
+        };
+        assert_eq!(func.parameters.len(), 2);
+        assert_eq!(func.parameters[0], "input");
+    }
+
+    #[test]
+    fn call_site_argument_expressions() {
+        let cs = CallSite {
+            callee: "query".to_string(),
+            line: 5,
+            tainted_args: vec![0],
+            argument_expressions: vec!["userInput".to_string(), "\"safe\"".to_string()],
+        };
+        assert_eq!(cs.argument_expressions.len(), 2);
+        assert_eq!(cs.argument_expressions[0], "userInput");
     }
 }

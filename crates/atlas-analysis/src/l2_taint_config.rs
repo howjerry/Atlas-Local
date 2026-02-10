@@ -89,6 +89,76 @@ pub fn load_taint_config(language: atlas_lang::Language) -> Result<TaintConfig, 
 }
 
 // ---------------------------------------------------------------------------
+// 自訂 Taint Config（atlas-taint.yaml）
+// ---------------------------------------------------------------------------
+
+/// 使用者自訂的污染追蹤配置（來自專案根目錄 `atlas-taint.yaml`）。
+///
+/// 結構複用 L2 TaintConfig 的 sources/sinks/sanitizers，
+/// 新增 `max_depth` 控制 L3 跨函數分析深度。
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CustomTaintConfig {
+    /// 自訂污染來源模式。
+    #[serde(default)]
+    pub sources: Vec<TaintSource>,
+    /// 自訂污染接收函數。
+    #[serde(default)]
+    pub sinks: Vec<TaintSink>,
+    /// 自訂淨化函數。
+    #[serde(default)]
+    pub sanitizers: Vec<TaintSanitizer>,
+    /// L3 跨函數分析最大深度（覆蓋預設值 5）。
+    #[serde(default)]
+    pub max_depth: Option<u32>,
+}
+
+/// 從專案目錄載入自訂 taint config。
+///
+/// 在 `scan_dir` 中尋找 `atlas-taint.yaml` 或 `atlas-taint.yml`。
+/// 若檔案不存在則回傳 `Ok(None)`。
+///
+/// # Errors
+///
+/// 若檔案存在但 YAML 格式無效則回傳描述性錯誤。
+pub fn load_custom_taint_config(
+    scan_dir: &std::path::Path,
+) -> Result<Option<CustomTaintConfig>, String> {
+    // 嘗試兩種副檔名
+    let yaml_path = scan_dir.join("atlas-taint.yaml");
+    let yml_path = scan_dir.join("atlas-taint.yml");
+
+    let path = if yaml_path.exists() {
+        yaml_path
+    } else if yml_path.exists() {
+        yml_path
+    } else {
+        return Ok(None);
+    };
+
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+
+    let config: CustomTaintConfig = serde_yml::from_str(&content)
+        .map_err(|e| format!("invalid atlas-taint.yaml at {}: {e}", path.display()))?;
+
+    Ok(Some(config))
+}
+
+/// 合併 built-in 與自訂 taint config（append 語義）。
+///
+/// 自訂的 sources/sinks/sanitizers 會被 append 到 built-in 後面。
+/// 回傳合併後的 `TaintConfig` 及自訂 `max_depth`（若有）。
+pub fn merge_taint_config(
+    mut builtin: TaintConfig,
+    custom: CustomTaintConfig,
+) -> (TaintConfig, Option<u32>) {
+    builtin.sources.extend(custom.sources);
+    builtin.sinks.extend(custom.sinks);
+    builtin.sanitizers.extend(custom.sanitizers);
+    (builtin, custom.max_depth)
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -167,5 +237,122 @@ mod tests {
                 );
             }
         }
+    }
+
+    // -------------------------------------------------------------------
+    // 自訂 Taint Config 測試
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn no_custom_config_returns_none() {
+        let dir = std::env::temp_dir().join("atlas-test-no-custom");
+        let _ = std::fs::create_dir_all(&dir);
+        let _ = std::fs::remove_file(dir.join("atlas-taint.yaml"));
+        let _ = std::fs::remove_file(dir.join("atlas-taint.yml"));
+
+        let result = load_custom_taint_config(&dir).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn custom_sources_appended_to_builtin() {
+        let builtin = TaintConfig {
+            sources: vec![TaintSource {
+                pattern: "req.body".to_string(),
+                label: "HTTP body".to_string(),
+            }],
+            sinks: vec![],
+            sanitizers: vec![],
+        };
+        let custom = CustomTaintConfig {
+            sources: vec![TaintSource {
+                pattern: "custom_input()".to_string(),
+                label: "Custom source".to_string(),
+            }],
+            sinks: vec![TaintSink {
+                function: "custom_exec".to_string(),
+                tainted_args: vec![0],
+                vulnerability: "command-injection".to_string(),
+                cwe: "CWE-78".to_string(),
+            }],
+            sanitizers: vec![TaintSanitizer {
+                function: "custom_sanitize".to_string(),
+            }],
+            max_depth: None,
+        };
+
+        let (merged, depth) = merge_taint_config(builtin, custom);
+        assert_eq!(merged.sources.len(), 2);
+        assert_eq!(merged.sources[0].pattern, "req.body");
+        assert_eq!(merged.sources[1].pattern, "custom_input()");
+        assert_eq!(merged.sinks.len(), 1);
+        assert_eq!(merged.sanitizers.len(), 1);
+        assert!(depth.is_none());
+    }
+
+    #[test]
+    fn custom_max_depth_overrides_default() {
+        let builtin = TaintConfig {
+            sources: vec![],
+            sinks: vec![],
+            sanitizers: vec![],
+        };
+        let custom = CustomTaintConfig {
+            sources: vec![],
+            sinks: vec![],
+            sanitizers: vec![],
+            max_depth: Some(3),
+        };
+
+        let (_merged, depth) = merge_taint_config(builtin, custom);
+        assert_eq!(depth, Some(3));
+    }
+
+    #[test]
+    fn invalid_yaml_returns_descriptive_error() {
+        let dir = std::env::temp_dir().join("atlas-test-invalid-yaml");
+        let _ = std::fs::create_dir_all(&dir);
+        std::fs::write(dir.join("atlas-taint.yaml"), "{{invalid yaml::: [[[")
+            .expect("write test file");
+
+        let result = load_custom_taint_config(&dir);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            err.contains("invalid atlas-taint.yaml"),
+            "Error should be descriptive, got: {err}"
+        );
+
+        let _ = std::fs::remove_file(dir.join("atlas-taint.yaml"));
+    }
+
+    #[test]
+    fn load_custom_config_from_yaml_file() {
+        let dir = std::env::temp_dir().join("atlas-test-custom-config");
+        let _ = std::fs::create_dir_all(&dir);
+        let yaml = r#"
+sources:
+  - pattern: "env.get"
+    label: "Environment variable"
+sinks:
+  - function: "subprocess.run"
+    tainted_args: [0]
+    vulnerability: "command-injection"
+    cwe: "CWE-78"
+sanitizers:
+  - function: "shlex.quote"
+max_depth: 8
+"#;
+        std::fs::write(dir.join("atlas-taint.yaml"), yaml).expect("write test yaml");
+
+        let config = load_custom_taint_config(&dir).unwrap().unwrap();
+        assert_eq!(config.sources.len(), 1);
+        assert_eq!(config.sources[0].pattern, "env.get");
+        assert_eq!(config.sinks.len(), 1);
+        assert_eq!(config.sinks[0].function, "subprocess.run");
+        assert_eq!(config.sanitizers.len(), 1);
+        assert_eq!(config.max_depth, Some(8));
+
+        let _ = std::fs::remove_file(dir.join("atlas-taint.yaml"));
     }
 }
