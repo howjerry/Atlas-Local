@@ -236,6 +236,7 @@ struct CategoryCounts {
     quality: SeverityCounts,
     secrets: SeverityCounts,
     metrics: SeverityCounts,
+    sca: SeverityCounts,
 }
 
 impl CategoryCounts {
@@ -245,6 +246,7 @@ impl CategoryCounts {
             Category::Quality => &self.quality,
             Category::Secrets => &self.secrets,
             Category::Metrics => &self.metrics,
+            Category::Sca => &self.sca,
         }
     }
 }
@@ -256,6 +258,7 @@ fn count_by_category<F: GateFinding>(findings: &[F]) -> CategoryCounts {
         quality: SeverityCounts::default(),
         secrets: SeverityCounts::default(),
         metrics: SeverityCounts::default(),
+        sca: SeverityCounts::default(),
     };
     for finding in findings {
         let bucket = match finding.category() {
@@ -263,6 +266,7 @@ fn count_by_category<F: GateFinding>(findings: &[F]) -> CategoryCounts {
             Category::Quality => &mut counts.quality,
             Category::Secrets => &mut counts.secrets,
             Category::Metrics => &mut counts.metrics,
+            Category::Sca => &mut counts.sca,
         };
         bucket.increment(finding.severity());
     }
@@ -356,6 +360,15 @@ fn check_category_overrides(
             cat_counts.get(Category::Metrics),
             metrics,
             Some("metrics"),
+            level,
+            breached,
+        );
+    }
+    if let Some(ref sca) = overrides.sca {
+        check_thresholds(
+            cat_counts.get(Category::Sca),
+            sca,
+            Some("sca"),
             level,
             breached,
         );
@@ -616,6 +629,7 @@ mod tests {
             quality: None,
             secrets: None,
             metrics: None,
+            sca: None,
         };
 
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
@@ -758,6 +772,7 @@ mod tests {
             }),
             secrets: None,
             metrics: None,
+            sca: None,
         };
 
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
@@ -785,6 +800,7 @@ mod tests {
                 ..empty_thresholds()
             }),
             metrics: None,
+            sca: None,
         };
 
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
@@ -821,6 +837,7 @@ mod tests {
             }),
             secrets: None,
             metrics: None,
+            sca: None,
         };
 
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
@@ -925,6 +942,7 @@ mod tests {
                 medium: Some(2),
                 ..empty_thresholds()
             }),
+            sca: None,
         };
 
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));
@@ -956,6 +974,7 @@ mod tests {
                 medium: Some(5),
                 ..empty_thresholds()
             }),
+            sca: None,
         };
 
         let details = evaluate_gate(&findings, &fail_on, None, Some(&overrides));

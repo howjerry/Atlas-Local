@@ -106,6 +106,10 @@ pub struct CategoryOverrides {
     /// Overrides for the metrics category.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metrics: Option<Thresholds>,
+
+    /// Overrides for the SCA (dependency vulnerability) category.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sca: Option<Thresholds>,
 }
 
 impl CategoryOverrides {
@@ -118,6 +122,7 @@ impl CategoryOverrides {
             quality: merge_optional_thresholds(&self.quality, &other.quality),
             secrets: merge_optional_thresholds(&self.secrets, &other.secrets),
             metrics: merge_optional_thresholds(&self.metrics, &other.metrics),
+            sca: merge_optional_thresholds(&self.sca, &other.sca),
         }
     }
 }
@@ -439,6 +444,7 @@ mod tests {
         assert_eq!(co.security, None);
         assert_eq!(co.quality, None);
         assert_eq!(co.secrets, None);
+        assert_eq!(co.sca, None);
     }
 
     // -- T031: YAML deserialization --------------------------------------------

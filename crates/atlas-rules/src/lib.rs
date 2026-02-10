@@ -106,6 +106,8 @@ pub enum Category {
     Secrets,
     /// Code metrics (complexity, duplication, LOC statistics).
     Metrics,
+    /// Software Composition Analysis (known CVEs in dependencies).
+    Sca,
 }
 
 impl fmt::Display for Category {
@@ -115,6 +117,7 @@ impl fmt::Display for Category {
             Self::Quality => "quality",
             Self::Secrets => "secrets",
             Self::Metrics => "metrics",
+            Self::Sca => "sca",
         };
         f.write_str(label)
     }
@@ -933,6 +936,7 @@ mod tests {
         assert_eq!(Category::Quality.to_string(), "quality");
         assert_eq!(Category::Secrets.to_string(), "secrets");
         assert_eq!(Category::Metrics.to_string(), "metrics");
+        assert_eq!(Category::Sca.to_string(), "sca");
     }
 
     #[test]

@@ -34,6 +34,7 @@ atlas-license = { path = "../atlas-license" }
 atlas-audit = { path = "../atlas-audit" }
 atlas-cache = { path = "../atlas-cache" }
 atlas-lang = { path = "../atlas-lang" }
+atlas-sca = { path = "../atlas-sca" }
 
 [dev-dependencies]
 tempfile = { workspace = true }

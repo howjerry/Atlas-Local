@@ -6,3 +6,4 @@ pub mod diag;
 pub mod license;
 pub mod rulepack;
 pub mod scan;
+pub mod sca;

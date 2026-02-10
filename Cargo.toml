@@ -11,6 +11,7 @@ members = [
   "crates/atlas-license",
   "crates/atlas-audit",
   "crates/atlas-cache",
+  "crates/atlas-sca",
 ]
 
 [workspace.package]
@@ -83,6 +84,15 @@ criterion = "0.8"
 
 # Home directory resolution
 dirs-next = "2.0"
+
+# SCA version matching
+semver = "1.0"
+
+# TOML parsing (Cargo.lock)
+toml = "0.8"
+
+# XML parsing (pom.xml)
+quick-xml = { version = "0.37", features = ["serialize"] }
 
 # Testing utilities
 tempfile = "3"

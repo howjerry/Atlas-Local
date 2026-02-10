@@ -32,6 +32,8 @@ enum Commands {
     Audit(commands::audit::AuditArgs),
     /// Display diagnostic information.
     Diag(commands::diag::DiagArgs),
+    /// SCA dependency vulnerability scanning and database management.
+    Sca(commands::sca::ScaArgs),
 }
 
 fn main() -> std::process::ExitCode {
@@ -46,6 +48,7 @@ fn main() -> std::process::ExitCode {
         Commands::License(args) => commands::license::execute(args),
         Commands::Audit(args) => commands::audit::execute(args),
         Commands::Diag(args) => commands::diag::execute(args),
+        Commands::Sca(args) => commands::sca::execute(args),
     };
 
     match result {

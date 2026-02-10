@@ -88,6 +88,14 @@ pub struct ScanArgs {
     /// 啟用程式碼品質度量計算（cyclomatic/cognitive complexity、code duplication、LOC 統計）。
     #[arg(long)]
     pub metrics: bool,
+
+    /// 停用 SCA 依賴漏洞掃描。
+    #[arg(long)]
+    pub no_sca: bool,
+
+    /// SCA 漏洞資料庫路徑（預設 ~/.atlas/vuln.db）。
+    #[arg(long = "sca-db")]
+    pub sca_db: Option<PathBuf>,
 }
 
 /// Gate evaluation mode for diff-aware scans.
@@ -429,6 +437,54 @@ pub fn execute(args: ScanArgs) -> Result<ExitCode, anyhow::Error> {
     let mut result = engine
         .scan_with_options(&args.target, language_filter_ref, &scan_options)
         .context("scan engine failed")?;
+
+    // 8b. SCA 依賴漏洞掃描。
+    if !args.no_sca {
+        let sca_db_path = args.sca_db.clone().unwrap_or_else(|| {
+            dirs_next::home_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join(".atlas")
+                .join("vuln.db")
+        });
+
+        if sca_db_path.exists() {
+            match atlas_sca::database::VulnDatabase::open(&sca_db_path) {
+                Ok(db) => {
+                    // 檢查資料庫是否超過 30 天未更新
+                    if db.is_stale(30) {
+                        tracing::warn!(
+                            path = %sca_db_path.display(),
+                            "SCA vulnerability database is over 30 days old. Run 'atlas sca update-db' to refresh."
+                        );
+                    }
+                    match atlas_sca::scan_dependencies(&args.target, &db) {
+                        Ok(sca_findings) => {
+                            let count = sca_findings.len();
+                            result.findings.extend(sca_findings);
+                            if count > 0 {
+                                info!(count, "SCA vulnerability findings added");
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!(error = %e, "SCA scan failed; continuing with SAST results only");
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        path = %sca_db_path.display(),
+                        error = %e,
+                        "Failed to open SCA database; skipping SCA scan"
+                    );
+                }
+            }
+        } else {
+            tracing::debug!(
+                path = %sca_db_path.display(),
+                "SCA database not found; skipping SCA scan. Run 'atlas sca update-db' to download."
+            );
+        }
+    }
 
     // Finish the progress spinner.
     if let Some(pb) = spinner {
@@ -882,6 +938,8 @@ mod tests {
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_sca: true,
+            sca_db: None,
         };
         let result = execute(args);
         assert!(result.is_err());
@@ -907,6 +965,8 @@ mod tests {
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_sca: true,
+            sca_db: None,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -960,6 +1020,8 @@ fail_on:
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_sca: true,
+            sca_db: None,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -992,6 +1054,8 @@ fail_on:
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_sca: true,
+            sca_db: None,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -1084,6 +1148,8 @@ fail_on:
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_sca: true,
+            sca_db: None,
         };
         let result = execute(args);
         assert!(result.is_ok());
@@ -1109,6 +1175,8 @@ fail_on:
             diff_gate_mode: DiffGateMode::All,
             analysis_level: AnalysisLevel::L1,
             metrics: false,
+            no_sca: true,
+            sca_db: None,
         };
         let result = execute(args);
         assert!(result.is_err());

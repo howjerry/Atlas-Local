@@ -1,0 +1,30 @@
+[package]
+name = "atlas-sca"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Software Composition Analysis — lockfile parsing and vulnerability matching for Atlas"
+
+[dependencies]
+atlas-analysis = { path = "../atlas-analysis" }
+atlas-core = { path = "../atlas-core" }
+
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+quick-xml = { workspace = true }
+semver = { workspace = true }
+rusqlite = { workspace = true }
+ed25519-dalek = { workspace = true }
+sha2 = { workspace = true }
+base64 = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+walkdir = { workspace = true }
+hex = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+rand = "0.8"
