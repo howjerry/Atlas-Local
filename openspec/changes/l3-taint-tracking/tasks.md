@@ -91,13 +91,13 @@
 
 ## 9. 測試夾具
 
-- [ ] 9.1 建立 TypeScript L3 測試夾具 — `rules/l3/typescript/tests/` 下 l3-sql-injection, l3-xss, l3-command-injection 各含 fail/pass 檔案（跨函數呼叫模式）
-- [ ] 9.2 建立 Java L3 測試夾具 — 同上模式，Java 跨方法呼叫
-- [ ] 9.3 建立 Python L3 測試夾具 — 同上模式，Python 跨函數呼叫
-- [ ] 9.4 建立 C# L3 測試夾具 — 同上模式，C# 跨方法呼叫
-- [ ] 9.5 建立 Go L3 測試夾具 — 同上模式，Go 跨函數呼叫
-- [ ] 9.6 建立跨檔案測試夾具（TypeScript）— controller.ts + service.ts 跨檔案 taint path
-- [ ] 9.7 建立跨檔案測試夾具（Python）— views.py + services.py 跨檔案 taint path
+- [x] 9.1 建立 TypeScript L3 測試夾具 — `rules/l3/typescript/tests/` 下 l3-sql-injection, l3-xss, l3-command-injection 各含 fail/pass 檔案（跨函數呼叫模式）
+- [x] 9.2 建立 Java L3 測試夾具 — 同上模式，Java 跨方法呼叫
+- [x] 9.3 建立 Python L3 測試夾具 — 同上模式，Python 跨函數呼叫
+- [x] 9.4 建立 C# L3 測試夾具 — 同上模式，C# 跨方法呼叫
+- [x] 9.5 建立 Go L3 測試夾具 — 同上模式，Go 跨函數呼叫
+- [x] 9.6 建立跨檔案測試夾具（TypeScript）— controller.ts + service.ts 跨檔案 taint path
+- [x] 9.7 建立跨檔案測試夾具（Python）— views.py + services.py 跨檔案 taint path
 
 ## 10. 驗證與效能
 
