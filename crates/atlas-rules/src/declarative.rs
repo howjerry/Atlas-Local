@@ -565,7 +565,7 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all TypeScript rules should load successfully");
 
-        assert_eq!(rules.len(), 30, "expected exactly 30 TypeScript rules");
+        assert_eq!(rules.len(), 39, "expected exactly 39 TypeScript rules");
 
         // 驗證所有規則按 ID 排序
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
@@ -592,14 +592,23 @@ version: 0.1.0
                 "atlas/quality/typescript/var-declaration",
                 "atlas/security/typescript/code-injection-eval",
                 "atlas/security/typescript/code-injection-function-constructor",
+                "atlas/security/typescript/cors-wildcard",
+                "atlas/security/typescript/dangerouslysetinnerhtml",
                 "atlas/security/typescript/hardcoded-secret",
+                "atlas/security/typescript/header-injection",
+                "atlas/security/typescript/insecure-cookie",
                 "atlas/security/typescript/insecure-random",
+                "atlas/security/typescript/jwt-no-verify",
+                "atlas/security/typescript/log-injection",
+                "atlas/security/typescript/nosql-injection",
                 "atlas/security/typescript/open-redirect",
                 "atlas/security/typescript/path-traversal",
                 "atlas/security/typescript/prototype-pollution",
                 "atlas/security/typescript/regex-dos",
                 "atlas/security/typescript/sql-injection",
                 "atlas/security/typescript/ssrf",
+                "atlas/security/typescript/template-injection",
+                "atlas/security/typescript/unsafe-redirect",
                 "atlas/security/typescript/weak-crypto",
                 "atlas/security/typescript/xss-innerhtml",
             ]
@@ -620,7 +629,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 12, "expected 12 security rules");
+        assert_eq!(security_rules.len(), 21, "expected 21 security rules");
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some(), "security rule {} should have CWE ID", rule.id);
         }
@@ -655,7 +664,7 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Python rules should load successfully");
 
-        assert_eq!(rules.len(), 25, "expected exactly 25 Python rules");
+        assert_eq!(rules.len(), 34, "expected exactly 34 Python rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
@@ -678,15 +687,24 @@ version: 0.1.0
                 "atlas/quality/python/string-concat-in-loop",
                 "atlas/quality/python/todo-comment",
                 "atlas/security/python/command-injection",
+                "atlas/security/python/django-raw-sql",
                 "atlas/security/python/eval-usage",
+                "atlas/security/python/flask-debug-mode",
                 "atlas/security/python/hardcoded-secret",
                 "atlas/security/python/insecure-random",
+                "atlas/security/python/insecure-tls",
+                "atlas/security/python/jwt-no-verify",
+                "atlas/security/python/ldap-injection",
+                "atlas/security/python/log-injection",
                 "atlas/security/python/open-redirect",
                 "atlas/security/python/sql-injection",
                 "atlas/security/python/ssrf",
+                "atlas/security/python/template-injection",
+                "atlas/security/python/unrestricted-file-upload",
                 "atlas/security/python/unsafe-deserialization",
                 "atlas/security/python/unsafe-yaml-load",
                 "atlas/security/python/weak-crypto",
+                "atlas/security/python/xml-bomb",
             ]
         );
 
@@ -700,12 +718,12 @@ version: 0.1.0
             assert_eq!(rule.version, "1.0.0");
         }
 
-        // 驗證安全規則（原 4 + 新增 6 = 10）
+        // 驗證安全規則
         let security_rules: Vec<&Rule> = rules
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 10, "expected 10 security rules");
+        assert_eq!(security_rules.len(), 19, "expected 19 security rules");
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some());
         }
@@ -815,7 +833,7 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Java rules should load successfully");
 
-        assert_eq!(rules.len(), 24, "expected exactly 24 Java rules");
+        assert_eq!(rules.len(), 34, "expected exactly 34 Java rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
@@ -836,14 +854,24 @@ version: 0.1.0
                 "atlas/quality/java/system-out-println",
                 "atlas/quality/java/thread-sleep-in-loop",
                 "atlas/quality/java/todo-comment",
+                "atlas/security/java/expression-language-injection",
                 "atlas/security/java/hardcoded-secret",
                 "atlas/security/java/insecure-deserialization",
+                "atlas/security/java/insecure-object-reference",
                 "atlas/security/java/insecure-random",
+                "atlas/security/java/insecure-tls",
+                "atlas/security/java/jndi-injection",
+                "atlas/security/java/jwt-no-verify",
+                "atlas/security/java/ldap-injection",
+                "atlas/security/java/log-injection",
                 "atlas/security/java/open-redirect",
                 "atlas/security/java/path-traversal",
+                "atlas/security/java/spring-csrf-disabled",
                 "atlas/security/java/sql-injection",
                 "atlas/security/java/ssrf",
+                "atlas/security/java/unrestricted-file-upload",
                 "atlas/security/java/weak-crypto",
+                "atlas/security/java/xpath-injection",
                 "atlas/security/java/xss-servlet",
                 "atlas/security/java/xxe",
             ]
@@ -864,7 +892,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 10, "expected 10 security rules");
+        assert_eq!(security_rules.len(), 20, "expected 20 security rules");
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some());
         }
@@ -1088,7 +1116,7 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all C# rules should load successfully");
 
-        assert_eq!(rules.len(), 20, "expected exactly 20 C# rules");
+        assert_eq!(rules.len(), 29, "expected exactly 29 C# rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
@@ -1108,13 +1136,22 @@ version: 0.1.0
                 "atlas/quality/csharp/string-concat-in-loop",
                 "atlas/quality/csharp/todo-comment",
                 "atlas/security/csharp/command-injection",
+                "atlas/security/csharp/csrf-disabled",
                 "atlas/security/csharp/insecure-deserialization",
                 "atlas/security/csharp/insecure-random",
+                "atlas/security/csharp/insecure-tls",
+                "atlas/security/csharp/jwt-no-verify",
+                "atlas/security/csharp/ldap-injection",
+                "atlas/security/csharp/log-injection",
                 "atlas/security/csharp/open-redirect",
                 "atlas/security/csharp/path-traversal",
+                "atlas/security/csharp/regex-dos",
                 "atlas/security/csharp/sql-injection-concatenation",
                 "atlas/security/csharp/sql-injection-interpolation",
+                "atlas/security/csharp/unrestricted-file-upload",
+                "atlas/security/csharp/viewstate-insecure",
                 "atlas/security/csharp/weak-crypto",
+                "atlas/security/csharp/xxe",
             ]
         );
 
@@ -1133,7 +1170,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 8);
+        assert_eq!(security_rules.len(), 17);
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some());
         }
@@ -1314,7 +1351,7 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Go rules should load successfully");
 
-        assert_eq!(rules.len(), 20, "expected exactly 20 Go rules");
+        assert_eq!(rules.len(), 29, "expected exactly 29 Go rules");
 
         // Verify all rules are sorted by ID.
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
@@ -1334,12 +1371,21 @@ version: 0.1.0
                 "atlas/quality/go/type-assertion-without-check",
                 "atlas/quality/go/unchecked-error",
                 "atlas/security/go/command-injection",
+                "atlas/security/go/file-permission-too-broad",
                 "atlas/security/go/hardcoded-secret",
+                "atlas/security/go/hardcoded-tls-key",
+                "atlas/security/go/insecure-cookie",
                 "atlas/security/go/insecure-random",
+                "atlas/security/go/jwt-no-verify",
+                "atlas/security/go/log-injection",
                 "atlas/security/go/open-redirect",
                 "atlas/security/go/path-traversal",
+                "atlas/security/go/race-condition-map",
                 "atlas/security/go/sql-injection",
                 "atlas/security/go/ssrf",
+                "atlas/security/go/template-injection",
+                "atlas/security/go/tls-insecure-skip-verify",
+                "atlas/security/go/unsafe-reflect",
                 "atlas/security/go/weak-crypto",
             ]
         );
@@ -1359,7 +1405,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 8, "expected 8 security rules");
+        assert_eq!(security_rules.len(), 17, "expected 17 security rules");
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some());
         }
@@ -1524,7 +1570,7 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Kotlin rules should load successfully");
 
-        assert_eq!(rules.len(), 20, "expected exactly 20 Kotlin rules");
+        assert_eq!(rules.len(), 30, "expected exactly 30 Kotlin rules");
 
         // 驗證排序後的規則 ID 清單
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
@@ -1544,13 +1590,23 @@ version: 0.1.0
                 "atlas/quality/kotlin/unsafe-cast",
                 "atlas/quality/kotlin/var-could-be-val",
                 "atlas/security/kotlin/command-injection",
+                "atlas/security/kotlin/coroutine-unsafe-context",
+                "atlas/security/kotlin/expression-language-injection",
                 "atlas/security/kotlin/hardcoded-secret",
                 "atlas/security/kotlin/insecure-deserialization",
                 "atlas/security/kotlin/insecure-random",
+                "atlas/security/kotlin/insecure-tls",
+                "atlas/security/kotlin/jndi-injection",
+                "atlas/security/kotlin/jwt-no-verify",
+                "atlas/security/kotlin/ldap-injection",
+                "atlas/security/kotlin/log-injection",
                 "atlas/security/kotlin/path-traversal",
+                "atlas/security/kotlin/spring-csrf-disabled",
                 "atlas/security/kotlin/sql-injection",
+                "atlas/security/kotlin/unrestricted-file-upload",
                 "atlas/security/kotlin/weak-crypto",
                 "atlas/security/kotlin/xss",
+                "atlas/security/kotlin/xxe",
             ]
         );
 
@@ -1569,7 +1625,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 8, "expected 8 security rules");
+        assert_eq!(security_rules.len(), 18, "expected 18 security rules");
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some());
         }
@@ -1657,7 +1713,7 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all Ruby rules should load successfully");
 
-        assert_eq!(rules.len(), 25, "expected exactly 25 Ruby rules");
+        assert_eq!(rules.len(), 34, "expected exactly 34 Ruby rules");
 
         // 驗證排序後的規則 ID 清單
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
@@ -1680,14 +1736,23 @@ version: 0.1.0
                 "atlas/quality/ruby/string-concat-in-loop",
                 "atlas/quality/ruby/todo-comment",
                 "atlas/security/ruby/command-injection",
+                "atlas/security/ruby/csrf-disabled",
                 "atlas/security/ruby/dynamic-code-execution",
                 "atlas/security/ruby/hardcoded-secret",
+                "atlas/security/ruby/header-injection",
+                "atlas/security/ruby/insecure-tls",
+                "atlas/security/ruby/jwt-no-verify",
+                "atlas/security/ruby/ldap-injection",
+                "atlas/security/ruby/log-injection",
                 "atlas/security/ruby/mass-assignment",
                 "atlas/security/ruby/open-redirect",
                 "atlas/security/ruby/path-traversal",
                 "atlas/security/ruby/sql-injection",
+                "atlas/security/ruby/unrestricted-file-upload",
+                "atlas/security/ruby/unsafe-reflection",
                 "atlas/security/ruby/weak-crypto",
                 "atlas/security/ruby/xss",
+                "atlas/security/ruby/xxe",
                 "atlas/security/ruby/yaml-load",
             ]
         );
@@ -1707,7 +1772,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 10, "expected 10 security rules");
+        assert_eq!(security_rules.len(), 19, "expected 19 security rules");
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some());
         }
@@ -1788,7 +1853,7 @@ version: 0.1.0
             .load_from_dir(&rules_dir)
             .expect("all PHP rules should load successfully");
 
-        assert_eq!(rules.len(), 25, "expected exactly 25 PHP rules");
+        assert_eq!(rules.len(), 34, "expected exactly 34 PHP rules");
 
         // 驗證排序後的規則 ID 清單
         let ids: Vec<&str> = rules.iter().map(|r| r.id.as_str()).collect();
@@ -1813,13 +1878,22 @@ version: 0.1.0
                 "atlas/security/php/code-injection",
                 "atlas/security/php/command-injection",
                 "atlas/security/php/file-inclusion",
+                "atlas/security/php/header-injection",
+                "atlas/security/php/insecure-tls",
+                "atlas/security/php/jwt-no-verify",
+                "atlas/security/php/laravel-mass-assignment",
+                "atlas/security/php/ldap-injection",
+                "atlas/security/php/log-injection",
                 "atlas/security/php/open-redirect",
                 "atlas/security/php/path-traversal",
+                "atlas/security/php/preg-eval",
                 "atlas/security/php/sql-injection",
                 "atlas/security/php/ssrf",
+                "atlas/security/php/unrestricted-file-upload",
                 "atlas/security/php/unserialize",
                 "atlas/security/php/weak-crypto",
                 "atlas/security/php/xss",
+                "atlas/security/php/xxe",
             ]
         );
 
@@ -1838,7 +1912,7 @@ version: 0.1.0
             .iter()
             .filter(|r| r.category == Category::Security)
             .collect();
-        assert_eq!(security_rules.len(), 10, "expected 10 security rules");
+        assert_eq!(security_rules.len(), 19, "expected 19 security rules");
         for rule in &security_rules {
             assert!(rule.cwe_id.is_some());
         }

@@ -16,8 +16,8 @@ pattern: |
       (#match? @method "^(search|bind_as)$")
       arguments: (argument_list
         (pair
-          key: [(symbol) (hash_key_symbol)] @key
-          (#match? @key "^:?filter$")
+          key: (hash_key_symbol) @key
+          (#match? @key "^filter$")
           value: (string
             (interpolation)))))
     @match)

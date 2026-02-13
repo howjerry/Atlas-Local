@@ -13,23 +13,23 @@ language: Kotlin
 cwe_id: CWE-917
 pattern: |
   [
-    (call_expression
+    ((call_expression
       (navigation_expression
         (_) @parser
         (identifier) @method)
       (value_arguments
         (value_argument
-          (simple_identifier) @expr_arg))
+          (identifier) @expr_arg))
       (#match? @method "^(parseExpression|getValue|evaluate|setValue)$"))
-    @match
+    @match)
 
-    (call_expression
-      (simple_identifier) @method
+    ((call_expression
+      (identifier) @method
       (value_arguments
         (value_argument
-          (simple_identifier) @expr_arg))
+          (identifier) @expr_arg))
       (#match? @method "^(parseExpression|getValue|evaluate|setValue)$"))
-    @match
+    @match)
   ]
 remediation: >
   Never pass user-controlled input to expression evaluation methods. If

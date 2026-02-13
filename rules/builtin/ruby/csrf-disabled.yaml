@@ -26,8 +26,8 @@ pattern: |
       (#eq? @method "protect_from_forgery")
       arguments: (argument_list
         (pair
-          key: [(symbol) (hash_key_symbol)] @key
-          (#match? @key "^:?with$")
+          key: (hash_key_symbol) @key
+          (#match? @key "^with$")
           value: (simple_symbol) @value
           (#eq? @value ":null_session"))))
     @match)

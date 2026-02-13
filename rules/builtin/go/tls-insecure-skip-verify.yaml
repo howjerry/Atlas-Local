@@ -10,11 +10,13 @@ category: security
 language: Go
 cwe_id: CWE-295
 pattern: |
-  (keyed_element
-    (field_identifier) @field
-    (true) @value
-    (#eq? @field "InsecureSkipVerify"))
+  ((keyed_element
+    key: (literal_element
+      (identifier) @field)
+    value: (literal_element
+      (true)))
   @match
+  (#eq? @field "InsecureSkipVerify"))
 remediation: >
   Never set InsecureSkipVerify to true in production. Use proper CA
   certificates for verification. For self-signed certificates in testing,

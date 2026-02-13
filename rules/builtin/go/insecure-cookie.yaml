@@ -12,17 +12,21 @@ language: Go
 cwe_id: CWE-614
 pattern: |
   [
-    (keyed_element
-      (field_identifier) @field
-      (false) @value
-      (#eq? @field "Secure"))
+    ((keyed_element
+      key: (literal_element
+        (identifier) @field)
+      value: (literal_element
+        (false)))
     @match
+    (#eq? @field "Secure"))
 
-    (keyed_element
-      (field_identifier) @field
-      (false) @value
-      (#eq? @field "HttpOnly"))
+    ((keyed_element
+      key: (literal_element
+        (identifier) @field)
+      value: (literal_element
+        (false)))
     @match
+    (#eq? @field "HttpOnly"))
   ]
 remediation: >
   Always set Secure: true and HttpOnly: true on session cookies and any

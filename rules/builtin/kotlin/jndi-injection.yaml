@@ -12,15 +12,15 @@ category: security
 language: Kotlin
 cwe_id: CWE-074
 pattern: |
-  (call_expression
+  ((call_expression
     (navigation_expression
       (_) @ctx
       (identifier) @method)
     (value_arguments
       (value_argument
-        (simple_identifier) @lookup_name))
+        (identifier) @lookup_name))
     (#eq? @method "lookup"))
-  @match
+  @match)
 remediation: >
   Never pass user-controlled input to JNDI lookup methods. If JNDI
   lookups are required, use a strict allowlist of permitted JNDI names.
