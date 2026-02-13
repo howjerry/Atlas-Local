@@ -3,11 +3,13 @@ name: Redundant Boolean Comparison
 description: >
   Detects comparisons of boolean expressions against boolean literals
   (e.g. `if (x == true)` or `if (y != false)`). These comparisons
-  are redundant and reduce readability.
+  are redundant and reduce readability. Note: for nullable booleans
+  (`bool?`), `== true` is idiomatic C# and not redundant — tree-sitter
+  cannot distinguish `bool` from `bool?`, so false positives may occur.
 severity: low
 category: quality
 language: CSharp
-confidence: high
+confidence: medium
 pattern: |
   (binary_expression
     operator: ["==" "!="]
@@ -16,7 +18,9 @@ pattern: |
 remediation: >
   Remove the redundant boolean literal comparison. Use `if (x)`
   instead of `if (x == true)` and `if (!x)` instead of
-  `if (x != true)` or `if (x == false)`.
+  `if (x != true)` or `if (x == false)`. Exception: for nullable
+  booleans (`bool?`), `== true` is the idiomatic pattern and
+  should be kept.
 references:
   - https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/boolean-logical-operators
 tags:
