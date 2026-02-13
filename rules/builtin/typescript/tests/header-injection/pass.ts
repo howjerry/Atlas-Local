@@ -17,3 +17,18 @@ function handleRequest(req: Request, res: Response) {
   res.writeHead(200, "OK");
 }
 
+// 安全：Request headers 不是 Response header injection
+function setupRequest(headers: Headers, token: string) {
+  headers.set('authorization', token);
+}
+
+// 安全：MMKV 本地儲存
+function saveToStorage(mmkv: MMKV, key: string, value: string) {
+  mmkv.set(key, value);
+}
+
+// 安全：一般本地儲存
+function saveData(storage: AsyncStorage, key: string, value: string) {
+  storage.set(key, value);
+}
+

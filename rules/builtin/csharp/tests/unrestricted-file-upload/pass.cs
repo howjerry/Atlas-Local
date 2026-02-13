@@ -18,5 +18,24 @@ public class SafeUpload
         var safeName = Path.GetRandomFileName() + ext;
         var path = Path.Combine("uploads", safeName);
     }
+
+    // 安全：Excel 匯出（workbook.SaveAs 不是檔案上傳）
+    public void ExportExcel(ClosedXML.Excel.XLWorkbook workbook)
+    {
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+    }
+
+    // 安全：Stream-to-Stream 複製（下載操作）
+    public async Task DownloadFile(Stream fileStream, Stream memoryStream)
+    {
+        await fileStream.CopyToAsync(memoryStream);
+    }
+
+    // 安全：內部 stream 複製
+    public async Task CopyStream(Stream stream, FileStream destination)
+    {
+        await stream.CopyToAsync(destination);
+    }
 }
 

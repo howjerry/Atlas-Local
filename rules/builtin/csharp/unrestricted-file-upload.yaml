@@ -6,19 +6,22 @@ description: >
   and content, attackers can upload web shells, malicious executables,
   or polyglot files that may execute on the server.
 severity: high
+confidence: medium
 category: security
 language: CSharp
 cwe_id: CWE-434
 pattern: |
   [
-    (invocation_expression
+    ((invocation_expression
       function: (member_access_expression
+        expression: (identifier) @obj
         name: (identifier) @method
-        (#match? @method "^(CopyToAsync|CopyTo|SaveAs)$"))
+        (#not-match? @obj "(?i)(stream|fileStream|memoryStream|ms|buffer|source|destination|workbook|document|response|httpResponse)")
+        (#match? @method "^(CopyToAsync|CopyTo)$"))
       arguments: (argument_list
         (argument
           (_) @dest)))
-    @match
+    @match)
   ]
 remediation: >
   Validate uploaded files before saving: check file extension against an

@@ -11,25 +11,27 @@ language: TypeScript
 cwe_id: CWE-113
 pattern: |
   [
-    (call_expression
+    ((call_expression
       function: (member_expression
-        object: (_)
+        object: (identifier) @obj
         property: (property_identifier) @method
+        (#match? @obj "^(res|response)$")
         (#match? @method "^(setHeader|set|header|writeHead)$"))
       arguments: (arguments
         (_)
         (identifier) @header_value))
-    @match
+    @match)
 
-    (call_expression
+    ((call_expression
       function: (member_expression
-        object: (_)
+        object: (identifier) @obj
         property: (property_identifier) @method
+        (#match? @obj "^(res|response)$")
         (#match? @method "^(setHeader|set|header|writeHead)$"))
       arguments: (arguments
         (_)
         (template_string) @header_value))
-    @match
+    @match)
   ]
 remediation: >
   Sanitize all user input before using it in HTTP response headers. Strip
