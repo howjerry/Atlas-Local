@@ -10,14 +10,15 @@ category: security
 language: TypeScript
 cwe_id: CWE-345
 pattern: |
-  (call_expression
+  ((call_expression
     function: (member_expression
-      object: (_)
-      property: (property_identifier) @method
-      (#eq? @method "decode"))
+      object: (identifier) @obj
+      property: (property_identifier) @method)
     arguments: (arguments
       (_) @token_arg))
   @match
+  (#eq? @obj "jwt")
+  (#eq? @method "decode"))
 remediation: >
   Replace jwt.decode() with jwt.verify() which validates the token signature.
   For example, replace `const payload = jwt.decode(token)` with

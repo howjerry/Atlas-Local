@@ -14,3 +14,7 @@ const payload2 = jwt.verify(token, publicKey, { algorithms: ["RS256"] });
 // 安全：使用 sign 產生 token
 const newToken = jwt.sign({ userId: 123 }, secretKey, { expiresIn: "1h" });
 
+// 安全：TextDecoder.decode() 非 JWT 操作（回歸測試）
+const decoder = new TextDecoder();
+const text = decoder.decode(new Uint8Array([72, 101]));
+
